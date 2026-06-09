@@ -53,78 +53,77 @@
 }
 
 .customer-note-value {
-    white-space: pre-line;
-    line-height: 1.9;
+  white-space: pre-line;
+  line-height: 1.9;
 }
 
 .modal .card {
-    border-radius: 12px;
+  border-radius: 12px;
 }
 
 .modal .card .card-body {
-    padding: 1rem 1.1rem;
+  padding: 1rem 1.1rem;
 }
 
 .modal .small.text-muted {
-    font-size: 0.78rem;
-    letter-spacing: 0.2px;
+  font-size: 0.78rem;
+  letter-spacing: 0.2px;
 }
 
 .modal .fw-semibold.text-body {
-    font-size: 0.95rem;
-    line-height: 1.8;
-    word-break: break-word;
+  font-size: 0.95rem;
+  line-height: 1.8;
+  word-break: break-word;
 }
 
 #createCustomerModal .modal-content,
 [id^="editCustomerModal"] .modal-content {
-    min-height: 85vh;
-    border: 0;
-    border-radius: 1rem;
-    overflow: hidden;
+  min-height: 85vh;
+  border: 0;
+  border-radius: 1rem;
+  overflow: hidden;
 }
 
 #createCustomerModal form,
 [id^="editCustomerModal"] form {
-    min-height: 85vh;
+  min-height: 85vh;
 }
 
 #createCustomerModal .modal-body,
 [id^="editCustomerModal"] .modal-body {
-    flex: 1 1 auto;
-    overflow-y: auto;
-    padding: 1rem;
+  flex: 1 1 auto;
+  overflow-y: auto;
+  padding: 1rem;
 }
 
 #createCustomerModal .modal-header,
 #createCustomerModal .modal-footer,
 [id^="editCustomerModal"] .modal-header,
 [id^="editCustomerModal"] .modal-footer {
-    background-color: var(--bs-body-bg);
+  background-color: var(--bs-body-bg);
 }
 
 #createCustomerModal .modal-footer,
 [id^="editCustomerModal"] .modal-footer {
-    display: flex;
-    justify-content: flex-end;
-    gap: .75rem;
-    flex-wrap: wrap;
-    padding: 1rem 1.25rem;
-    border-top: 1px solid var(--bs-border-color);
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+  padding: 1rem 1.25rem;
+  border-top: 1px solid var(--bs-border-color);
 }
 
 #createCustomerModal .card,
 [id^="editCustomerModal"] .card {
-    border-radius: .85rem;
+  border-radius: 0.85rem;
 }
 
 #createCustomerModal .card-header,
 [id^="editCustomerModal"] .card-header {
-    padding: .85rem 1rem;
+  padding: 0.85rem 1rem;
 }
 
 #createCustomerModal .card-body,
 [id^="editCustomerModal"] .card-body {
-    padding: 1rem;
+  padding: 1rem;
 }
-

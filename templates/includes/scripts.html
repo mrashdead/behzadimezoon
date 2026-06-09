@@ -8,4 +8,27 @@
 <script src="{% static 'assets/libs/apexcharts/apexcharts.min.js' %}"></script>
 <script src="{% static 'assets/libs/datatables/datatables.min.js' %}"></script>
 <script src="{% static 'assets/js/appSettings.js' %}"></script>
+<script>
+  window.APP_CONFIG = {
+    staticUrl: "{% get_static_prefix %}",
+    searchJsonUrl: "{% static 'assets/ajax/search.json' %}",
+  };
+</script>
 <script src="{% static 'assets/js/main.js' %}"></script>
+<script src="{% static 'assets/libs/persian-datepicker/persian-datepicker.js' %}"></script>
+<script src="{% static 'assets/libs/persian-datepicker/persian-datepicker.min.js' %}"></script>
+
+<script>
+  $(document).ready(function () {
+    $(".date-picker").persianDatepicker({
+      format: "YYYY/MM/DD", // فرمتی که کاربر می‌بیند و به جنگو ارسال می‌شود
+      autoClose: true,
+      initialValue: false,
+      calendar: {
+        persian: {
+          leapYearMode: "astronomical", // برای دقت بیشتر در سال‌های کبیسه
+        },
+      },
+    });
+  });
+</script>

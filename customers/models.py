@@ -2,6 +2,7 @@
 
 from django.db import models
 from django.conf import settings  # برای اتصال به مدل User
+from django_jalali.db import models as jmodels # وارد کردن مدل‌های شمسی
 
 class Customer(models.Model):
     # --- فیلدهای ضروری ---
@@ -121,7 +122,10 @@ class Customer(models.Model):
         verbose_name="یادداشت مشتری"
     )
 
-    created_at = models.DateTimeField(auto_now_add=True)
+    # به جای models.DateField از jmodels.jDateField استفاده کن
+    ceremony_date = jmodels.jDateField(verbose_name='تاریخ مراسم')
+    # اگر فیلد زمان ثبت (auto_now_add) هم داری:
+    created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ثبت')
 
     def __str__(self):
         return f"{self.bride_first_name} {self.bride_last_name}"

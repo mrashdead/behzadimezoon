@@ -1,10 +1,15 @@
+#customers/forms.py
 from django import forms
 from .models import Customer
 
 
 class CustomerForm(forms.ModelForm):
     ceremony_date = forms.DateField(
-        widget=forms.DateInput(attrs={"type": "date", "class": "form-control"})
+        input_formats=["%Y-%m-%d", "%Y/%m/%d"],
+        widget=forms.DateInput(
+            format="%Y-%m-%d",
+            attrs={"type": "date", "class": "form-control"}
+        ),
     )
 
     class Meta:
@@ -43,3 +48,4 @@ class CustomerForm(forms.ModelForm):
         ]
         for field_name in required_fields:
             self.fields[field_name].required = True
+
