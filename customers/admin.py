@@ -2,10 +2,11 @@ from django.contrib import admin
 from .models import Customer
 from django_jalali.admin.filters import JDateFieldListFilter # برای فیلتر تاریخ
 import django_jalali.admin as jadmin # ادمین شمسی
+from jalali_date.admin import ModelAdminJalaliMixin
 
 
 @admin.register(Customer)
-class CustomerAdmin(admin.ModelAdmin):
+class CustomerAdmin(ModelAdminJalaliMixin, admin.ModelAdmin):
     list_display = (
         'bride_first_name', 'bride_last_name', 'bride_phone',
         'ceremony_date', 'how_to_know', 'allow_contact', 'created_by'

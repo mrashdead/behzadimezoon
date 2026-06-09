@@ -1,3 +1,6 @@
+{% load jalali_tags %} {% load jformat %} {{
+customer.ceremony_date|to_jalali:'%Y/%m/%d' }}
+
 <div
   class="modal fade"
   id="editCustomerModal{{ customer.id }}"
@@ -89,7 +92,18 @@
                         class="form-label"
                         >تاریخ مراسم</label
                       >
-                      <input type="date" name="ceremony_date" class="form-control" value="{{ customer.ceremony_date|date:'Y-m-d' }}">
+                      <div class="input-group">
+                        <span class="input-group-text"
+                          ><i class="fi fi-br-calendar"></i
+                        ></span>
+                        <input
+                          type="text"
+                          name="ceremony_date"
+                          class="form-control jalali-datepicker jalali-mask"
+                          maxlength="10"
+                          autocomplete="off"
+                        />
+                      </div>
                     </div>
 
                     <div class="col-md-6">

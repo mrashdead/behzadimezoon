@@ -21,9 +21,13 @@ class Customer(models.Model):
         verbose_name="شماره تماس عروس"
     )
 
-    ceremony_date = models.DateField(
+    ceremony_date = jmodels.jDateField(
         verbose_name="تاریخ مراسم"
     )
+        # اگر فیلد زمان ثبت (auto_now_add) هم داری:
+    # created_at = jmodels.jDateTimeField(
+    #     auto_now_add=True, verbose_name='تاریخ ثبت'
+    # )
 
     how_to_know = models.CharField(
         max_length=100,
@@ -122,10 +126,6 @@ class Customer(models.Model):
         verbose_name="یادداشت مشتری"
     )
 
-    # به جای models.DateField از jmodels.jDateField استفاده کن
-    ceremony_date = jmodels.jDateField(verbose_name='تاریخ مراسم')
-    # اگر فیلد زمان ثبت (auto_now_add) هم داری:
-    created_at = jmodels.jDateTimeField(auto_now_add=True, verbose_name='تاریخ ثبت')
 
     def __str__(self):
         return f"{self.bride_first_name} {self.bride_last_name}"

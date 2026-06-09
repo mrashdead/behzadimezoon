@@ -20,15 +20,36 @@
 
 <script>
   $(document).ready(function () {
-    $(".date-picker").persianDatepicker({
-      format: "YYYY/MM/DD", // فرمتی که کاربر می‌بیند و به جنگو ارسال می‌شود
+    $(".jalali-datepicker").persianDatepicker({
+      format: "YYYY/MM/DD",
       autoClose: true,
       initialValue: false,
+      onlySelectOnDate: true,
+      observer: true,
       calendar: {
         persian: {
-          leapYearMode: "astronomical", // برای دقت بیشتر در سال‌های کبیسه
+          locale: "fa",
         },
       },
     });
   });
+</script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const inputs = document.querySelectorAll('.jalali-mask');
+
+  inputs.forEach(function (input) {
+    input.addEventListener('input', function () {
+      let value = this.value.replace(/\D/g, '').slice(0, 8);
+
+      if (value.length > 6) {
+        value = value.slice(0, 4) + '/' + value.slice(4, 6) + '/' + value.slice(6);
+      } else if (value.length > 4) {
+        value = value.slice(0, 4) + '/' + value.slice(4);
+      }
+
+      this.value = value;
+    });
+  });
+});
 </script>

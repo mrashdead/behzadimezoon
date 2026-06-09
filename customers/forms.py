@@ -1,14 +1,15 @@
 #customers/forms.py
 from django import forms
 from .models import Customer
-
+from jalali_date.fields import JalaliDateField
+from jalali_date.widgets import AdminJalaliDateWidget
 
 class CustomerForm(forms.ModelForm):
-    ceremony_date = forms.DateField(
-        input_formats=["%Y-%m-%d", "%Y/%m/%d"],
-        widget=forms.DateInput(
-            format="%Y-%m-%d",
-            attrs={"type": "date", "class": "form-control"}
+    ceremony_date = JalaliDateField(
+        label='تاریخ مراسم',
+        input_formats=['%Y/%m/%d', '%Y-%m-%d'],
+        widget=AdminJalaliDateWidget(
+            attrs={'class': 'form-control jalali-datepicker', 'autocomplete': 'off'}
         ),
     )
 
