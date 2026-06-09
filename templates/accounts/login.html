@@ -1,0 +1,180 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ورود به حساب کاربری</title>
+
+    {# اگر include اختصاصی head/css داری اینجا نگه دار #}
+    {% include "includes/head.html" %}
+</head>
+
+<body>
+
+<div class="page-layout">
+    <div class="auth-cover-wrapper">
+        <div class="row g-0 min-vh-100">
+
+            <!-- Cover Section -->
+            <div class="col-md-6 order-md-1">
+                <div class="auth-cover h-100">
+                    <div class="clearfix h-100 d-flex flex-column justify-content-center">
+                        <img
+                            src="{% static 'assets/images/auth/vector1.svg' %}"
+                            alt="تصویر خوش‌آمدگویی"
+                            class="img-fluid cover-img"
+                        >
+                        <div class="auth-content">
+                            <h1 class="display-6 fw-bold">
+                                خوش برگشتید!
+                            </h1>
+                            <p>
+                                به پنل مدیریت و کاربری خوش آمدید. از این بخش می‌توانید با امنیت بالا
+                                وارد حساب خود شوید و فعالیت‌های روزانه‌تان را مدیریت کنید.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Form Section -->
+            <div class="col-md-6 align-self-center">
+                <div class="px-3 py-5 p-sm-5 maxw-450px m-auto">
+
+                    <div class="text-center mb-5">
+                        <h5 class="mb-1">ورود به حساب کاربری</h5>
+                        <p class="mb-0">
+                            برای دسترسی به پنل خود، نام کاربری و رمز عبور را وارد کنید.
+                        </p>
+                    </div>
+
+                    {% if form.non_field_errors %}
+                        <div class="alert alert-danger" role="alert">
+                            {% for error in form.non_field_errors %}
+                                <div>{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+
+                    {% if messages %}
+                        {% for message in messages %}
+                            <div class="alert alert-{{ message.tags|default:'info' }}" role="alert">
+                                {{ message }}
+                            </div>
+                        {% endfor %}
+                    {% endif %}
+
+                    <form method="post" action="" novalidate>
+                        {% csrf_token %}
+
+                        <div class="mb-4">
+                            <label class="form-label" for="id_username">
+                                نام کاربری
+                            </label>
+                            <input
+                                type="text"
+                                name="username"
+                                id="id_username"
+                                class="form-control {% if form.username.errors %}is-invalid{% endif %}"
+                                placeholder="نام کاربری خود را وارد کنید"
+                                value="{{ form.username.value|default:'' }}"
+                                required
+                                autofocus
+                            >
+                            {% if form.username.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.username.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label" for="id_password">
+                                رمز عبور
+                            </label>
+                            <div class="password-wrapper">
+                                <input
+                                    type="password"
+                                    name="password"
+                                    id="id_password"
+                                    class="form-control password-input {% if form.password.errors %}is-invalid{% endif %}"
+                                    placeholder="********"
+                                    required
+                                >
+                                <button
+                                    type="button"
+                                    class="toggle-password"
+                                    id="togglePassword"
+                                    aria-label="نمایش یا مخفی کردن رمز عبور"
+                                    aria-pressed="false"
+                                    title="نمایش رمز عبور"
+                                >
+                                    <i aria-hidden="true" class="close fi fi-rr-eye-crossed"></i>
+                                    <i aria-hidden="true" class="open fi fi-rr-eye"></i>
+                                </button>
+                            </div>
+                            {% if form.password.errors %}
+                                <div class="invalid-feedback d-block">
+                                    {% for error in form.password.errors %}
+                                        <div>{{ error }}</div>
+                                    {% endfor %}
+                                </div>
+                            {% endif %}
+                        </div>
+
+                        <div class="mb-4">
+                            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2">
+                                <div class="form-check mb-0">
+                                    <input class="form-check-input" id="rememberMe" type="checkbox" name="remember_me">
+                                    <label class="form-check-label" for="rememberMe">
+                                        مرا به خاطر بسپار
+                                    </label>
+                                </div>
+
+                                <a href="{% url 'accounts:forgot_password' %}">
+                                    رمز عبور را فراموش کرده‌اید؟
+                                </a>
+                            </div>
+                        </div>
+
+                        {% if next %}
+                            <input type="hidden" name="next" value="{{ next }}">
+                        {% endif %}
+
+                        <div class="mb-3">
+                            <button class="btn btn-primary waves-effect waves-light w-100" type="submit">
+                                ورود
+                            </button>
+                        </div>
+                    </form>
+
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+{% include "includes/scripts.html" %}
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        const togglePassword = document.getElementById('togglePassword');
+        const passwordInput = document.getElementById('id_password');
+
+        if (togglePassword && passwordInput) {
+            togglePassword.addEventListener('click', function () {
+                const isPassword = passwordInput.getAttribute('type') === 'password';
+                passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
+                togglePassword.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
+            });
+        }
+    });
+</script>
+
+</body>
+</html>

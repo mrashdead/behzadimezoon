@@ -1,0 +1,168 @@
+<div class="modal fade" id="createCustomerModal" tabindex="-1" aria-labelledby="createCustomerModalLabel" aria-hidden="true">
+    <div class="modal-dialog modal-xl modal-dialog-scrollable">
+        <div class="modal-content">
+            <form method="post" action="{% url 'customers:create' %}" class="h-100 d-flex flex-column">
+                {% csrf_token %}
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="createCustomerModalLabel">افزودن مشتری جدید</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="row g-3">
+
+                        <div class="col-12">
+                            <div class="card shadow-none border">
+                                <div class="card-header bg-body-tertiary">
+                                    <h6 class="mb-0">اطلاعات عروس</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="id_bride_first_name" class="form-label">نام عروس</label>
+                                            <input type="text" name="bride_first_name" id="id_bride_first_name" class="form-control" required>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="id_bride_last_name" class="form-label">نام خانوادگی عروس</label>
+                                            <input type="text" name="bride_last_name" id="id_bride_last_name" class="form-control" required>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="id_bride_phone" class="form-label">شماره تماس عروس</label>
+                                            <input type="text" name="bride_phone" id="id_bride_phone" class="form-control" required>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="id_ceremony_date" class="form-label">تاریخ مراسم</label>
+                                            <input type="date" name="ceremony_date" id="id_ceremony_date" class="form-control" required>
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="id_how_to_know" class="form-label">نحوه آشنایی</label>
+                                            <input type="text" name="how_to_know" id="id_how_to_know" class="form-control" required>
+                                        </div>
+
+                                        <div class="col-md-6 d-flex align-items-center">
+                                            <div class="form-check mt-md-4 pt-md-2">
+                                                <input type="checkbox" name="allow_contact" id="id_allow_contact" class="form-check-input">
+                                                <label class="form-check-label" for="id_allow_contact">
+                                                    اجازه ارتباط با مشتری
+                                                </label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="card shadow-none border">
+                                <div class="card-header bg-body-tertiary">
+                                    <h6 class="mb-0">اطلاعات داماد</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="id_groom_first_name" class="form-label">نام داماد</label>
+                                            <input type="text" name="groom_first_name" id="id_groom_first_name" class="form-control">
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="id_groom_last_name" class="form-label">نام خانوادگی داماد</label>
+                                            <input type="text" name="groom_last_name" id="id_groom_last_name" class="form-control">
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="id_groom_phone" class="form-label">شماره تماس داماد</label>
+                                            <input type="text" name="groom_phone" id="id_groom_phone" class="form-control">
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="id_preferred_consultant" class="form-label">مشاور ترجیحی</label>
+                                            <input type="text" name="preferred_consultant" id="id_preferred_consultant" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="card shadow-none border">
+                                <div class="card-header bg-body-tertiary">
+                                    <h6 class="mb-0">خدمات و مراسم</h6>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <label for="id_requested_services" class="form-label">خدمات مورد نظر</label>
+                                            <input type="text" name="requested_services" id="id_requested_services" class="form-control">
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="id_estimated_budget" class="form-label">بودجه تقریبی</label>
+                                            <input type="text" name="estimated_budget" id="id_estimated_budget" class="form-control">
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="id_additional_services" class="form-label">خدمات جانبی</label>
+                                            <input type="text" name="additional_services" id="id_additional_services" class="form-control">
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="id_guest_count" class="form-label">تعداد مهمان</label>
+                                            <input type="number" name="guest_count" id="id_guest_count" class="form-control">
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="id_ceremony_decoration" class="form-label">تشریفات</label>
+                                            <input type="text" name="ceremony_decoration" id="id_ceremony_decoration" class="form-control">
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="id_beauty_salon" class="form-label">سالن زیبایی</label>
+                                            <input type="text" name="beauty_salon" id="id_beauty_salon" class="form-control">
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="id_studio_name" class="form-label">آتلیه</label>
+                                            <input type="text" name="studio_name" id="id_studio_name" class="form-control">
+                                        </div>
+
+                                        <div class="col-md-6">
+                                            <label for="id_music_band" class="form-label">گروه موسیقی</label>
+                                            <input type="text" name="music_band" id="id_music_band" class="form-control">
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-12">
+                            <div class="card shadow-none border">
+                                <div class="card-header bg-body-tertiary">
+                                    <h6 class="mb-0">توضیحات تکمیلی</h6>
+                                </div>
+                                <div class="card-body">
+                                    <label for="id_customer_note" class="form-label">یادداشت مشتری</label>
+                                    <textarea name="customer_note" id="id_customer_note" class="form-control" rows="4"></textarea>
+                                </div>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+
+                <div class="modal-footer justify-content-end gap-2">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        انصراف
+                    </button>
+                    <button type="submit" class="btn btn-primary">
+                        ثبت مشتری
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

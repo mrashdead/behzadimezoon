@@ -1,0 +1,40 @@
+{% load static %}
+<!DOCTYPE html>
+<html dir="rtl" lang="fa">
+<head>
+    {% include "includes/head.html" %}
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+    <div class="page-layout">
+        {% include "includes/header.html" %}
+        {% include "includes/sidebar.html" %}
+
+        <main class="app-wrapper">
+            <div class="container-fluid">
+                <div class="app-page-head d-flex align-items-center justify-content-between">
+                    <nav aria-label="breadcrumb">
+                        <ol class="breadcrumb mb-0">
+                            <li class="breadcrumb-item">
+                                <a href="{% url 'dashboard:index' %}">
+                                    <i class="fi fi-rr-home"></i>
+                                    صفحه اصلی
+                                </a>
+                            </li>
+                            {% block breadcrumb %}{% endblock %}
+                        </ol>
+                    </nav>
+                </div>
+
+                {% include "partials/alerts.html" %}
+                {% block content %}{% endblock %}
+            </div>
+        </main>
+
+        {% include "includes/footer.html" %}
+    </div>
+
+    {% include "includes/scripts.html" %}
+    {% block extra_js %}{% endblock %}
+</body>
+</html>

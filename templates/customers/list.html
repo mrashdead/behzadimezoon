@@ -1,0 +1,130 @@
+{% extends 'base.html' %}
+
+{% block title %}مشتریان{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="app-page-head d-flex flex-wrap gap-2 align-items-center justify-content-between">
+        <div class="clearfix"></div>
+
+        <div>
+            {% if can_create_customer %}
+            <button type="button"
+                    class="btn btn-primary"
+                    data-bs-toggle="modal"
+                    data-bs-target="#createCustomerModal">
+                <i class="fi fi-rr-plus me-1"></i>
+                مشتری جدید
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="card overflow-hidden">
+        <div class="card-header d-flex flex-wrap gap-3 align-items-center justify-content-between border-0 pb-0">
+            <h6 class="card-title mb-0">لیست مشتریان</h6>
+        </div>
+
+        <div class="card-body px-1 pt-2 pb-2">
+            <div class="table-responsive">
+                <table class="table table-sm table-row-rounded data-row-checkbox" id="dt_CustomerList">
+                    <thead class="table-light">
+                        <tr>
+                            <th class="minw-100px">نام عروس</th>
+                            <th class="minw-100px">شماره تماس</th>
+                            <th class="minw-100px">تاریخ مراسم</th>
+                            <th class="minw-100px">نحوه آشنایی</th>
+                            <th class="minw-100px">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for customer in customers %}
+                        <tr>
+                            <td>{{ customer.bride_first_name }} {{ customer.bride_last_name }}</td>
+                            <td>{{ customer.bride_phone }}</td>
+                            <td>{{ customer.ceremony_date }}</td>
+                            <td>{{ customer.how_to_know }}</td>
+                            <td>
+                                <button class="btn btn-subtle-secondary btn-sm btn-shadow btn-icon waves-effect me-1"
+                                        type="button"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#detailCustomerModal{{ customer.id }}">
+                                    <i class="icon-eye"></i>
+                                </button>
+                                {% if can_edit_customer %}
+                                <button class="btn btn-subtle-primary btn-sm btn-shadow btn-icon waves-effect me-1"
+                                        type="button"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editCustomerModal{{ customer.id }}">
+                                    <i class="fi fi-rr-edit"></i>
+                                </button>
+                                {% endif %}
+                                {% if can_delete_customer %}
+                                <button class="btn btn-subtle-danger btn-sm btn-shadow btn-icon waves-effect me-1"
+                                        type="button"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#deleteCustomerModal{{ customer.id }}">
+                                    <i class="fi fi-rr-delete-user"></i>
+                                </button>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center">مشتری‌ای ثبت نشده است.</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if is_paginated %}
+            <nav>
+                <ul class="pagination justify-content-center">
+                    {% if page_obj.has_previous %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.previous_page_number }}">قبلی</a>
+                        </li>
+                    {% endif %}
+
+                    {% for num in paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <li class="page-item active">
+                                <span class="page-link">{{ num }}</span>
+                            </li>
+                        {% else %}
+                            <li class="page-item">
+                                <a class="page-link" href="?page={{ num }}">{{ num }}</a>
+                            </li>
+                        {% endif %}
+                    {% endfor %}
+
+                    {% if page_obj.has_next %}
+                        <li class="page-item">
+                            <a class="page-link" href="?page={{ page_obj.next_page_number }}">بعدی</a>
+                        </li>
+                    {% endif %}
+                </ul>
+            </nav>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% for customer in customers %}
+    {% include 'customers/partials/_detail_modal.html' %}
+
+    {% if can_edit_customer %}
+        {% include 'customers/partials/_edit_modal.html' %}
+    {% endif %}
+
+    {% if can_delete_customer %}
+        {% include 'customers/partials/_delete_modal.html' %}
+    {% endif %}
+{% endfor %}
+
+{% if can_create_customer %}
+    {% include 'customers/partials/_create_modal.html' %}
+{% endif %}
+
+{% endblock %}

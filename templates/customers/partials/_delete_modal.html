@@ -1,0 +1,46 @@
+<div class="modal fade" id="deleteCustomerModal{{ customer.id }}" tabindex="-1" aria-labelledby="deleteCustomerModalLabel{{ customer.id }}" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <form method="post" action="{% url 'customers:delete' customer.id %}">
+                {% csrf_token %}
+
+                <div class="modal-header">
+                    <h5 class="modal-title" id="deleteCustomerModalLabel{{ customer.id }}">
+                        حذف مشتری
+                    </h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+                </div>
+
+                <div class="modal-body">
+                    <div class="d-flex align-items-start gap-3">
+                        <div class="flex-shrink-0">
+                            <span class="btn btn-lg btn-outline-danger rounded-circle disabled">
+                                <i class="fi fi-rr-trash"></i>
+                            </span>
+                        </div>
+
+                        <div class="flex-grow-1">
+                            <h6 class="mb-2 text-danger">آیا از حذف این مشتری مطمئن هستید؟</h6>
+                            <p class="mb-1">
+                                مشتری:
+                                <strong>{{ customer.bride_first_name }} {{ customer.bride_last_name }}</strong>
+                            </p>
+                            <p class="mb-0 text-muted small">
+                                این عملیات بهتر است غیرقابل بازگشت در نظر گرفته شود.
+                            </p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="modal-footer justify-content-end gap-2">
+                    <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+                        انصراف
+                    </button>
+                    <button type="submit" class="btn btn-danger">
+                        حذف مشتری
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>

@@ -1,0 +1,49 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row">
+    <div class="col-xl-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">ویرایش کاربر: {{ object.username }}</h5>
+            </div>
+            <div class="card-body">
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="row gy-4">
+                        <div class="col-md-6">
+                            <label class="form-label">نام</label>
+                            {{ form.first_name }}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">نام خانوادگی</label>
+                            {{ form.last_name }}
+                        </div>
+
+                        <div class="col-md-6">
+                            <label class="form-label">ایمیل</label>
+                            {{ form.email }}
+                        </div>
+
+                        <div class="col-md-6 d-flex align-items-center">
+                            <div class="form-check mt-4">
+                                {{ form.is_active }}
+                                <label class="form-check-label" for="{{ form.is_active.id_for_label }}">
+                                    حساب فعال باشد
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4 d-flex gap-2">
+                        <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>
+                        <a href="{% url 'accounts:user-list' %}" class="btn btn-light">بازگشت</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

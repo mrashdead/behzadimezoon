@@ -1,0 +1,82 @@
+{% load static %}
+<aside class="app-menubar-tabs" id="appMenubar">
+    <div class="app-navbar-brand">
+        <a class="navbar-brand-logo" href="{% url 'dashboard:index' %}">
+            <img src="{% static 'assets/images/logo.svg' %}" alt="Behzadi Dashboard Logo" />
+        </a>
+    </div>
+
+    <div class="app-navbar-tabs" data-simplebar>
+        <ul class="nav" id="appMenubarTabs">
+            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="داشبورد">
+                <a class="menu-link" href="{% url 'dashboard:index' %}">
+                   <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M2 12.2039C2 9.91549 2 8.77128 2.5192 7.82274C3.0384 6.87421 3.98695 6.28551 5.88403 5.10813L7.88403 3.86687C9.88939 2.62229 10.8921 2 12 2C13.1079 2 14.1106 2.62229 16.116 3.86687L18.116 5.10812C20.0131 6.28551 20.9616 6.87421 21.4808 7.82274C22 8.77128 22 9.91549 22 12.2039V13.725C22 17.6258 22 19.5763 20.8284 20.7881C19.6569 22 17.7712 22 14 22H10C6.22876 22 4.34315 22 3.17157 20.7881C2 19.5763 2 17.6258 2 13.725V12.2039Z" opacity="0.5" stroke="var(--bs-heading-color)" stroke-width="2"></path>
+            <path d="M12 15V18" stroke="var(--bs-heading-color)" stroke-linecap="round" stroke-width="2"></path>
+          </svg>
+                </a>
+            </li>
+
+            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="محصولات">
+                <a class="menu-link" href="{% url 'products:list' %}">
+                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-packages">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M7 16.5l-5 -3l5 -3l5 3v5.5l-5 3l0 -5.5" />
+            <path d="M2 13.5v5.5l5 3" />
+            <path d="M7 16.545l5 -3.03" />
+            <path d="M17 16.5l-5 -3l5 -3l5 3v5.5l-5 3l0 -5.5" />
+            <path d="M12 19l5 3" />
+            <path d="M17 16.5l5 -3" />
+            <path d="M12 13.5v-5.5l-5 -3l5 -3l5 3v5.5" />
+            <path d="M7 5.03v5.455" />
+            <path d="M12 8l5 -3" />
+          </svg>
+                </a>
+            </li>
+
+            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="مشتریان">
+                <a class="menu-link" href="{% url 'customers:list' %}">
+                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-users">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M5 7a4 4 0 1 0 8 0a4 4 0 1 0 -8 0" />
+            <path d="M3 21v-2a4 4 0 0 1 4 -4h4a4 4 0 0 1 4 4v2" />
+            <path d="M16 3.13a4 4 0 0 1 0 7.75" />
+            <path d="M21 21v-2a4 4 0 0 0 -3 -3.85" />
+          </svg>
+                </a>
+            </li>
+
+            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="رزرو / اجاره">
+                <a class="menu-link" href="{% url 'reservations:list' %}">
+                   <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.25" stroke-linecap="round" stroke-linejoin="round" class="icon icon-tabler icons-tabler-outline icon-tabler-shopping-bag">
+            <path stroke="none" d="M0 0h24v24H0z" fill="none" />
+            <path d="M6.331 8h11.339a2 2 0 0 1 1.977 2.304l-1.255 8.152a3 3 0 0 1 -2.966 2.544h-6.852a3 3 0 0 1 -2.965 -2.544l-1.255 -8.152a2 2 0 0 1 1.977 -2.304" />
+            <path d="M9 11v-5a3 3 0 0 1 6 0v5" />
+          </svg>
+                </a>
+            </li>
+
+            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="مالی">
+                <a class="menu-link" href="{% url 'financial:list' %}">
+                   <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M16 4.00195C18.175 4.01406 19.3529 4.11051 20.1213 4.87889C21 5.75757 21 7.17179 21 10.0002V16.0002C21 18.8286 21 20.2429 20.1213 21.1215C19.2426 22.0002 17.8284 22.0002 15 22.0002H9C6.17157 22.0002 4.75736 22.0002 3.87868 21.1215C3 20.2429 3 18.8286 3 16.0002V10.0002C3 7.17179 3 5.75757 3.87868 4.87889C4.64706 4.11051 5.82497 4.01406 8 4.00195" opacity="0.5" stroke="var(--bs-heading-color)" stroke-width="2"></path>
+            <path d="M7 14.5H15" stroke="var(--bs-heading-color)" stroke-linecap="round" stroke-width="2"></path>
+            <path d="M7 18H12.5" opacity="0.5" stroke="var(--bs-heading-color)" stroke-linecap="round" stroke-width="2"></path>
+            <path d="M8 3.5C8 2.67157 8.67157 2 9.5 2H14.5C15.3284 2 16 2.67157 16 3.5V4.5C16 5.32843 15.3284 6 14.5 6H9.5C8.67157 6 8 5.32843 8 4.5V3.5Z" stroke="var(--bs-heading-color)" stroke-width="2"></path>
+          </svg>
+                </a>
+            </li>
+
+            <li class="nav-item" data-bs-toggle="tooltip" data-bs-placement="right" data-bs-title="گزارش‌ها">
+                <a class="menu-link" href="{% url 'reports:index' %}">
+                   <svg fill="none" height="24" viewBox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 22H21" opacity="0.5" stroke="var(--bs-heading-color)" stroke-linecap="round" stroke-linejoin="round" stroke-width="2"></path>
+            <path d="M3 11C3 10.0572 3 9.58579 3.29289 9.29289C3.58579 9 4.05719 9 5 9C5.94281 9 6.41421 9 6.70711 9.29289C7 9.58579 7 10.0572 7 11V17C7 17.9428 7 18.4142 6.70711 18.7071C6.41421 19 5.94281 19 5 19C4.05719 19 3.58579 19 3.29289 18.7071C3 18.4142 3 17.9428 3 17V11Z" stroke="var(--bs-heading-color)" stroke-width="2"></path>
+            <path d="M10 7C10 6.05719 10 5.58579 10.2929 5.29289C10.5858 5 11.0572 5 12 5C12.9428 5 13.4142 5 13.7071 5.29289C14 5.58579 14 6.05719 14 7V17C14 17.9428 14 18.4142 13.7071 18.7071C13.4142 19 12.9428 19 12 19C11.0572 19 10.5858 19 10.2929 18.7071C10 18.4142 10 17.9428 10 17V7Z" stroke="var(--bs-heading-color)" stroke-width="2"></path>
+            <path d="M17 4C17 3.05719 17 2.58579 17.2929 2.29289C17.5858 2 18.0572 2 19 2C19.9428 2 20.4142 2 20.7071 2.29289C21 2.58579 21 3.05719 21 4V17C21 17.9428 21 18.4142 20.7071 18.7071C20.4142 19 19.9428 19 19 19C18.0572 19 17.5858 19 17.2929 18.7071C17 18.4142 17 17.9428 17 17V4Z" stroke="var(--bs-heading-color)" stroke-width="2"></path>
+          </svg>
+                </a>
+            </li>
+        </ul>
+    </div>
+</aside>
