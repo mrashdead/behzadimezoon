@@ -32,29 +32,3 @@ python manage.py runserver
 
 ## License
 For educational and development use.
-
-
----
-
-# 6) پیشنهاد حرفه‌ای برای اسم ریپو
-
-اگر هنوز اسم repo را نهایی نکردی، این‌ها خوب‌اند:
-
-- `django-management-system`
-- `django-reservation-system`
-- `admin-reservation-platform`
-- `django-role-based-dashboard`
-- `business-management-django`
-
-اگر پروژه شخصی/برند خودت است:
-- `behzadimezoon`
-- `mezoon-management-system`
-
----
-
-# 7) پیشنهاد نهایی من برای Description + README
-
-## Description:
-```text
-A Django-based management system with custom authentication, role-based access control, profile management, and reservation workflows.
-````
