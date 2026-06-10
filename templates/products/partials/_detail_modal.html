@@ -1,0 +1,62 @@
+{% load humanize %}
+
+<div
+  class="modal fade"
+  id="detailDressModal{{ dress.id }}"
+  tabindex="-1"
+  aria-labelledby="detailDressModalLabel{{ dress.id }}"
+  aria-hidden="true"
+>
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header">
+        <h5 class="modal-title" id="detailDressModalLabel{{ dress.id }}">
+          جزئیات محصول
+        </h5>
+        <button type="button" class="btn-close m-0" data-bs-dismiss="modal" aria-label="بستن"></button>
+      </div>
+
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="border rounded p-3 h-100">
+              <div class="text-muted small mb-1">کد لباس</div>
+              <div class="fw-semibold">{{ dress.code|default:"-" }}</div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="border rounded p-3 h-100">
+              <div class="text-muted small mb-1">قیمت اجاره روزانه</div>
+              <div class="fw-semibold">
+                {{ dress.daily_rent_price|intcomma|default:"-" }} تومان
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="border rounded p-3 h-100">
+              <div class="text-muted small mb-1">وضعیت</div>
+              <div>
+                <span class="badge bg-success">
+                  {{ dress.get_status_display }}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="border rounded p-3 h-100">
+              <div class="text-muted small mb-1">تاریخ ثبت</div>
+              <div class="fw-semibold">{{ dress.created_at|date:"Y/m/d H:i" }}</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">بستن</button>
+      </div>
+    </div>
+  </div>
+</div>

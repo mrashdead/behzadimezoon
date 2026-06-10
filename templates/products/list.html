@@ -1,0 +1,129 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}محصولات{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-3 mb-4">
+        <div>
+            <h1 class="h3 mb-1">محصولات</h1>
+            <p class="text-muted mb-0">مدیریت لباس‌ها و قیمت اجاره روزانه</p>
+        </div>
+
+        <button
+            type="button"
+            class="btn btn-primary"
+            data-bs-toggle="modal"
+            data-bs-target="#createDressModal"
+        >
+            افزودن محصول
+        </button>
+    </div>
+    <div class="card border-0 shadow-sm">
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-sm table-row-rounded data-row-checkbox align-middle mb-0" id="dt_DressList">
+                    <thead class="table-light">
+                        <tr>
+                            <th>کد لباس</th>
+                            <th>قیمت اجاره روزانه</th>
+                            <th>وضعیت</th>
+                            <th>تاریخ ثبت</th>
+                            <th class="text-end">عملیات</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for dress in dresses %}
+                            <tr>
+                                <td>{{ dress.code }}</td>
+                                <td><span class="js-price" data-price="{{ dress.daily_rent_price }}"></span>
+                                <span class="text-muted">تومان</span></td>
+                                <td>
+                                    <span class="badge bg-success">
+                                        {{ dress.get_status_display }}
+                                    </span>
+                                </td>
+                                <td>
+                                <span class="js-jalali-datetime"
+                                        data-datetime="{{ dress.created_at|date:'c' }}"></span>
+                                </td>
+                                <td class="text-end">
+                                    <div class="d-flex justify-content-end gap-2 flex-wrap">
+                                      <button
+                                        class="btn btn-subtle-primary btn-sm btn-shadow btn-icon waves-effect me-1"
+                                        type="button"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#editDressModal{{ dress.id }}"
+                                      >
+                                        <i class="fi fi-rr-edit"></i>
+                                      </button>
+
+                                      <button
+                                        class="btn btn-subtle-danger btn-sm btn-shadow btn-icon waves-effect me-1"
+                                        type="button"
+                                        data-bs-toggle="modal"
+                                        data-bs-target="#deleteDressModal{{ dress.id }}"
+                                      >
+                                        <i class="fi fi-rr-trash"></i>
+                                      </button>
+                                    </div>
+                                </td>
+                            </tr>
+                        {% empty %}
+                            <tr>
+                                <td colspan="5" class="text-center py-4 text-muted">
+                                    هنوز هیچ محصولی ثبت نشده است.
+                                </td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% if is_paginated %}
+                <div class="d-flex justify-content-center mt-4">
+                    <nav aria-label="pagination">
+                        <ul class="pagination mb-0">
+                            {% if page_obj.has_previous %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}">قبلی</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">قبلی</span>
+                                </li>
+                            {% endif %}
+
+                            <li class="page-item active">
+                                <span class="page-link">
+                                    صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}
+                                </span>
+                            </li>
+
+                            {% if page_obj.has_next %}
+                                <li class="page-item">
+                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}">بعدی</a>
+                                </li>
+                            {% else %}
+                                <li class="page-item disabled">
+                                    <span class="page-link">بعدی</span>
+                                </li>
+                            {% endif %}
+                        </ul>
+                    </nav>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+
+{% include 'products/partials/_add_modal.html' %}
+
+{% for dress in dresses %}
+  {% include 'products/partials/_edit_modal.html' %}
+  {% include 'products/partials/_delete_modal.html' %}
+{% endfor %}
+
+
+{% endblock %}
