@@ -1,20 +1,41 @@
 {% if messages %}
-<div class="toast-container position-fixed top-0 start-0 p-3" style="z-index: 1080;">
+<div class="app-toast-stack" aria-live="polite" aria-atomic="true">
     {% for message in messages %}
-        <div class="toast align-items-center border-0 mb-2 js-auto-toast
-            {% if message.tags == 'success' %}text-bg-success
-            {% elif message.tags == 'error' %}text-bg-danger
-            {% elif message.tags == 'warning' %}text-bg-warning
-            {% else %}text-bg-info{% endif %}"
-             role="alert"
-             aria-live="assertive"
-             aria-atomic="true"
-             data-bs-delay="3500">
-            <div class="d-flex">
-                <div class="toast-body">
-                    {{ message }}
+        <div
+            class="app-toast app-toast--{{ message.tags|default:'info' }} js-app-toast"
+            role="alert"
+            data-delay="4200"
+        >
+            <div class="app-toast__accent"></div>
+            <div class="app-toast__content">
+                <div class="app-toast__icon">
+                    {% if message.tags == 'success' %}
+                        ✓
+                    {% elif message.tags == 'error' %}
+                        !
+                    {% elif message.tags == 'warning' %}
+                        !
+                    {% else %}
+                        i
+                    {% endif %}
                 </div>
-                <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="بستن"></button>
+
+                <div class="app-toast__body">
+                    <div class="app-toast__title">
+                        {% if message.tags == 'success' %}
+                            موفق
+                        {% elif message.tags == 'error' %}
+                            خطا
+                        {% elif message.tags == 'warning' %}
+                            هشدار
+                        {% else %}
+                            اطلاعیه
+                        {% endif %}
+                    </div>
+                    <div class="app-toast__message">{{ message }}</div>
+                </div>
+
+                <button type="button" class="app-toast__close" aria-label="بستن">×</button>
             </div>
         </div>
     {% endfor %}
@@ -22,9 +43,30 @@
 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('.js-auto-toast').forEach(function (element) {
-            const toast = new bootstrap.Toast(element);
-            toast.show();
+        document.querySelectorAll('.js-app-toast').forEach(function (toast) {
+            const delay = Number(toast.dataset.delay || 4200);
+            const closeButton = toast.querySelector('.app-toast__close');
+
+            requestAnimationFrame(function () {
+                toast.classList.add('is-visible');
+            });
+
+            const hideToast = function () {
+                toast.classList.remove('is-visible');
+                toast.classList.add('is-hiding');
+                setTimeout(function () {
+                    toast.remove();
+                }, 320);
+            };
+
+            const timer = setTimeout(hideToast, delay);
+
+            if (closeButton) {
+                closeButton.addEventListener('click', function () {
+                    clearTimeout(timer);
+                    hideToast();
+                });
+            }
         });
     });
 </script>
