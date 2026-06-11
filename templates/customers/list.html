@@ -31,60 +31,104 @@
       <h6 class="card-title mb-0">لیست مشتریان</h6>
     </div>
 
-    <div class="card-body px-1 pt-2 pb-2">
-      <div class="table-responsive">
-        <table
-          class="table table-sm table-row-rounded data-row-checkbox"
-          id="dt_CustomerList"
-        >
-          <thead class="table-light">
-            <tr>
-              <th class="minw-100px">نام عروس</th>
-              <th class="minw-100px">شماره تماس</th>
-              <th class="minw-100px">تاریخ مراسم</th>
-              <th class="minw-100px">نحوه آشنایی</th>
-              <th class="minw-100px">عملیات</th>
-            </tr>
-          </thead>
+    <div class="card border-0 shadow-sm customer-list-card">
+    <div class="card-body">
+        <div class="table-responsive customer-table-wrap">
+            <table class="table table-sm table-row-rounded data-row-checkbox align-middle mb-0 customer-mobile-table" id="dt_DressList">
+                <thead class="table-light">
+                    <tr>
+                        <th>نام عروس</th>
+                        <th>شماره تماس</th>
+                        <th>تاریخ</th>
+                        <th>نحوه آشنایی</th>
+                        <th>عملیات</th>
+                    </tr>
+                </thead>
           <tbody>
             {% for customer in customers %}
             <tr>
-              <td>{{ customer.bride_first_name }} {{ customer.bride_last_name }}</td>
-              <td>{{ customer.bride_phone }}</td>
-              <td>{{ customer.ceremony_date|jformat:"%Y/%m/%d" }}</td>
-              <td>{{ customer.how_to_know }}</td>
-              <td>
-                <button
-                  class="btn btn-subtle-secondary btn-sm btn-shadow btn-icon waves-effect me-1"
-                  type="button"
-                  data-bs-toggle="modal"
-                  data-bs-target="#detailCustomerModal{{ customer.id }}"
-                >
-                  <i class="icon-eye"></i>
-                </button>
+              <td data-label="نام عروس">{{ customer.bride_first_name }} {{ customer.bride_last_name }}</td>
+              <td data-label="شماره تماس"><span dir="ltr">{{ customer.bride_phone }}</span></td>
+              <td data-label="تاریخ">{{ customer.ceremony_date|jformat:"%Y/%m/%d" }}</td>
+              <td data-label="نحوه آشنایی">{{ customer.how_to_know }}</td>
+              <td data-label="عملیات">
+    <!-- نمایش دکمه‌ها در دسکتاپ (Hidden on mobile) -->
+    <div class="d-none d-md-flex table-actions">
+        <button
+            class="btn btn-subtle-secondary btn-sm btn-shadow btn-icon waves-effect me-1"
+            type="button"
+            data-bs-toggle="modal"
+            data-bs-target="#detailCustomerModal{{ customer.id }}"
+            title="مشاهده"
+        >
+            <i class="icon-eye"></i>
+        </button>
 
-                {% if can_edit_customer %}
-                <button
-                  class="btn btn-subtle-primary btn-sm btn-shadow btn-icon waves-effect me-1"
-                  type="button"
-                  data-bs-toggle="modal"
-                  data-bs-target="#editCustomerModal{{ customer.id }}"
-                >
-                  <i class="fi fi-rr-edit"></i>
-                </button>
-                {% endif %}
+        {% if can_edit_customer %}
+        <button
+            class="btn btn-subtle-primary btn-sm btn-shadow btn-icon waves-effect me-1"
+            type="button"
+            data-bs-toggle="modal"
+            data-bs-target="#editCustomerModal{{ customer.id }}"
+            title="ویرایش"
+        >
+            <i class="fi fi-rr-edit"></i>
+        </button>
+        {% endif %}
 
-                {% if can_delete_customer %}
-                <button
-                  class="btn btn-subtle-danger btn-sm btn-shadow btn-icon waves-effect me-1"
-                  type="button"
-                  data-bs-toggle="modal"
-                  data-bs-target="#deleteCustomerModal{{ customer.id }}"
-                >
-                  <i class="fi fi-rr-delete-user"></i>
+        {% if can_delete_customer %}
+        <button
+            class="btn btn-subtle-danger btn-sm btn-shadow btn-icon waves-effect me-1"
+            type="button"
+            data-bs-toggle="modal"
+            data-bs-target="#deleteCustomerModal{{ customer.id }}"
+            title="حذف"
+        >
+            <i class="fi fi-rr-delete-user"></i>
+        </button>
+        {% endif %}
+    </div>
+
+    <!-- نمایش سه نقطه در موبایل (Hidden on desktop) -->
+    <div class="dropdown d-md-none text-end">
+        <button
+            class="btn btn-subtle-secondary btn-sm btn-icon waves-effect"
+            type="button"
+            data-bs-toggle="dropdown"
+            aria-expanded="false"
+        >
+            <i class="fi fi-rr-menu-dots-vertical" style="vertical-align: middle;"></i>
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg" style="border-radius: 12px; min-width: 180px;">
+            <li>
+                <button class="dropdown-item py-2 d-flex align-items-center gap-2" type="button" data-bs-toggle="modal" data-bs-target="#detailCustomerModal{{ customer.id }}">
+                    <i class="icon-eye text-secondary"></i>
+                    <span>مشاهده جزئیات</span>
                 </button>
-                {% endif %}
-              </td>
+            </li>
+
+            {% if can_edit_customer %}
+            <li>
+                <button class="dropdown-item py-2 d-flex align-items-center gap-2" type="button" data-bs-toggle="modal" data-bs-target="#editCustomerModal{{ customer.id }}">
+                    <i class="fi fi-rr-edit text-primary"></i>
+                    <span>ویرایش اطلاعات</span>
+                </button>
+            </li>
+            {% endif %}
+
+            {% if can_delete_customer %}
+            <li><hr class="dropdown-divider opacity-50"></li>
+            <li>
+                <button class="dropdown-item py-2 d-flex align-items-center gap-2 text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteCustomerModal{{ customer.id }}">
+                    <i class="fi fi-rr-delete-user"></i>
+                    <span>حذف مشتری</span>
+                </button>
+            </li>
+            {% endif %}
+        </ul>
+    </div>
+</td>
+
             </tr>
             {% empty %}
             <tr>

@@ -318,7 +318,7 @@
 }
 
 /* ----------- */
-/* .customer-list-card {
+.customer-list-card {
   border-radius: 18px;
   overflow: hidden;
 }
@@ -411,4 +411,34 @@
 [data-bs-theme="dark"] .customer-mobile-table tbody tr {
   border-color: rgba(255, 255, 255, 0.06);
   background: rgba(255, 255, 255, 0.02);
-} */
+}
+
+/* اصلاح تداخل Dropdown در جداول ریسپانسیو */
+.table-responsive {
+    overflow: visible !important; /* برای اینکه منوی سه نقطه زیر جدول نرود */
+}
+
+@media (max-width: 767.98px) {
+    /* تنظیم جایگاه منوی سه نقطه در حالت کارت موبایل */
+    .customer-mobile-table tbody td[data-label="عملیات"] {
+        justify-content: space-between;
+        align-items: center;
+        padding-top: 1rem;
+        border-top: 1px dashed rgba(255, 255, 255, 0.1) !important;
+        margin-top: 0.5rem;
+    }
+
+    [data-bs-theme="light"] .customer-mobile-table tbody td[data-label="عملیات"] {
+        border-top-color: rgba(15, 23, 42, 0.08) !important;
+    }
+
+    .dropdown-menu {
+        font-size: 0.85rem;
+        min-width: 160px;
+    }
+}
+
+/* استایل آیکون‌های داخل منو */
+.dropdown-item i {
+    font-size: 1.1rem;
+}
