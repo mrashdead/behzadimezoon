@@ -20,66 +20,120 @@
             افزودن محصول
         </button>
     </div>
-    <div class="card border-0 shadow-sm">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-sm table-row-rounded data-row-checkbox align-middle mb-0" id="dt_DressList">
-                    <thead class="table-light">
+    <div class="card border-0 shadow-sm customer-list-card">
+    <div class="card-body">
+        <div class="table-responsive customer-table-wrap">
+            <table class="table table-sm table-row-rounded data-row-checkbox align-middle mb-0 customer-mobile-table" id="dt_DressList">
+                <thead class="table-light">
+                    <tr>
+                        <th>کد لباس</th>
+                        <th>قیمت اجاره روزانه</th>
+                        <th>وضعیت</th>
+                        <th>تاریخ ثبت</th>
+                        <th class="text-end">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for dress in dresses %}
                         <tr>
-                            <th>کد لباس</th>
-                            <th>قیمت اجاره روزانه</th>
-                            <th>وضعیت</th>
-                            <th>تاریخ ثبت</th>
-                            <th class="text-end">عملیات</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for dress in dresses %}
-                            <tr>
-                                <td>{{ dress.code }}</td>
-                                <td><span class="js-price" data-price="{{ dress.daily_rent_price }}"></span>
-                                <span class="text-muted">تومان</span></td>
-                                <td>
-                                    <span class="badge bg-success">
-                                        {{ dress.get_status_display }}
-                                    </span>
-                                </td>
-                                <td>
+                            <td data-label="کد لباس">
+                                {{ dress.code }}
+                            </td>
+
+                            <td data-label="قیمت اجاره روزانه">
+                                <span class="js-price" data-price="{{ dress.daily_rent_price }}"></span>
+                                <span class="text-muted">تومان</span>
+                            </td>
+
+                            <td data-label="وضعیت">
+                                <span class="badge bg-success">
+                                    {{ dress.get_status_display }}
+                                </span>
+                            </td>
+
+                            <td data-label="تاریخ ثبت">
                                 <span class="js-jalali-datetime"
-                                        data-datetime="{{ dress.created_at|date:'c' }}"></span>
-                                </td>
-                                <td class="text-end">
-                                    <div class="d-flex justify-content-end gap-2 flex-wrap">
-                                      <button
+                                      data-datetime="{{ dress.created_at|date:'c' }}"></span>
+                            </td>
+
+                            <td data-label="عملیات" class="text-end">
+                                <!-- دسکتاپ -->
+                                <div class="d-none d-md-flex justify-content-end gap-2 flex-wrap table-actions">
+                                    <button
                                         class="btn btn-subtle-primary btn-sm btn-shadow btn-icon waves-effect me-1"
                                         type="button"
                                         data-bs-toggle="modal"
                                         data-bs-target="#editDressModal{{ dress.id }}"
-                                      >
+                                        title="ویرایش"
+                                    >
                                         <i class="fi fi-rr-edit"></i>
-                                      </button>
+                                    </button>
 
-                                      <button
+                                    <button
                                         class="btn btn-subtle-danger btn-sm btn-shadow btn-icon waves-effect me-1"
                                         type="button"
                                         data-bs-toggle="modal"
                                         data-bs-target="#deleteDressModal{{ dress.id }}"
-                                      >
+                                        title="حذف"
+                                    >
                                         <i class="fi fi-rr-trash"></i>
-                                      </button>
-                                    </div>
-                                </td>
-                            </tr>
-                        {% empty %}
-                            <tr>
-                                <td colspan="5" class="text-center py-4 text-muted">
-                                    هنوز هیچ محصولی ثبت نشده است.
-                                </td>
-                            </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
+                                    </button>
+                                </div>
+
+                                <!-- موبایل -->
+                                <div class="dropdown d-md-none text-end">
+                                    <button
+                                        class="btn btn-subtle-secondary btn-sm btn-icon waves-effect"
+                                        type="button"
+                                        data-bs-toggle="dropdown"
+                                        aria-expanded="false"
+                                    >
+                                        <i class="fi fi-rr-menu-dots-vertical" style="vertical-align: middle;"></i>
+                                    </button>
+
+                                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg" style="border-radius: 12px; min-width: 180px;">
+                                        <li>
+                                            <button
+                                                class="dropdown-item py-2 d-flex align-items-center gap-2"
+                                                type="button"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#editDressModal{{ dress.id }}"
+                                            >
+                                                <i class="fi fi-rr-edit text-primary"></i>
+                                                <span>ویرایش محصول</span>
+                                            </button>
+                                        </li>
+
+                                        <li><hr class="dropdown-divider opacity-50"></li>
+
+                                        <li>
+                                            <button
+                                                class="dropdown-item py-2 d-flex align-items-center gap-2 text-danger"
+                                                type="button"
+                                                data-bs-toggle="modal"
+                                                data-bs-target="#deleteDressModal{{ dress.id }}"
+                                            >
+                                                <i class="fi fi-rr-trash"></i>
+                                                <span>حذف محصول</span>
+                                            </button>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-4 text-muted">
+                                هنوز هیچ محصولی ثبت نشده است.
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 
             {% if is_paginated %}
                 <div class="d-flex justify-content-center mt-4">
