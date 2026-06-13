@@ -1,32 +1,42 @@
-# reservations/services/status_machine.py
-
 from django.utils import timezone
-
-from reservations.constants import RESERVATION_TRANSITIONS
 from reservations.models import Reservation
-from reservations.services.payment_guards import (
-    has_paid_deposit,
-    is_fully_paid,
-)
+from reservations.services.payment_guards import has_paid_deposit, is_fully_paid
+
 
 ROLE_TRANSITION_PERMISSIONS = {
-    'SUPER_ADMIN': None,  # None یعنی هر transition مجاز سیستمی
+    'SUPER_ADMIN': None,
     'MANAGER': None,
     'SELLER': {
-        Reservation.Status.DRAFT: [
-            Reservation.Status.CONFIRMED,
-            Reservation.Status.CANCELED,
+        Reservation.STATUS_PENDING: [
+            Reservation.STATUS_RESERVED,
+            Reservation.STATUS_CANCELLED,
         ],
-        Reservation.Status.CONFIRMED: [
-            Reservation.Status.DELIVERED,
+        Reservation.STATUS_RESERVED: [
+            Reservation.STATUS_DELIVERED,
+            Reservation.STATUS_CANCELLED,
         ],
-        Reservation.Status.DELIVERED: [
-            Reservation.Status.RETURNED,
+        Reservation.STATUS_DELIVERED: [
+            Reservation.STATUS_RETURNED,
         ],
-        Reservation.Status.RETURNED: [],
-        Reservation.Status.LAUNDRY: [],
-        Reservation.Status.CANCELED: [],
+        Reservation.STATUS_RETURNED: [],
+        Reservation.STATUS_CANCELLED: [],
     },
+}
+
+RESERVATION_TRANSITIONS = {
+    Reservation.STATUS_PENDING: [
+        Reservation.STATUS_RESERVED,
+        Reservation.STATUS_CANCELLED,
+    ],
+    Reservation.STATUS_RESERVED: [
+        Reservation.STATUS_DELIVERED,
+        Reservation.STATUS_CANCELLED,
+    ],
+    Reservation.STATUS_DELIVERED: [
+        Reservation.STATUS_RETURNED,
+    ],
+    Reservation.STATUS_RETURNED: [],
+    Reservation.STATUS_CANCELLED: [],
 }
 
 
@@ -55,22 +65,18 @@ def can_change_status(user, reservation, new_status):
 
 
 def _check_guards(reservation, current_status, new_status, today):
-    """
-    Guards = زمان + پرداخت
-    """
-
-    if new_status == Reservation.Status.DELIVERED and reservation.rent_date > today:
+    if new_status == Reservation.STATUS_DELIVERED and reservation.rent_date > today:
         return False
 
     if (
-        current_status == Reservation.Status.DRAFT
-        and new_status == Reservation.Status.CONFIRMED
+        current_status == Reservation.STATUS_PENDING
+        and new_status == Reservation.STATUS_RESERVED
     ):
         return has_paid_deposit(reservation)
 
     if (
-        current_status == Reservation.Status.DELIVERED
-        and new_status == Reservation.Status.RETURNED
+        current_status == Reservation.STATUS_DELIVERED
+        and new_status == Reservation.STATUS_RETURNED
     ):
         return is_fully_paid(reservation)
 

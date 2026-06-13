@@ -442,3 +442,14 @@
 .dropdown-item i {
     font-size: 1.1rem;
 }
+
+.wizard-step {
+    opacity: 0;
+    transform: translateX(20px);
+    transition: all 0.35s ease;
+}
+
+.wizard-step.active-step {
+    opacity: 1;
+    transform: translateX(0);
+}

@@ -1,146 +1,182 @@
-# reservations/models.py
 from django.db import models
-from django.conf import settings
 from django.core.exceptions import ValidationError
-from customers.models import Customer
-from products.models import Dress
-from django_jalali.db import models as jmodels
+from django.utils.translation import gettext_lazy as _
+from datetime import timedelta
 
 
 class Reservation(models.Model):
+    GUARANTEE_CHOICES = [
+        ('check', 'چک'),
+        ('cash', 'پول'),
+        ('gold', 'طلا'),
+        ('promissory_note', 'سفته'),
+    ]
 
-    class Status(models.TextChoices):
-        DRAFT = 'DRAFT', 'پیش‌نویس'
-        CONFIRMED = 'CONFIRMED', 'قطعی'
-        DELIVERED = 'DELIVERED', 'تحویل شده'
-        RETURNED = 'RETURNED', 'بازگشت داده شده'
-        LAUNDRY = 'LAUNDRY', 'خشکشویی'
-        CANCELED = 'CANCELED', 'لغو شده'
+    PAYMENT_METHOD_CHOICES = [
+        ('cash', 'نقدی'),
+        ('card', 'کارت به کارت'),
+        ('pos', 'دستگاه کارتخوان'),
+        ('transfer', 'حواله'),
+    ]
+
+    STATUS_PENDING = 'pending'
+    STATUS_RESERVED = 'reserved'
+    STATUS_DELIVERED = 'delivered'
+    STATUS_RETURNED = 'returned'
+    STATUS_CANCELLED = 'cancelled'
+
+    STATUS_CHOICES = [
+        (STATUS_PENDING, 'در انتظار'),
+        (STATUS_RESERVED, 'رزرو شده'),
+        (STATUS_DELIVERED, 'تحویل شده'),
+        (STATUS_RETURNED, 'برگشت شده'),
+        (STATUS_CANCELLED, 'لغو شده'),
+    ]
 
     customer = models.ForeignKey(
-        Customer,
-        on_delete=models.PROTECT,
-        related_name='reservations'
+        'customers.Customer',
+        on_delete=models.CASCADE,
+        related_name='reservations',
+        verbose_name='مشتری'
     )
     dress = models.ForeignKey(
-        Dress,
-        on_delete=models.PROTECT,
-        related_name='reservations'
+        'products.Dress',
+        on_delete=models.CASCADE,
+        related_name='reservations',
+        verbose_name='لباس'
     )
 
-    rent_days = models.PositiveSmallIntegerField(
-        verbose_name='مدت اجاره (روز)'
+    rent_days = models.PositiveIntegerField(
+        verbose_name='تعداد روز اجاره'
+    )
+    rent_date = models.DateField(
+        verbose_name='تاریخ شروع اجاره'
+    )
+    ceremony_date = models.DateField(
+        blank=True,
+        null=True,
+        verbose_name='تاریخ مراسم'
+    )
+    return_date = models.DateField(
+        verbose_name='تاریخ تحویل'
     )
 
-    rent_date = jmodels.jDateField(verbose_name='تاریخ اجاره')
-    ceremony_date = jmodels.jDateField(verbose_name='تاریخ مراسم')
-    return_date = jmodels.jDateField(verbose_name='تاریخ تحویل')
-
-    rent_price_snapshot = models.PositiveIntegerField(
-        verbose_name='قیمت اجاره لباس (Snapshot)',
-        default=0
+    rent_price_snapshot = models.DecimalField(
+        max_digits=12,
+        decimal_places=0,
+        default=0,
+        verbose_name='قیمت اجاره در زمان ثبت'
     )
-
-    total_amount = models.PositiveIntegerField(
-        verbose_name='مبلغ اجاره نهایی'
+    deposit_amount = models.DecimalField(
+        max_digits=12,
+        decimal_places=0,
+        default=0,
+        verbose_name='مبلغ بیعانه'
     )
 
     payment_method = models.CharField(
         max_length=20,
-        choices=[
-            ('POS', 'پوز'),
-            ('CARD', 'کارت به کارت'),
-            ('OTHER', 'سایر'),
-        ],
+        choices=PAYMENT_METHOD_CHOICES,
         blank=True,
         null=True,
+        verbose_name='روش پرداخت'
     )
-
     payment_tracking_code = models.CharField(
         max_length=100,
         blank=True,
         null=True,
+        verbose_name='کد پیگیری پرداخت'
     )
 
     guarantee_type_1 = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
+        max_length=30,
+        choices=GUARANTEE_CHOICES,
+        verbose_name='ضمانت اول'
     )
-    guarantee_type_2 = models.CharField(
+    guarantee_1_tracking_code = models.CharField(
         max_length=100,
-        blank=True,
-        null=True
-    )
-    guarantee_tracking_code = models.CharField(
-        max_length=100,
-        blank=True,
-        null=True,
+        verbose_name='کد ضمانت اول'
     )
 
-    deposit_amount = models.PositiveIntegerField(
-        verbose_name='بیعانه',
-        default=0,
+    guarantee_type_2 = models.CharField(
+        max_length=30,
+        choices=GUARANTEE_CHOICES,
+        blank=True,
+        null=True,
+        verbose_name='ضمانت دوم'
+    )
+    guarantee_2_tracking_code = models.CharField(
+        max_length=100,
+        blank=True,
+        null=True,
+        verbose_name='کد ضمانت دوم'
     )
 
     status = models.CharField(
         max_length=20,
-        choices=Status.choices,
-        default=Status.DRAFT
+        choices=STATUS_CHOICES,
+        default=STATUS_PENDING,
+        verbose_name='وضعیت'
     )
 
-    product_condition = models.TextField(
-        verbose_name='سلامت کالا',
+    description = models.TextField(
         blank=True,
+        null=True,
+        verbose_name='توضیحات'
     )
 
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.PROTECT,
-        related_name='created_reservations'
-    )
     created_at = models.DateTimeField(auto_now_add=True)
-
-    @property
-    def remaining_amount(self):
-        return max(self.total_amount - self.deposit_amount, 0)
-
-    def clean(self):
-        errors = {}
-
-        if self.rent_date and self.ceremony_date and self.return_date:
-            if not (self.rent_date <= self.ceremony_date <= self.return_date):
-                errors['ceremony_date'] = 'ترتیب تاریخ‌ها نامعتبر است.'
-                errors['return_date'] = 'تاریخ بازگشت باید بعد از تاریخ مراسم باشد.'
-
-            calculated_days = (self.return_date - self.rent_date).days
-            if calculated_days != self.rent_days:
-                errors['rent_days'] = 'مدت اجاره با تاریخ‌ها همخوانی ندارد.'
-
-        if self.total_amount <= 0:
-            errors['total_amount'] = 'مبلغ کل باید بیشتر از صفر باشد.'
-
-        if self.deposit_amount > self.total_amount:
-            errors['deposit_amount'] = 'بیعانه نمی‌تواند از مبلغ کل بیشتر باشد.'
-
-        if self.deposit_amount > 0 and not self.payment_method:
-            errors['payment_method'] = 'برای بیعانه، روش پرداخت باید مشخص شود.'
-
-        if self.payment_tracking_code and not self.payment_method:
-            errors['payment_method'] = 'بدون روش پرداخت، کد پیگیری معتبر نیست.'
-
-        if errors:
-            raise ValidationError(errors)
-
-    def __str__(self):
-        return f"رزرو {self.dress} برای {self.customer}"
+    updated_at = models.DateTimeField(auto_now=True)
 
     class Meta:
+        verbose_name = 'رزرو'
+        verbose_name_plural = 'رزروها'
         ordering = ['-created_at']
-        indexes = [
-            models.Index(fields=['status']),
-            models.Index(fields=['rent_date']),
-            models.Index(fields=['return_date']),
-            models.Index(fields=['dress', 'status']),
-            models.Index(fields=['customer', 'status']),
-        ]
+
+    def __str__(self):
+        return f"{self.customer} - {self.dress} - {self.rent_date}"
+
+    def clean(self):
+        if self.rent_days <= 0:
+            raise ValidationError({'rent_days': 'تعداد روز اجاره باید بیشتر از صفر باشد.'})
+
+        if self.rent_date and self.rent_days:
+            calculated_return = self.rent_date + timedelta(days=self.rent_days)
+            self.return_date = calculated_return
+
+        if self.deposit_amount and self.rent_price_snapshot:
+            if self.deposit_amount > self.rent_price_snapshot:
+                raise ValidationError({'deposit_amount': 'مبلغ بیعانه نمی‌تواند بیشتر از مبلغ اجاره باشد.'})
+
+        if self.guarantee_type_1 and not self.guarantee_1_tracking_code:
+            raise ValidationError({'guarantee_1_tracking_code': 'کد ضمانت اول اجباری است.'})
+
+        if self.guarantee_type_2 and not self.guarantee_2_tracking_code:
+            raise ValidationError({'guarantee_2_tracking_code': 'برای ضمانت دوم، کد پیگیری هم باید وارد شود.'})
+
+        overlapping = Reservation.objects.filter(
+            dress=self.dress,
+            rent_date__lt=self.return_date,
+            return_date__gt=self.rent_date,
+        ).exclude(
+            status='cancelled'
+        )
+
+        if self.pk:
+            overlapping = overlapping.exclude(pk=self.pk)
+
+        if overlapping.exists():
+            raise ValidationError({'dress': 'این لباس در این بازه زمانی قبلاً رزرو شده است.'})
+
+    def save(self, *args, **kwargs):
+        if self.rent_date and self.rent_days:
+            self.return_date = self.rent_date + timedelta(days=self.rent_days)
+
+        if self.dress and hasattr(self.dress, 'rent_price'):
+            self.rent_price_snapshot = self.dress.rent_price
+
+        if self.customer and hasattr(self.customer, 'ceremony_date'):
+            self.ceremony_date = self.customer.ceremony_date
+
+        self.full_clean()
+        super().save(*args, **kwargs)
