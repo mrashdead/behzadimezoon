@@ -1,5 +1,4 @@
-{% load jalali_tags %} {% load jformat %} {{
-customer.ceremony_date|to_jalali:'%Y/%m/%d' }}
+{% load jalali_tags %} {% load jformat %}
 
 <div
   class="modal fade"
@@ -88,7 +87,7 @@ customer.ceremony_date|to_jalali:'%Y/%m/%d' }}
 
                     <div class="col-md-6">
                       <label
-                        for="id_ceremony_date_{{ customer.id }}"
+                        for="id_ceremony_date_display_{{ customer.id }}"
                         class="form-label"
                         >تاریخ مراسم</label
                       >
@@ -98,6 +97,7 @@ customer.ceremony_date|to_jalali:'%Y/%m/%d' }}
                         ></span>
                         <input
                           type="text"
+                          id="id_ceremony_date_display_{{ customer.id }}"
                           name="ceremony_date"
                           class="form-control jalali-datepicker jalali-mask"
                           maxlength="10"
@@ -135,12 +135,7 @@ customer.ceremony_date|to_jalali:'%Y/%m/%d' }}
                           endif
                           %}
                         />
-                        <label
-                          class="form-check-label"
-                          for="id_allow_contact_{{ customer.id }}"
-                        >
-                          اجازه ارتباط با مشتری
-                        </label>
+                        <label class="form-check-label" for="id_allow_contact_{{ customer.id }}">اجازه تماس تبلیغاتی</label>
                       </div>
                     </div>
                   </div>
