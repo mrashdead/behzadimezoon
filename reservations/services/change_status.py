@@ -1,29 +1,44 @@
 # reservations/services/change_status.py
 
 from typing import TYPE_CHECKING
-from django.core.exceptions import PermissionDenied
+
+from django.core.exceptions import PermissionDenied, ValidationError
+from django.db import transaction
+
 from reservations.services.status_machine import can_change_status
 
-# این ایمپورت فقط برای IDE (مثل VS Code) کار می‌کند و در زمان اجرا نادیده گرفته می‌شود
 if TYPE_CHECKING:
-    from reservations.models import ReservationStatusLog
+    from reservations.models import Reservation, ReservationStatusLog
+
 
 def change_reservation_status(user, reservation, new_status):
-    # ایمپورت داخلی (Lazy Import) - مدل در لحظه اجرا فراخوانی می‌شود
-    from reservations.models import ReservationStatusLog
+    """
+    تغییر وضعیت رزرو به‌صورت امن، اتمیک و همراه با ثبت لاگ.
+    """
 
-    old_status = reservation.status
+    from reservations.models import Reservation, ReservationStatusLog
 
-    if not can_change_status(user, reservation, new_status):
-        raise PermissionDenied('اجازه تغییر وضعیت این رزرو را ندارید.')
+    with transaction.atomic():
+        locked_reservation = Reservation.objects.select_for_update().get(
+            pk=reservation.pk
+        )
 
-    reservation.status = new_status
-    reservation.save(update_fields=['status'])
+        old_status = locked_reservation.status
 
-    # حالا اینجا بدون مشکل از مدل استفاده می‌شود
-    ReservationStatusLog.objects.create(
-        reservation=reservation,
-        old_status=old_status,
-        new_status=new_status,
-        changed_by=user
-    )
+        if old_status == new_status:
+            raise ValidationError('وضعیت جدید با وضعیت فعلی یکسان است.')
+
+        if not can_change_status(user, locked_reservation, new_status):
+            raise PermissionDenied('تغییر وضعیت این رزرو مجاز نیست.')
+
+        locked_reservation.status = new_status
+        locked_reservation.save(update_fields=['status'])
+
+        ReservationStatusLog.objects.create(
+            reservation=locked_reservation,
+            old_status=old_status,
+            new_status=new_status,
+            changed_by=user,
+        )
+
+    return locked_reservation
