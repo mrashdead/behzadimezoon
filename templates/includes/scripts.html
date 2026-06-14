@@ -123,6 +123,7 @@ let rentalDaysInput = form.querySelector("input[name='rental_days']")
 let eventDateField = document.getElementById("event_date")
 let endDateField = document.getElementById("end_date")
 let rentPriceField = document.getElementById("rent_price")
+let remainingAmountField = document.getElementById("remaining_amount")
 
 let depositInput = form.querySelector("input[name='deposit_amount']")
 let discountInput = form.querySelector("input[name='discount_amount']")
@@ -134,11 +135,12 @@ let rentPrice = 0
 function checkAvailability() {
 
 let dress = dressSelect.value
+let customer = customerSelect.value
 let start_date = startDateInput.value
 let rental_days = rentalDaysInput.value
 
-if(!dress || !start_date || !rental_days){
-return
+if(!dress || !customer || !start_date || !rental_days){
+  return
 }
 
 fetch("/reservations/check-availability/", {
@@ -151,9 +153,10 @@ headers: {
 },
 
 body: new URLSearchParams({
-dress_id: dress,
-start_date: start_date,
-rental_days: rental_days
+  customer_id: customer,
+  dress_id: dress,
+  start_date: start_date,
+  rental_days: rental_days
 })
 
 })
@@ -164,17 +167,17 @@ if(data.success){
 
 if(data.available){
 
-endDateField.value = data.end_date
-eventDateField.value = data.event_date
-rentPriceField.value = data.rent_price
+      endDateField.value = data.end_date
+      eventDateField.value = data.event_date
+      rentPrice = parseFloat(data.rent_price) || 0
+      rentPriceField.value = formatCurrency(rentPrice)
+      if (remainingAmountField) {
+        remainingAmountField.value = formatCurrency(rentPrice)
+      }
 
-rentPrice = parseFloat(data.rent_price)
+      nextBtn.disabled = false
 
-nextBtn.disabled = false
-
-}else{
-
-alert("این لباس در این بازه رزرو شده است")
+    } else {
 
 nextBtn.disabled = true
 
@@ -192,6 +195,24 @@ alert(data.message)
 
 
 
+function saveReservationStepOne() {
+  let formData = new URLSearchParams({
+    customer: customerSelect.value,
+    dress: dressSelect.value,
+    start_date: startDateInput.value,
+    rental_days: rentalDaysInput.value
+  })
+
+  return fetch("/reservations/step-one/", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/x-www-form-urlencoded",
+      "X-CSRFToken": getCookie("csrftoken")
+    },
+    body: formData
+  }).then(response => response.json())
+}
+
 dressSelect.addEventListener("change", checkAvailability)
 startDateInput.addEventListener("change", checkAvailability)
 rentalDaysInput.addEventListener("input", checkAvailability)
@@ -199,30 +220,49 @@ rentalDaysInput.addEventListener("input", checkAvailability)
 
 
 nextBtn.addEventListener("click", function(){
+  saveReservationStepOne().then(data => {
+    if (data.success) {
+      step1.style.display = "none"
+      step2.style.display = "block"
 
-step1.style.display = "none"
-step2.style.display = "block"
-
-nextBtn.style.display = "none"
-submitBtn.style.display = "inline-block"
-
+      nextBtn.style.display = "none"
+      submitBtn.classList.remove('d-none')
+      submitBtn.style.display = "inline-block"
+      submitBtn.disabled = false
+    } else {
+      let message = data.message || ''
+      if (data.errors) {
+        message = Object.values(data.errors).flat().join('\n')
+      }
+      alert(message || 'مرحله اول به درستی ثبت نشد.')
+    }
+  }).catch(() => {
+    alert('خطا در ذخیره اطلاعات مرحله اول. لطفا دوباره تلاش کنید.')
+  })
 })
 
 
 
-function calculateRemaining(){
-
-let deposit = parseFloat(depositInput.value || 0)
-let discount = parseFloat(discountInput.value || 0)
-
-let remaining = rentPrice - deposit - discount
-
-if(remaining < 0){
-remaining = 0
+function formatCurrency(value) {
+  if (Number.isNaN(value) || value === null) {
+    return ''
+  }
+  return Number(Math.round(value)).toLocaleString('en-US')
 }
 
-console.log("remaining:", remaining)
+function calculateRemaining(){
+  let deposit = parseFloat(depositInput.value || 0)
+  let discount = parseFloat(discountInput.value || 0)
 
+  let remaining = rentPrice - deposit - discount
+
+  if(remaining < 0){
+    remaining = 0
+  }
+
+  if (remainingAmountField) {
+    remainingAmountField.value = formatCurrency(remaining)
+  }
 }
 
 
@@ -234,35 +274,36 @@ discountInput.addEventListener("input", calculateRemaining)
 
 form.addEventListener("submit", function(e){
 
-e.preventDefault()
+  e.preventDefault()
 
-let formData = new FormData(form)
+  let formData = new FormData(form)
 
-fetch("/reservations/create/", {
+  fetch("/reservations/create/", {
 
-method: "POST",
+    method: "POST",
 
-headers:{
-"X-CSRFToken": getCookie("csrftoken")
-},
+    headers:{
+      "X-CSRFToken": getCookie("csrftoken")
+    },
 
-body: formData
+    body: formData
 
-})
-.then(res => res.json())
-.then(data => {
+  })
+  .then(res => res.json())
+  .then(data => {
 
-if(data.success){
+    if(data.success){
+      location.reload()
+      return
+    }
 
-location.reload()
+    let message = data.message || ''
+    if (data.errors) {
+      message = Object.values(data.errors).flat().join('\n')
+    }
+    alert(message || "خطا در ثبت رزرو")
 
-}else{
-
-alert("خطا در ثبت رزرو")
-
-}
-
-})
+  })
 
 })
 

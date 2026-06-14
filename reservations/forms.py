@@ -9,6 +9,7 @@ from customers.models import Customer
 from products.models import Dress
 from reservations.models import Reservation
 from reservations.services.availability_service import ReservationAvailabilityService
+from .utils import parse_reservation_date
 
 
 class ReservationStepOneForm(forms.Form):
@@ -25,7 +26,7 @@ class ReservationStepOneForm(forms.Form):
         label="لباس"
     )
 
-    start_date = forms.DateField(
+    start_date = forms.CharField(
         required=True,
         label="تاریخ شروع اجاره"
     )
@@ -35,6 +36,19 @@ class ReservationStepOneForm(forms.Form):
         required=True,
         label="مدت اجاره (روز)"
     )
+
+    def clean_start_date(self):
+        value = self.cleaned_data.get("start_date")
+
+        if not value:
+            return None
+
+        parsed_date = parse_reservation_date(value)
+
+        if parsed_date is None:
+            raise ValidationError("تاریخ نامعتبر است.")
+
+        return parsed_date
 
     def clean(self):
 

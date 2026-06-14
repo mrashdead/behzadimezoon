@@ -1,0 +1,70 @@
+<div class="modal fade" id="editReservationModal{{ reservation.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <form method="post" action="{% url 'reservations:edit' reservation.pk %}">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">ویرایش اطلاعات رزرو</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+        </div>
+        <div class="modal-body">
+          <div class="row g-3">
+            <div class="col-md-6">
+              <label class="form-label">روش پرداخت</label>
+              <select name="payment_method" class="form-control" required>
+                <option value="">انتخاب کنید</option>
+                <option value="CASH" {% if reservation.payment_method == 'CASH' %}selected{% endif %}>نقدی</option>
+                <option value="CARD" {% if reservation.payment_method == 'CARD' %}selected{% endif %}>کارت به کارت</option>
+                <option value="TRANSFER" {% if reservation.payment_method == 'TRANSFER' %}selected{% endif %}>انتقال بانکی</option>
+                <option value="POS" {% if reservation.payment_method == 'POS' %}selected{% endif %}>کارتخوان</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">کد رهگیری پرداخت</label>
+              <input type="text" name="payment_tracking_code" class="form-control" value="{{ reservation.payment_tracking_code }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">نوع ضمانت اول</label>
+              <select name="guarantee1_type" class="form-control" required>
+                <option value="CHECK" {% if reservation.guarantee1_type == 'CHECK' %}selected{% endif %}>چک</option>
+                <option value="CASH" {% if reservation.guarantee1_type == 'CASH' %}selected{% endif %}>پول</option>
+                <option value="GOLD" {% if reservation.guarantee1_type == 'GOLD' %}selected{% endif %}>طلا</option>
+                <option value="PROMISSORY" {% if reservation.guarantee1_type == 'PROMISSORY' %}selected{% endif %}>سفته</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">کد رهگیری ضمانت اول</label>
+              <input type="text" name="guarantee1_tracking_code" class="form-control" value="{{ reservation.guarantee1_tracking_code }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">نوع ضمانت دوم</label>
+              <select name="guarantee2_type" class="form-control">
+                <option value="" {% if not reservation.guarantee2_type %}selected{% endif %}>ندارد</option>
+                <option value="CHECK" {% if reservation.guarantee2_type == 'CHECK' %}selected{% endif %}>چک</option>
+                <option value="CASH" {% if reservation.guarantee2_type == 'CASH' %}selected{% endif %}>پول</option>
+                <option value="GOLD" {% if reservation.guarantee2_type == 'GOLD' %}selected{% endif %}>طلا</option>
+                <option value="PROMISSORY" {% if reservation.guarantee2_type == 'PROMISSORY' %}selected{% endif %}>سفته</option>
+              </select>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">کد رهگیری ضمانت دوم</label>
+              <input type="text" name="guarantee2_tracking_code" class="form-control" value="{{ reservation.guarantee2_tracking_code }}">
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">بیعانه</label>
+              <input type="number" name="deposit_amount" class="form-control" min="0" value="{{ reservation.deposit_amount }}" required>
+            </div>
+            <div class="col-md-6">
+              <label class="form-label">تخفیف</label>
+              <input type="number" name="discount_amount" class="form-control" min="0" value="{{ reservation.discount_amount }}">
+            </div>
+          </div>
+        </div>
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">انصراف</button>
+          <button type="submit" class="btn btn-warning">ذخیره تغییرات</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

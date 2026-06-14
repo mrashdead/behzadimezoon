@@ -47,7 +47,7 @@ class Reservation(models.Model):
 
     end_date = jmodels.jDateField(
         editable=False,
-        verbose_name="تاریخ پایان اجاره"
+        verbose_name="تاریخ بازگشت"
     )
 
     delivery_date = jmodels.jDateField(
@@ -198,6 +198,7 @@ class Reservation(models.Model):
     # -----------------------
 
     def calculate_dates(self):
+        """Calculate return and delivery dates for the reservation."""
 
         if self.start_date and self.rental_days:
             self.end_date = self.start_date + timedelta(days=self.rental_days)
@@ -205,13 +206,22 @@ class Reservation(models.Model):
         if self.start_date:
             self.delivery_date = self.start_date - timedelta(days=1)
 
+    @property
+    def return_date(self):
+        return self.end_date
+
     def calculate_financials(self):
 
         if self.rent_price is None:
             self.rent_price = 0
 
         self.final_price = self.rent_price - (self.discount_amount or 0)
+        if self.final_price < 0:
+            self.final_price = 0
+
         self.remaining_amount = self.final_price - (self.deposit_amount or 0)
+        if self.remaining_amount < 0:
+            self.remaining_amount = 0
 
     def save(self, *args, **kwargs):
 

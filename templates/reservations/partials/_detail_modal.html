@@ -1,0 +1,172 @@
+{% load jalali_tags %}
+{% load jformat %}
+
+<div class="modal fade" id="detailReservationModal{{ reservation.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title">جزئیات رزرو</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+      </div>
+      <div class="modal-body">
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">مشتری</div>
+                <div class="fw-semibold text-body">{{ reservation.customer }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-6">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">لباس</div>
+                <div class="fw-semibold text-body">{{ reservation.dress }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">تاریخ شروع اجاره</div>
+                <div class="fw-semibold text-body">{{ reservation.start_date|jformat:"%Y/%m/%d"|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">تاریخ پایان اجاره</div>
+                <div class="fw-semibold text-body">{{ reservation.end_date|jformat:"%Y/%m/%d"|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">تاریخ تحویل</div>
+                <div class="fw-semibold text-body">{{ reservation.delivery_date|jformat:"%Y/%m/%d"|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">تاریخ مراسم</div>
+                <div class="fw-semibold text-body">{{ reservation.event_date|jformat:"%Y/%m/%d"|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">وضعیت</div>
+                <div class="fw-semibold text-body">{{ reservation.get_status_display }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">هزینه اجاره</div>
+                <div class="fw-semibold text-body">{{ reservation.rent_price|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">بیعانه</div>
+                <div class="fw-semibold text-body">{{ reservation.deposit_amount|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">تخفیف</div>
+                <div class="fw-semibold text-body">{{ reservation.discount_amount|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">مبلغ نهایی</div>
+                <div class="fw-semibold text-body">{{ reservation.final_price|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">باقی مانده</div>
+                <div class="fw-semibold text-body">{{ reservation.remaining_amount|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">روش پرداخت</div>
+                <div class="fw-semibold text-body">{{ reservation.get_payment_method_display }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">کد رهگیری پرداخت</div>
+                <div class="fw-semibold text-body">{{ reservation.payment_tracking_code|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">نوع ضمانت اول</div>
+                <div class="fw-semibold text-body">{{ reservation.get_guarantee1_type_display|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">کد رهگیری ضمانت اول</div>
+                <div class="fw-semibold text-body">{{ reservation.guarantee1_tracking_code|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">نوع ضمانت دوم</div>
+                <div class="fw-semibold text-body">{{ reservation.get_guarantee2_type_display|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-4">
+            <div class="card shadow-none border h-100">
+              <div class="card-body">
+                <div class="small text-muted mb-1">کد رهگیری ضمانت دوم</div>
+                <div class="fw-semibold text-body">{{ reservation.guarantee2_tracking_code|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
+          <div class="col-12">
+            <div class="card shadow-none border">
+              <div class="card-body">
+                <div class="small text-muted mb-1">یادداشت</div>
+                <div class="fw-semibold text-body">{{ reservation.notes|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">بستن</button>
+      </div>
+    </div>
+  </div>
+</div>

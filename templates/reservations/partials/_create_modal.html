@@ -1,365 +1,144 @@
-<!-- templates/reservations/ui/partials/_create_modal.html -->
-
 {% load jalali_tags %}
 
-<div class="modal fade"
-id="createReservationModal"
-tabindex="-1"
->
+<div class="modal fade" id="createReservationModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+    <div class="modal-content border-0 shadow">
+      <form id="reservationCreateForm">
+        {% csrf_token %}
 
-<div class="modal-dialog modal-lg">
+        <div class="modal-header">
+          <h5 class="modal-title">رزرو جدید</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+        </div>
 
-<div class="modal-content">
+        <div class="modal-body">
+          <div id="reservationStep1">
+            <h6 class="mb-3">مرحله اول - اطلاعات رزرو</h6>
 
-<form id="reservationCreateForm">
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">مشتری</label>
+                <select name="customer" class="form-control" required>
+                  <option value="">انتخاب مشتری</option>
+                  {% for customer in customers %}
+                  <option value="{{ customer.id }}">{{ customer }}</option>
+                  {% endfor %}
+                </select>
+              </div>
 
-{% csrf_token %}
+              <div class="col-md-6">
+                <label class="form-label">لباس</label>
+                <select name="dress" class="form-control" required>
+                  <option value="">انتخاب لباس</option>
+                  {% for dress in dresses %}
+                  <option value="{{ dress.id }}">{{ dress }}</option>
+                  {% endfor %}
+                </select>
+              </div>
 
-<div class="modal-header">
+              <div class="col-md-6">
+                <label class="form-label">تاریخ شروع اجاره</label>
+                <input type="text" name="start_date" class="form-control jalali-datepicker" required>
+              </div>
 
-<h5 class="modal-title">
-ایجاد رزرو جدید
-</h5>
+              <div class="col-md-6">
+                <label class="form-label">مدت اجاره (روز)</label>
+                <input type="number" name="rental_days" class="form-control" min="1" required>
+              </div>
 
-<button
-type="button"
-class="btn-close"
-data-bs-dismiss="modal"
-></button>
+              <div class="col-md-4">
+                <label class="form-label">تاریخ مراسم</label>
+                <input type="text" id="event_date" class="form-control" readonly>
+              </div>
 
+              <div class="col-md-4">
+                <label class="form-label">تاریخ پایان</label>
+                <input type="text" id="end_date" class="form-control" readonly>
+              </div>
+            </div>
+          </div>
+
+          <div id="reservationStep2" style="display:none">
+            <h6 class="mb-3">مرحله دوم - اطلاعات مالی</h6>
+
+            <div class="row g-3">
+              <div class="col-md-6">
+                <label class="form-label">روش پرداخت</label>
+                <select name="payment_method" class="form-control" required>
+                  <option value="">انتخاب کنید</option>
+                  <option value="CASH">نقدی</option>
+                  <option value="CARD">کارت به کارت</option>
+                  <option value="TRANSFER">انتقال بانکی</option>
+                  <option value="POS">کارتخوان</option>
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">کد رهگیری پرداخت</label>
+                <input type="text" name="payment_tracking_code" class="form-control" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">نوع ضمانت اول</label>
+                <select name="guarantee1_type" class="form-control" required>
+                  <option value="CHECK">چک</option>
+                  <option value="CASH">پول</option>
+                  <option value="GOLD">طلا</option>
+                  <option value="PROMISSORY">سفته</option>
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">کد رهگیری ضمانت اول</label>
+                <input type="text" name="guarantee1_tracking_code" class="form-control" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">نوع ضمانت دوم</label>
+                <select name="guarantee2_type" class="form-control">
+                  <option value="">ندارد</option>
+                  <option value="CHECK">چک</option>
+                  <option value="CASH">پول</option>
+                  <option value="GOLD">طلا</option>
+                  <option value="PROMISSORY">سفته</option>
+                </select>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">کد رهگیری ضمانت دوم</label>
+                <input type="text" name="guarantee2_tracking_code" class="form-control">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">بیعانه</label>
+                <input type="number" name="deposit_amount" class="form-control" min="0" required>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">تخفیف</label>
+                <input type="number" name="discount_amount" class="form-control" min="0">
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">هزینه اجاره</label>
+                <input type="text" id="rent_price" class="form-control" readonly>
+              </div>
+
+              <div class="col-md-6">
+                <label class="form-label">باقی مانده</label>
+                <input type="text" id="remaining_amount" class="form-control" readonly>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">انصراف</button>
+          <button type="button" class="btn btn-primary" id="nextStepButton" disabled>مرحله بعد</button>
+          <button type="submit" class="btn btn-success d-none" id="createReservationButton">ثبت رزرو</button>
+        </div>
+      </form>
+    </div>
+  </div>
 </div>
 
-<div class="modal-body">
-
-<!-- STEP 1 -->
-
-<div id="reservationStep1">
-
-<h6 class="mb-3">
-مرحله اول - اطلاعات رزرو
-</h6>
-
-
-<div class="row">
-
-<div class="col-md-6">
-
-<label>مشتری</label>
-
-<select
-name="customer"
-class="form-control"
-required
->
-
-<option value="">انتخاب مشتری</option>
-
-{% for customer in customers %}
-
-<option value="{{ customer.id }}">
-{{ customer }}
-</option>
-
-{% endfor %}
-
-</select>
-
-</div>
-
-
-<div class="col-md-6">
-
-<label>لباس</label>
-
-<select
-name="dress"
-class="form-control"
-required
->
-
-<option value="">انتخاب لباس</option>
-
-{% for dress in dresses %}
-
-<option value="{{ dress.id }}">
-{{ dress }}
-</option>
-
-{% endfor %}
-
-</select>
-
-</div>
-
-</div>
-
-
-<div class="row mt-3">
-
-<div class="col-md-6">
-
-<label>تاریخ شروع اجاره</label>
-
-<input
-type="text"
-name="start_date"
-class="form-control jalali-datepicker"
-required
->
-
-</div>
-
-<div class="col-md-6">
-
-<label>مدت اجاره (روز)</label>
-
-<input
-type="number"
-name="rental_days"
-class="form-control"
-required
->
-
-</div>
-
-</div>
-
-
-<div class="row mt-4">
-
-<div class="col-md-4">
-
-<label>تاریخ مراسم</label>
-
-<input
-type="text"
-id="event_date"
-class="form-control"
-readonly
->
-
-</div>
-
-<div class="col-md-4">
-
-<label>تاریخ پایان</label>
-
-<input
-type="text"
-id="end_date"
-class="form-control"
-readonly
->
-
-</div>
-
-<div class="col-md-4">
-
-<label>هزینه اجاره</label>
-
-<input
-type="text"
-id="rent_price"
-class="form-control"
-readonly
->
-
-</div>
-
-</div>
-
-</div>
-
-
-<!-- STEP 2 -->
-
-<div id="reservationStep2" style="display:none">
-
-<h6 class="mb-3">
-مرحله دوم - اطلاعات مالی
-</h6>
-
-
-<div class="row">
-
-<div class="col-md-6">
-
-<label>روش پرداخت</label>
-
-<select
-name="payment_method"
-class="form-control"
-required
->
-
-<option value="">انتخاب کنید</option>
-
-<option value="CASH">نقدی</option>
-<option value="CARD">کارت به کارت</option>
-<option value="POS">کارتخوان</option>
-
-</select>
-
-</div>
-
-
-<div class="col-md-6">
-
-<label>کد رهگیری پرداخت</label>
-
-<input
-type="text"
-name="payment_tracking_code"
-class="form-control"
-required
->
-
-</div>
-
-</div>
-
-
-<div class="row mt-3">
-
-<div class="col-md-6">
-
-<label>نوع ضمانت اول</label>
-
-<select
-name="guarantee1_type"
-class="form-control"
-required
->
-
-<option value="CHECK">چک</option>
-<option value="CASH">پول</option>
-<option value="GOLD">طلا</option>
-<option value="PROMISSORY">سفته</option>
-
-</select>
-
-</div>
-
-<div class="col-md-6">
-
-<label>کد رهگیری ضمانت</label>
-
-<input
-type="text"
-name="guarantee1_tracking_code"
-class="form-control"
-required
->
-
-</div>
-
-</div>
-
-
-<div class="row mt-3">
-
-<div class="col-md-6">
-
-<label>نوع ضمانت دوم</label>
-
-<select
-name="guarantee2_type"
-class="form-control"
->
-
-<option value="">ندارد</option>
-
-<option value="CHECK">چک</option>
-<option value="CASH">پول</option>
-<option value="GOLD">طلا</option>
-<option value="PROMISSORY">سفته</option>
-
-</select>
-
-</div>
-
-<div class="col-md-6">
-
-<label>کد رهگیری ضمانت دوم</label>
-
-<input
-type="text"
-name="guarantee2_tracking_code"
-class="form-control"
->
-
-</div>
-
-</div>
-
-
-<div class="row mt-4">
-
-<div class="col-md-6">
-
-<label>بیعانه</label>
-
-<input
-type="number"
-name="deposit_amount"
-class="form-control"
-required
->
-
-</div>
-
-<div class="col-md-6">
-
-<label>تخفیف</label>
-
-<input
-type="number"
-name="discount_amount"
-class="form-control"
->
-
-</div>
-
-</div>
-
-</div>
-
-</div>
-
-
-<div class="modal-footer">
-
-<button
-type="button"
-class="btn btn-secondary"
-data-bs-dismiss="modal"
->
-انصراف
-</button>
-
-<button
-type="button"
-class="btn btn-primary"
-id="nextStepButton"
->
-مرحله بعد
-</button>
-
-<button
-type="submit"
-class="btn btn-success"
-id="createReservationButton"
-style="display:none"
->
-ثبت رزرو
-</button>
-
-</div>
-
-</form>
-
-</div>
-
-</div>
-
-</div>
