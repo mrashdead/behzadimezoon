@@ -1,44 +1,57 @@
-# reservations/services/change_status.py
-
 from typing import TYPE_CHECKING
 
 from django.core.exceptions import PermissionDenied, ValidationError
-from django.db import transaction
 
 from reservations.services.status_machine import can_change_status
 
 if TYPE_CHECKING:
-    from reservations.models import Reservation, ReservationStatusLog
+    from reservations.models import Reservation
 
 
 def change_reservation_status(user, reservation, new_status):
     """
-    تغییر وضعیت رزرو به‌صورت امن، اتمیک و همراه با ثبت لاگ.
+    تغییر وضعیت رزرو همراه با کنترل دسترسی و ثبت لاگ احتمالی.
     """
 
-    from reservations.models import Reservation, ReservationStatusLog
+    old_status = reservation.status
 
-    with transaction.atomic():
-        locked_reservation = Reservation.objects.select_for_update().get(
-            pk=reservation.pk
-        )
+    if old_status == new_status:
+        return reservation
 
-        old_status = locked_reservation.status
+    if not can_change_status(user, reservation, new_status):
+        raise PermissionDenied('شما اجازه تغییر این وضعیت را ندارید.')
 
-        if old_status == new_status:
-            raise ValidationError('وضعیت جدید با وضعیت فعلی یکسان است.')
+    reservation.status = new_status
+    reservation.save(update_fields=['status', 'updated_at'])
 
-        if not can_change_status(user, locked_reservation, new_status):
-            raise PermissionDenied('تغییر وضعیت این رزرو مجاز نیست.')
+    _create_status_log(
+        user=user,
+        reservation=reservation,
+        old_status=old_status,
+        new_status=new_status,
+    )
 
-        locked_reservation.status = new_status
-        locked_reservation.save(update_fields=['status'])
+    return reservation
 
+
+def _create_status_log(user, reservation, old_status, new_status):
+    """
+    اگر مدل ReservationStatusLog وجود داشته باشد، لاگ ثبت می‌کند.
+    اگر هنوز این مدل را نساخته‌ای، خطا نمی‌دهد.
+    """
+
+    try:
+        from reservations.models import ReservationStatusLog
+    except ImportError:
+        return
+
+    try:
         ReservationStatusLog.objects.create(
-            reservation=locked_reservation,
+            reservation=reservation,
             old_status=old_status,
             new_status=new_status,
-            changed_by=user,
+            changed_by=user if getattr(user, 'is_authenticated', False) else None,
         )
-
-    return locked_reservation
+    except Exception:
+        # برای اینکه ثبت لاگ باعث شکست تغییر وضعیت نشود
+        pass

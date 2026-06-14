@@ -1,83 +1,111 @@
-from django.utils import timezone
 from reservations.models import Reservation
-from reservations.services.payment_guards import has_paid_deposit, is_fully_paid
 
-
-ROLE_TRANSITION_PERMISSIONS = {
-    'SUPER_ADMIN': None,
-    'MANAGER': None,
-    'SELLER': {
-        Reservation.STATUS_PENDING: [
-            Reservation.STATUS_RESERVED,
-            Reservation.STATUS_CANCELLED,
-        ],
-        Reservation.STATUS_RESERVED: [
-            Reservation.STATUS_DELIVERED,
-            Reservation.STATUS_CANCELLED,
-        ],
-        Reservation.STATUS_DELIVERED: [
-            Reservation.STATUS_RETURNED,
-        ],
-        Reservation.STATUS_RETURNED: [],
-        Reservation.STATUS_CANCELLED: [],
-    },
-}
 
 RESERVATION_TRANSITIONS = {
-    Reservation.STATUS_PENDING: [
-        Reservation.STATUS_RESERVED,
-        Reservation.STATUS_CANCELLED,
-    ],
-    Reservation.STATUS_RESERVED: [
-        Reservation.STATUS_DELIVERED,
-        Reservation.STATUS_CANCELLED,
-    ],
-    Reservation.STATUS_DELIVERED: [
-        Reservation.STATUS_RETURNED,
-    ],
-    Reservation.STATUS_RETURNED: [],
-    Reservation.STATUS_CANCELLED: [],
+    Reservation.Status.DRAFT: {
+        Reservation.Status.CONFIRMED,
+        Reservation.Status.CANCELED,
+    },
+    Reservation.Status.CONFIRMED: {
+        Reservation.Status.DELIVERED,
+        Reservation.Status.CANCELED,
+    },
+    Reservation.Status.DELIVERED: {
+        Reservation.Status.RETURNED,
+    },
+    Reservation.Status.RETURNED: {
+        Reservation.Status.LAUNDRY,
+    },
+    Reservation.Status.LAUNDRY: set(),
+    Reservation.Status.CANCELED: set(),
 }
 
 
-def get_allowed_next_statuses(user, reservation):
-    current_status = reservation.status
-    role = getattr(user, 'role', None)
+def can_transition(current_status, new_status):
+    """
+    فقط مجاز بودن مسیر وضعیت را بررسی می‌کند.
+    این تابع کاری با نقش کاربر ندارد.
+    """
+    return new_status in RESERVATION_TRANSITIONS.get(current_status, set())
 
-    system_allowed = RESERVATION_TRANSITIONS.get(current_status, [])
-    role_rules = ROLE_TRANSITION_PERMISSIONS.get(role)
 
-    if role_rules is None:
-        return system_allowed if role in ROLE_TRANSITION_PERMISSIONS else []
+def get_available_transitions(current_status):
+    """
+    وضعیت‌های بعدی مجاز را برمی‌گرداند.
+    """
+    return list(RESERVATION_TRANSITIONS.get(current_status, set()))
 
-    role_allowed = role_rules.get(current_status, [])
-    return [status for status in system_allowed if status in role_allowed]
+
+def validate_transition(current_status, new_status):
+    """
+    اگر تغییر وضعیت غیرمجاز باشد Exception می‌دهد.
+    """
+    if current_status == new_status:
+        return
+
+    if not can_transition(current_status, new_status):
+        raise ValueError(
+            f'تغییر وضعیت از "{current_status}" به "{new_status}" مجاز نیست.'
+        )
 
 
 def can_change_status(user, reservation, new_status):
+    """
+    تابع سازگار با نسخه قبلی پروژه.
+    این تابع هم transition را چک می‌کند، هم سطح دسترسی کاربر را.
+
+    change_status.py فعلاً این تابع را import می‌کند؛
+    پس وجود این تابع برای رفع ImportError ضروری است.
+    """
+
+    if not user or not user.is_authenticated:
+        return False
+
     current_status = reservation.status
-    today = timezone.now().date()
 
-    if new_status not in get_allowed_next_statuses(user, reservation):
+    if current_status == new_status:
+        return True
+
+    if not can_transition(current_status, new_status):
         return False
 
-    return _check_guards(reservation, current_status, new_status, today)
+    # اگر superuser جنگو بود
+    if getattr(user, 'is_superuser', False):
+        return True
+
+    # اگر پروژه role سفارشی دارد
+    role = getattr(user, 'role', None)
+
+    # مدیر کل و مدیر اجازه همه transitionهای مجاز را دارند
+    if role in ['SUPER_ADMIN', 'MANAGER']:
+        return True
+
+    # فروشنده دسترسی محدودتر دارد
+    if role == 'SELLER':
+        return _seller_can_change_status(reservation, new_status)
+
+    return False
 
 
-def _check_guards(reservation, current_status, new_status, today):
-    if new_status == Reservation.STATUS_DELIVERED and reservation.rent_date > today:
-        return False
+def _seller_can_change_status(reservation, new_status):
+    """
+    قوانین دسترسی فروشنده.
+    این بخش را می‌توانی دقیقاً مطابق سیاست مزون تغییر بدهی.
+    """
 
-    if (
-        current_status == Reservation.STATUS_PENDING
-        and new_status == Reservation.STATUS_RESERVED
-    ):
-        return has_paid_deposit(reservation)
+    # فروشنده بتواند پیش‌نویس را تایید یا لغو کند
+    if reservation.status == Reservation.Status.DRAFT:
+        return new_status in {
+            Reservation.Status.CONFIRMED,
+            Reservation.Status.CANCELED,
+        }
 
-    if (
-        current_status == Reservation.STATUS_DELIVERED
-        and new_status == Reservation.STATUS_RETURNED
-    ):
-        return is_fully_paid(reservation)
+    # فروشنده بتواند رزرو تایید شده را تحویل دهد
+    if reservation.status == Reservation.Status.CONFIRMED:
+        return new_status == Reservation.Status.DELIVERED
 
-    return True
+    # فروشنده بتواند لباس تحویل‌شده را برگشت بزند
+    if reservation.status == Reservation.Status.DELIVERED:
+        return new_status == Reservation.Status.RETURNED
+
+    return False
