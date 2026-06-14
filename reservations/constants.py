@@ -1,21 +1,49 @@
-RESERVATION_STATUS_PENDING = 'pending'
-RESERVATION_STATUS_RESERVED = 'reserved'
-RESERVATION_STATUS_DELIVERED = 'delivered'
-RESERVATION_STATUS_RETURNED = 'returned'
-RESERVATION_STATUS_CANCELLED = 'cancelled'
+# reservations/constants.py
 
-RESERVATION_TRANSITIONS = {
-    RESERVATION_STATUS_PENDING: [
-        RESERVATION_STATUS_RESERVED,
-        RESERVATION_STATUS_CANCELLED,
-    ],
-    RESERVATION_STATUS_RESERVED: [
-        RESERVATION_STATUS_DELIVERED,
-        RESERVATION_STATUS_CANCELLED,
-    ],
-    RESERVATION_STATUS_DELIVERED: [
-        RESERVATION_STATUS_RETURNED,
-    ],
-    RESERVATION_STATUS_RETURNED: [],
-    RESERVATION_STATUS_CANCELLED: [],
-}
+class ReservationStatus:
+
+    DRAFT = "DRAFT"
+    CONFIRMED = "CONFIRMED"
+    DELIVERED = "DELIVERED"
+    RETURNED = "RETURNED"
+    LAUNDRY = "LAUNDRY"
+    CANCELLED = "CANCELLED"
+
+    CHOICES = (
+        (DRAFT, "پیش‌نویس"),
+        (CONFIRMED, "قطعی"),
+        (DELIVERED, "تحویل شده"),
+        (RETURNED, "بازگشت داده شده"),
+        (LAUNDRY, "خشکشویی"),
+        (CANCELLED, "لغو شده"),
+    )
+
+
+class GuaranteeType:
+
+    CHECK = "CHECK"
+    CASH = "CASH"
+    GOLD = "GOLD"
+    PROMISSORY = "PROMISSORY"
+
+    CHOICES = (
+        (CHECK, "چک"),
+        (CASH, "پول"),
+        (GOLD, "طلا"),
+        (PROMISSORY, "سفته"),
+    )
+
+
+class PaymentMethod:
+
+    CARD = "CARD"
+    CASH = "CASH"
+    TRANSFER = "TRANSFER"
+    POS = "POS"
+
+    CHOICES = (
+        (CARD, "کارت به کارت"),
+        (CASH, "نقدی"),
+        (TRANSFER, "انتقال بانکی"),
+        (POS, "کارتخوان"),
+    )

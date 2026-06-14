@@ -1,74 +1,104 @@
+# reservations/forms.py
+
 from django import forms
-from jalali_date.fields import JalaliDateField
-from jalali_date.widgets import AdminJalaliDateWidget
+from django.core.exceptions import ValidationError
+from django.utils.translation import gettext_lazy as _
+import jdatetime
 
-from .models import Reservation
+from customers.models import Customer
+from products.models import Dress
+from reservations.models import Reservation
+from reservations.services.availability_service import ReservationAvailabilityService
 
 
-class ReservationForm(forms.ModelForm):
-    rent_date = JalaliDateField(
-        label='تاریخ اجاره',
-        widget=AdminJalaliDateWidget(attrs={'class': 'form-control'}),
+class ReservationStepOneForm(forms.Form):
+
+    customer = forms.ModelChoiceField(
+        queryset=Customer.objects.all(),
+        required=True,
+        label="مشتری"
     )
-    ceremony_date = JalaliDateField(
-        label='تاریخ مراسم',
-        required=False,
-        widget=AdminJalaliDateWidget(attrs={'class': 'form-control'}),
+
+    dress = forms.ModelChoiceField(
+        queryset=Dress.objects.filter(status=Dress.STATUS_ACTIVE),
+        required=True,
+        label="لباس"
     )
-    return_date = JalaliDateField(
-        label='تاریخ بازگشت',
-        required=False,
-        widget=AdminJalaliDateWidget(attrs={'class': 'form-control'}),
+
+    start_date = forms.DateField(
+        required=True,
+        label="تاریخ شروع اجاره"
     )
+
+    rental_days = forms.IntegerField(
+        min_value=1,
+        required=True,
+        label="مدت اجاره (روز)"
+    )
+
+    def clean(self):
+
+        cleaned_data = super().clean()
+
+        dress = cleaned_data.get("dress")
+        start_date = cleaned_data.get("start_date")
+        rental_days = cleaned_data.get("rental_days")
+
+        if not dress or not start_date or not rental_days:
+            return cleaned_data
+
+        is_available, end_date = ReservationAvailabilityService.is_dress_available(
+            dress=dress,
+            start_date=start_date,
+            rental_days=rental_days
+        )
+
+        if not is_available:
+            raise ValidationError("این لباس در این بازه زمانی رزرو شده است.")
+
+        cleaned_data["end_date"] = end_date
+
+        return cleaned_data
+
+
+class ReservationStepTwoForm(forms.ModelForm):
 
     class Meta:
         model = Reservation
+
         fields = [
-            'customer',
-            'dress',
-            'rent_date',
-            'ceremony_date',
-            'return_date',
-            'rent_days',
-            'deposit_amount',
-            'discount_amount',
-            'extra_charge_amount',
-            'payment_method',
-            'guarantee_type',
-            'guarantee_description',
-            'notes',
-            'status',
+            "payment_method",
+            "payment_tracking_code",
+            "guarantee1_type",
+            "guarantee1_tracking_code",
+            "guarantee2_type",
+            "guarantee2_tracking_code",
+            "deposit_amount",
+            "discount_amount",
         ]
-        widgets = {
-            'customer': forms.Select(attrs={'class': 'form-select'}),
-            'dress': forms.Select(attrs={'class': 'form-select'}),
-            'rent_days': forms.NumberInput(attrs={'class': 'form-control', 'min': 1}),
-            'deposit_amount': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
-            'discount_amount': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
-            'extra_charge_amount': forms.NumberInput(attrs={'class': 'form-control', 'min': 0}),
-            'payment_method': forms.Select(attrs={'class': 'form-select'}),
-            'guarantee_type': forms.Select(attrs={'class': 'form-select'}),
-            'guarantee_description': forms.TextInput(attrs={'class': 'form-control'}),
-            'notes': forms.Textarea(attrs={'class': 'form-control', 'rows': 3}),
-            'status': forms.Select(attrs={'class': 'form-select'}),
+
+        labels = {
+            "payment_method": "روش پرداخت",
+            "payment_tracking_code": "کد رهگیری پرداخت",
+            "guarantee1_type": "نوع ضمانت اول",
+            "guarantee1_tracking_code": "کد رهگیری ضمانت اول",
+            "guarantee2_type": "نوع ضمانت دوم",
+            "guarantee2_tracking_code": "کد رهگیری ضمانت دوم",
+            "deposit_amount": "بیعانه",
+            "discount_amount": "تخفیف",
         }
 
     def clean(self):
+
         cleaned_data = super().clean()
 
-        rent_date = cleaned_data.get('rent_date')
-        return_date = cleaned_data.get('return_date')
-        rent_days = cleaned_data.get('rent_days')
-        customer = cleaned_data.get('customer')
-        ceremony_date = cleaned_data.get('ceremony_date')
+        deposit = cleaned_data.get("deposit_amount") or 0
+        discount = cleaned_data.get("discount_amount") or 0
 
-        if not ceremony_date and customer and hasattr(customer, 'ceremony_date'):
-            cleaned_data['ceremony_date'] = customer.ceremony_date
+        if deposit < 0:
+            raise ValidationError("بیعانه نمی‌تواند منفی باشد.")
 
-        if rent_date and return_date and return_date < rent_date:
-            self.add_error('return_date', 'تاریخ بازگشت نمی‌تواند قبل از تاریخ اجاره باشد.')
-
-        if rent_days is not None and rent_days < 1:
-            self.add_error('rent_days', 'مدت اجاره باید حداقل 1 روز باشد.')
+        if discount < 0:
+            raise ValidationError("تخفیف نمی‌تواند منفی باشد.")
 
         return cleaned_data

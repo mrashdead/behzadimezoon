@@ -1,419 +1,109 @@
 {% extends 'base.html' %}
-{% load humanize %}
 {% load jalali_tags %}
+{% load jformat %}
+
+{% block title %}
+رزروها
+{% endblock %}
 
 {% block content %}
-<div class="container-fluid py-4 reservations-page">
 
-    <!-- Page Header -->
-    <div class="d-flex flex-wrap align-items-center justify-content-between gap-3 mb-4">
-        <div>
-            <h4 class="mb-1 fw-bold">{{ page_title|default:"مدیریت رزروها" }}</h4>
-            <p class="text-muted mb-0 small">مدیریت کامل رزروها، وضعیت‌ها، مبالغ و عملیات مرتبط</p>
-        </div>
+{% if can_create_reservation %}
+<a href="#"
+   data-bs-toggle="modal"
+   data-bs-target="#createReservationModal">
+رزرو جدید
+</a>
+{% endif %}
 
-        <div>
-            <button class="btn btn-primary d-inline-flex align-items-center gap-1 px-3"
-                    data-bs-toggle="modal"
-                    data-bs-target="#createReservationModal">
-                <i class="ti ti-plus"></i>
-                <span>ثبت رزرو جدید</span>
-            </button>
-        </div>
-    </div>
+###### لیست رزروها
 
-    <!-- Summary Cards -->
-    <div class="row g-3 mb-4">
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card border-0 shadow-sm h-100 summary-card">
-                <div class="card-body">
-                    <div class="text-muted small mb-1">کل رزروها</div>
-                    <h4 class="mb-0 fw-bold">{{ total_count|default:0 }}</h4>
-                </div>
-            </div>
-        </div>
+| مشتری | لباس | تاریخ تحویل | شروع اجاره | پایان اجاره | وضعیت | عملیات |
+| --- | --- | --- | --- | --- | --- | --- |
 
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card border-0 shadow-sm h-100 summary-card">
-                <div class="card-body">
-                    <div class="text-muted small mb-1">پیش‌نویس</div>
-                    <h4 class="mb-0 fw-bold">{{ draft_count|default:0 }}</h4>
-                </div>
-            </div>
-        </div>
+{% for reservation in reservations %}
 
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card border-0 shadow-sm h-100 summary-card">
-                <div class="card-body">
-                    <div class="text-muted small mb-1">قطعی</div>
-                    <h4 class="mb-0 fw-bold">{{ confirmed_count|default:0 }}</h4>
-                </div>
-            </div>
-        </div>
+| {{ reservation.customer }}
+| {{ reservation.dress }}
+| {{ reservation.delivery_date|jformat:"%Y/%m/%d" }}
+| {{ reservation.start_date|jformat:"%Y/%m/%d" }}
+| {{ reservation.end_date|jformat:"%Y/%m/%d" }}
+| {{ reservation.get_status_display }}
+|
+{% if can_edit_reservation %}
+<a href="#"
+   data-bs-toggle="modal"
+   data-bs-target="#editReservationModal{{ reservation.id }}">
+ویرایش
+</a>
+{% endif %}
 
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card border-0 shadow-sm h-100 summary-card">
-                <div class="card-body">
-                    <div class="text-muted small mb-1">تحویل شده</div>
-                    <h4 class="mb-0 fw-bold">{{ delivered_count|default:0 }}</h4>
-                </div>
-            </div>
-        </div>
+{% if can_delete_reservation %}
+<a href="#"
+   data-bs-toggle="modal"
+   data-bs-target="#deleteReservationModal{{ reservation.id }}">
+حذف
+</a>
+{% endif %}
 
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card border-0 shadow-sm h-100 summary-card">
-                <div class="card-body">
-                    <div class="text-muted small mb-1">بازگشتی</div>
-                    <h4 class="mb-0 fw-bold">{{ returned_count|default:0 }}</h4>
-                </div>
-            </div>
-        </div>
+<a href="#"
+   data-bs-toggle="modal"
+   data-bs-target="#detailReservationModal{{ reservation.id }}">
+مشاهده جزئیات
+</a>
 
-        <div class="col-6 col-md-4 col-xl-2">
-            <div class="card border-0 shadow-sm h-100 summary-card">
-                <div class="card-body">
-                    <div class="text-muted small mb-1">خشکشویی / لغو</div>
-                    <h4 class="mb-0 fw-bold">{{ laundry_count|default:0 }} / {{ canceled_count|default:0 }}</h4>
-                </div>
-            </div>
-        </div>
-    </div>
+|
 
-    <!-- Filter Card -->
-    <div class="card border-0 shadow-sm mb-4">
-        <div class="card-body py-3">
-            <div class="d-flex flex-wrap align-items-center gap-2">
-                <span class="small text-muted ms-1">فیلتر وضعیت:</span>
+{% empty %}
 
-                <a href="{% url 'reservations:list' %}"
-                   class="btn btn-sm rounded-pill px-3 {% if not current_status %}btn-primary{% else %}btn-outline-primary{% endif %}">
-                    همه
-                </a>
+| رزروی ثبت نشده است | | | | | | |
 
-                <a href="{% url 'reservations:list' %}?status=DRAFT"
-                   class="btn btn-sm rounded-pill px-3 {% if current_status == 'DRAFT' %}btn-warning{% else %}btn-outline-warning{% endif %}">
-                    پیش‌نویس
-                </a>
+{% endfor %}
 
-                <a href="{% url 'reservations:list' %}?status=CONFIRMED"
-                   class="btn btn-sm rounded-pill px-3 {% if current_status == 'CONFIRMED' %}btn-info text-dark{% else %}btn-outline-info{% endif %}">
-                    قطعی
-                </a>
 
-                <a href="{% url 'reservations:list' %}?status=DELIVERED"
-                   class="btn btn-sm rounded-pill px-3 {% if current_status == 'DELIVERED' %}btn-success{% else %}btn-outline-success{% endif %}">
-                    تحویل
-                </a>
 
-                <a href="{% url 'reservations:list' %}?status=RETURNED"
-                   class="btn btn-sm rounded-pill px-3 {% if current_status == 'RETURNED' %}btn-secondary{% else %}btn-outline-secondary{% endif %}">
-                    بازگشتی
-                </a>
+{% if is_paginated %}
 
-                <a href="{% url 'reservations:list' %}?status=LAUNDRY"
-                   class="btn btn-sm rounded-pill px-3 {% if current_status == 'LAUNDRY' %}btn-dark{% else %}btn-outline-dark{% endif %}">
-                    خشکشویی
-                </a>
+{% if page_obj.has_previous %}
+* [قبلی](?page={{ page_obj.previous_page_number }})
+{% endif %}
 
-                <a href="{% url 'reservations:list' %}?status=CANCELED"
-                   class="btn btn-sm rounded-pill px-3 {% if current_status == 'CANCELED' %}btn-danger{% else %}btn-outline-danger{% endif %}">
-                    لغو
-                </a>
-            </div>
-        </div>
-    </div>
+{% for num in paginator.page_range %}
 
-    <!-- Desktop Table -->
-    <div class="card border-0 shadow-sm d-none d-lg-block">
-        <div class="card-body">
-            <div class="table-responsive">
-                <table class="table table-hover align-middle mb-0 reservation-table">
-                    <thead class="table-light">
-                        <tr>
-                            <th>#</th>
-                            <th>مشتری</th>
-                            <th>لباس</th>
-                            <th>تاریخ اجاره</th>
-                            <th>تاریخ مراسم</th>
-                            <th>تاریخ تحویل</th>
-                            <th>مدت</th>
-                            <th>مبلغ کل</th>
-                            <th>بیعانه</th>
-                            <th>باقی‌مانده</th>
-                            <th>وضعیت</th>
-                            <th>ایجادکننده</th>
-                            <th class="text-center">عملیات</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {% for reservation in reservations %}
-                        <tr>
-                            <td class="fw-semibold">{{ reservation.id }}</td>
-                            <td>
-                                <div class="fw-semibold">{{ reservation.customer|default:"-" }}</div>
-                            </td>
-                            <td>{{ reservation.dress|default:"-" }}</td>
-                            <td>{{ reservation.rent_date|to_jalali:'%Y/%m/%d'|default:"-" }}</td>
-                            <td>{{ reservation.ceremony_date|to_jalali:'%Y/%m/%d'|default:"-" }}</td>
-                            <td>{{ reservation.return_date|to_jalali:'%Y/%m/%d'|default:"-" }}</td>
-                            <td>{{ reservation.rent_days|default:0 }} روز</td>
-                            <td>{{ reservation.total_amount|default:0|intcomma }} تومان</td>
-                            <td>{{ reservation.deposit_amount|default:0|intcomma }} تومان</td>
-                            <td>{{ reservation.remaining_amount|default:0|intcomma }} تومان</td>
-                            <td>
-                                {% if reservation.status == 'DRAFT' %}
-                                    <span class="badge rounded-pill bg-warning text-dark px-3 py-2">پیش‌نویس</span>
-                                {% elif reservation.status == 'CONFIRMED' %}
-                                    <span class="badge rounded-pill bg-info text-dark px-3 py-2">قطعی</span>
-                                {% elif reservation.status == 'DELIVERED' %}
-                                    <span class="badge rounded-pill bg-success px-3 py-2">تحویل شده</span>
-                                {% elif reservation.status == 'RETURNED' %}
-                                    <span class="badge rounded-pill bg-secondary px-3 py-2">بازگشت داده شده</span>
-                                {% elif reservation.status == 'LAUNDRY' %}
-                                    <span class="badge rounded-pill bg-dark px-3 py-2">خشکشویی</span>
-                                {% elif reservation.status == 'CANCELED' %}
-                                    <span class="badge rounded-pill bg-danger px-3 py-2">لغو شده</span>
-                                {% else %}
-                                    <span class="badge rounded-pill bg-light text-dark px-3 py-2">
-                                        {{ reservation.get_status_display|default:"-" }}
-                                    </span>
-                                {% endif %}
-                            </td>
-                            <td>{{ reservation.created_by|default:"-" }}</td>
-                            <td class="text-center">
-                                <div class="d-flex justify-content-center gap-1 flex-wrap">
-                                    <button class="btn btn-sm btn-outline-secondary"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#detailReservationModal"
-                                            data-url="{% url 'reservations:detail' reservation.pk %}">
-                                        جزئیات
-                                    </button>
+{% if page_obj.number == num %}
+* {{ num }}
+{% else %}
+* [{{ num }}](?page={{ num }})
+{% endif %}
 
-                                    <button class="btn btn-sm btn-outline-primary"
-                                            data-bs-toggle="modal"
-                                            data-bs-target="#editReservationModal"
-                                            data-url="{% url 'reservations:edit' reservation.pk %}">
-                                        ویرایش
-                                    </button>
-                                </div>
-                            </td>
-                        </tr>
-                        {% empty %}
-                        <tr>
-                            <td colspan="13" class="text-center py-5 text-muted">
-                                هیچ رزروی یافت نشد.
-                            </td>
-                        </tr>
-                        {% endfor %}
-                    </tbody>
-                </table>
-            </div>
-        </div>
-    </div>
+{% endfor %}
 
-    <!-- Mobile / Tablet Cards -->
-    <div class="d-lg-none">
-        {% if reservations %}
-            <div class="row g-3">
-                {% for reservation in reservations %}
-                <div class="col-12">
-                    <div class="card border-0 shadow-sm reservation-mobile-card h-100">
-                        <div class="card-body">
-                            <div class="d-flex justify-content-between align-items-start gap-2 mb-3">
-                                <div>
-                                    <div class="fw-bold mb-1">{{ reservation.customer|default:"-" }}</div>
-                                    <div class="text-muted small">رزرو #{{ reservation.id }}</div>
-                                </div>
+{% if page_obj.has_next %}
+* [بعدی](?page={{ page_obj.next_page_number }})
+{% endif %}
 
-                                <div>
-                                    {% if reservation.status == 'DRAFT' %}
-                                        <span class="badge rounded-pill bg-warning text-dark">پیش‌نویس</span>
-                                    {% elif reservation.status == 'CONFIRMED' %}
-                                        <span class="badge rounded-pill bg-info text-dark">قطعی</span>
-                                    {% elif reservation.status == 'DELIVERED' %}
-                                        <span class="badge rounded-pill bg-success">تحویل شده</span>
-                                    {% elif reservation.status == 'RETURNED' %}
-                                        <span class="badge rounded-pill bg-secondary">بازگشت</span>
-                                    {% elif reservation.status == 'LAUNDRY' %}
-                                        <span class="badge rounded-pill bg-dark">خشکشویی</span>
-                                    {% elif reservation.status == 'CANCELED' %}
-                                        <span class="badge rounded-pill bg-danger">لغو شده</span>
-                                    {% else %}
-                                        <span class="badge rounded-pill bg-light text-dark">
-                                            {{ reservation.get_status_display|default:"-" }}
-                                        </span>
-                                    {% endif %}
-                                </div>
-                            </div>
+{% endif %}
 
-                            <div class="row g-2 small">
-                                <div class="col-6">
-                                    <div class="text-muted">لباس</div>
-                                    <div class="fw-semibold">{{ reservation.dress|default:"-" }}</div>
-                                </div>
 
-                                <div class="col-6">
-                                    <div class="text-muted">مدت</div>
-                                    <div class="fw-semibold">{{ reservation.rent_days|default:0 }} روز</div>
-                                </div>
 
-                                <div class="col-6">
-                                    <div class="text-muted">تاریخ اجاره</div>
-                                    <div class="fw-semibold">{{ reservation.rent_date|default:"-" }}</div>
-                                </div>
+{% for reservation in reservations %}
 
-                                <div class="col-6">
-                                    <div class="text-muted">تاریخ مراسم</div>
-                                    <div class="fw-semibold">{{ reservation.ceremony_date|default:"-" }}</div>
-                                </div>
-
-                                <div class="col-6">
-                                    <div class="text-muted">تاریخ تحویل</div>
-                                    <div class="fw-semibold">{{ reservation.return_date|default:"-" }}</div>
-                                </div>
-
-                                <div class="col-6">
-                                    <div class="text-muted">ایجادکننده</div>
-                                    <div class="fw-semibold">{{ reservation.created_by|default:"-" }}</div>
-                                </div>
-
-                                <div class="col-6">
-                                    <div class="text-muted">مبلغ کل</div>
-                                    <div class="fw-bold text-primary">{{ reservation.total_amount|default:0|intcomma }} تومان</div>
-                                </div>
-
-                                <div class="col-6">
-                                    <div class="text-muted">بیعانه</div>
-                                    <div class="fw-semibold">{{ reservation.deposit_amount|default:0|intcomma }} تومان</div>
-                                </div>
-
-                                <div class="col-12">
-                                    <div class="text-muted">باقی‌مانده</div>
-                                    <div class="fw-bold text-danger">{{ reservation.remaining_amount|default:0|intcomma }} تومان</div>
-                                </div>
-                            </div>
-
-                            <div class="d-flex flex-wrap gap-2 mt-3 pt-3 border-top">
-                                <button class="btn btn-sm btn-outline-secondary flex-fill"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#detailReservationModal"
-                                        data-url="{% url 'reservations:detail' reservation.pk %}">
-                                    جزئیات
-                                </button>
-
-                                <button class="btn btn-sm btn-outline-primary flex-fill"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#editReservationModal"
-                                        data-url="{% url 'reservations:edit' reservation.pk %}">
-                                    ویرایش
-                                </button>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-                {% endfor %}
-            </div>
-        {% else %}
-            <div class="card border-0 shadow-sm">
-                <div class="card-body text-center py-5 text-muted">
-                    هیچ رزروی یافت نشد.
-                </div>
-            </div>
-        {% endif %}
-    </div>
-
-    <!-- Pagination -->
-    {% if is_paginated %}
-    <div class="d-flex justify-content-center mt-4">
-        <nav>
-            <ul class="pagination mb-0 flex-wrap justify-content-center">
-                {% if page_obj.has_previous %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.previous_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}">
-                            قبلی
-                        </a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link">قبلی</span></li>
-                {% endif %}
-
-                {% for num in page_obj.paginator.page_range %}
-                    {% if page_obj.number == num %}
-                        <li class="page-item active"><span class="page-link">{{ num }}</span></li>
-                    {% else %}
-                        <li class="page-item">
-                            <a class="page-link" href="?page={{ num }}{% if current_status %}&status={{ current_status }}{% endif %}">
-                                {{ num }}
-                            </a>
-                        </li>
-                    {% endif %}
-                {% endfor %}
-
-                {% if page_obj.has_next %}
-                    <li class="page-item">
-                        <a class="page-link" href="?page={{ page_obj.next_page_number }}{% if current_status %}&status={{ current_status }}{% endif %}">
-                            بعدی
-                        </a>
-                    </li>
-                {% else %}
-                    <li class="page-item disabled"><span class="page-link">بعدی</span></li>
-                {% endif %}
-            </ul>
-        </nav>
-    </div>
-    {% endif %}
-</div>
-
-<!-- Modals -->
-{% include 'reservations/partials/_create_modal.html' %}
-{% include 'reservations/partials/_edit_modal.html' %}
 {% include 'reservations/partials/_detail_modal.html' %}
+
+{% if can_edit_reservation %}
+{% include 'reservations/partials/_edit_modal.html' %}
+{% endif %}
+
+{% if can_delete_reservation %}
 {% include 'reservations/partials/_delete_modal.html' %}
+{% endif %}
 
-<style>
-    .reservations-page .summary-card {
-        border-radius: 16px;
-    }
+{% endfor %}
 
-    .reservations-page .reservation-mobile-card {
-        border-radius: 16px;
-    }
 
-    .reservations-page .reservation-table thead th {
-        font-size: 13px;
-        white-space: nowrap;
-    }
 
-    .reservations-page .reservation-table tbody td {
-        vertical-align: middle;
-        font-size: 14px;
-    }
+{% if can_create_reservation %}
+{% include 'reservations/partials/_create_modal.html' %}
+{% endif %}
 
-    .reservations-page .btn.rounded-pill {
-        font-size: 13px;
-        padding-top: .45rem;
-        padding-bottom: .45rem;
-    }
-
-    .reservations-page .page-link {
-        border-radius: 10px;
-        margin: 0 2px;
-    }
-
-    @media (max-width: 767.98px) {
-        .reservations-page .summary-card .card-body {
-            padding: 14px;
-        }
-
-        .reservations-page .summary-card h4 {
-            font-size: 1.1rem;
-        }
-
-        .reservations-page .btn.rounded-pill {
-            font-size: 12px;
-            padding-left: .8rem;
-            padding-right: .8rem;
-        }
-    }
-</style>
 {% endblock %}

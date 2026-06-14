@@ -1,712 +1,365 @@
-{% load static %}
+<!-- templates/reservations/ui/partials/_create_modal.html -->
+
 {% load jalali_tags %}
 
-<div class="modal fade" id="createReservationModal" tabindex="-1" aria-labelledby="createReservationModalLabel" aria-hidden="true">
-    <div class="modal-dialog modal-xl modal-dialog-centered">
-        <div class="modal-content border-0 shadow">
-            <div class="modal-header">
-                <h5 class="modal-title" id="createReservationModalLabel">ایجاد رزرو جدید</h5>
-                <button type="button" class="btn-close m-0" data-bs-dismiss="modal" aria-label="بستن"></button>
-            </div>
+<div class="modal fade"
+id="createReservationModal"
+tabindex="-1"
+>
 
-            <form method="post" action="{% url 'reservations:create' %}" id="createReservationForm" novalidate>
-                {% csrf_token %}
+<div class="modal-dialog modal-lg">
 
-                <div class="modal-body">
-                    <div class="mb-4">
-                        <div class="d-flex gap-2 align-items-center flex-wrap">
-                            <div id="createStepIndicator1" class="badge bg-primary px-3 py-2">مرحله ۱: اطلاعات رزرو</div>
-                            <div id="createStepIndicator2" class="badge bg-secondary px-3 py-2">مرحله ۲: پرداخت و ضمانت</div>
-                        </div>
-                    </div>
+<div class="modal-content">
 
-                    <div class="d-none">
-                        {{ form.ceremony_date }}
-                        {{ form.status }}
-                    </div>
+<form id="reservationCreateForm">
 
-                    <!-- STEP 1 -->
-                    <div id="createStep1">
-                        <div class="row g-3">
+{% csrf_token %}
 
-                            <div class="col-md-6">
-                                <label for="id_customer" class="form-label">مشتری</label>
-                                {{ form.customer }}
-                                {% if form.customer.errors %}
-                                    <div class="text-danger small mt-1">{{ form.customer.errors }}</div>
-                                {% endif %}
-                            </div>
+<div class="modal-header">
 
-                            <div class="col-md-6">
-                                <label for="id_dress" class="form-label">لباس</label>
-                                <select name="dress" id="id_dress" class="form-select" required>
-                                    <option value="">انتخاب لباس</option>
-                                    {% for dress in form.fields.dress.queryset %}
-                                        <option
-                                            value="{{ dress.id }}"
-                                            data-rent-price="{{ dress.daily_rent_price|default:0 }}"
-                                            {% if form.dress.value|stringformat:"s" == dress.id|stringformat:"s" %}selected{% endif %}
-                                        >
-                                            {{ dress }}
-                                        </option>
-                                    {% endfor %}
-                                </select>
-                                {% if form.dress.errors %}
-                                    <div class="text-danger small mt-1">{{ form.dress.errors }}</div>
-                                {% endif %}
-                            </div>
+<h5 class="modal-title">
+ایجاد رزرو جدید
+</h5>
 
-                            <div class="col-md-4">
-                                <label for="id_rent_days" class="form-label">تعداد روز اجاره</label>
-                                {{ form.rent_days }}
-                                {% if form.rent_days.errors %}
-                                    <div class="text-danger small mt-1">{{ form.rent_days.errors }}</div>
-                                {% endif %}
-                            </div>
+<button
+type="button"
+class="btn-close"
+data-bs-dismiss="modal"
+></button>
 
-                            <div class="col-md-4">
-                                <label for="id_rent_date" class="form-label">تاریخ شروع اجاره</label>
-                                {{ form.rent_date }}
-                                {% if form.rent_date.errors %}
-                                    <div class="text-danger small mt-1">{{ form.rent_date.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="col-md-4">
-                                <label for="id_return_date" class="form-label">تاریخ تحویل</label>
-                                {{ form.return_date }}
-                                {% if form.return_date.errors %}
-                                    <div class="text-danger small mt-1">{{ form.return_date.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="col-12">
-                                <div class="p-3 rounded border bg-light">
-                                    <div class="row g-3 align-items-center">
-                                        <div class="col-md-4">
-                                            <label for="availabilityStatus" class="form-label mb-1">وضعیت بازه رزرو</label>
-                                            <input
-                                                type="text"
-                                                id="availabilityStatus"
-                                                class="form-control"
-                                                readonly
-                                                value="هنوز بررسی نشده"
-                                            >
-                                        </div>
-                                        <div class="col-md-8">
-                                            <label class="form-label mb-1">پیام سیستم</label>
-                                            <div id="availabilityMessage" class="small pt-2">
-                                                <span class="text-muted">پس از تکمیل اطلاعات، روی «بررسی مرحله اول» بزنید.</span>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            </div>
-
-                        </div>
-                    </div>
-
-                    <!-- STEP 2 -->
-                    <div id="createStep2" class="d-none">
-                        <div class="row g-3">
-
-                            <div class="col-md-6">
-                                <label for="finalAmountDisplay" class="form-label fw-bold">قیمت کل اجاره (تومان)</label>
-                                <input
-                                    type="text"
-                                    id="finalAmountDisplay"
-                                    class="form-control bg-light fw-bold text-primary"
-                                    readonly
-                                    value="0"
-                                >
-                                <div class="form-text">بر اساس قیمت روز لباس انتخاب شده محاسبه می‌شود.</div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="id_deposit_amount" class="form-label fw-bold">مبلغ بیعانه دریافتی</label>
-                                {{ form.deposit_amount }}
-                                <div id="depositError" class="text-danger small mt-1 d-none">
-                                    مبلغ بیعانه نمی‌تواند بیشتر از قیمت کل باشد.
-                                </div>
-                                {% if form.deposit_amount.errors %}
-                                    <div class="text-danger small mt-1">{{ form.deposit_amount.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="col-12">
-                                <div id="remainingAmountAlert" class="alert alert-info py-2 mb-0 d-flex justify-content-between align-items-center">
-                                    <span>مانده جهت تسویه در زمان تحویل:</span>
-                                    <strong id="remainingAmountDisplay">0 تومان</strong>
-                                </div>
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="id_payment_method" class="form-label">روش پرداخت بیعانه</label>
-                                {{ form.payment_method }}
-                                {% if form.payment_method.errors %}
-                                    <div class="text-danger small mt-1">{{ form.payment_method.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="id_payment_tracking_code" class="form-label">کد پیگیری پرداخت</label>
-                                {{ form.payment_tracking_code }}
-                                {% if form.payment_tracking_code.errors %}
-                                    <div class="text-danger small mt-1">{{ form.payment_tracking_code.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="id_guarantee_type_1" class="form-label">ضمانت اول</label>
-                                {{ form.guarantee_type_1 }}
-                                {% if form.guarantee_type_1.errors %}
-                                    <div class="text-danger small mt-1">{{ form.guarantee_type_1.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="id_guarantee_1_tracking_code" class="form-label">کد ضمانت اول</label>
-                                {{ form.guarantee_1_tracking_code }}
-                                {% if form.guarantee_1_tracking_code.errors %}
-                                    <div class="text-danger small mt-1">{{ form.guarantee_1_tracking_code.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="id_guarantee_type_2" class="form-label">ضمانت دوم (اختیاری)</label>
-                                {{ form.guarantee_type_2 }}
-                                {% if form.guarantee_type_2.errors %}
-                                    <div class="text-danger small mt-1">{{ form.guarantee_type_2.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="col-md-6">
-                                <label for="id_guarantee_2_tracking_code" class="form-label">کد ضمانت دوم</label>
-                                {{ form.guarantee_2_tracking_code }}
-                                {% if form.guarantee_2_tracking_code.errors %}
-                                    <div class="text-danger small mt-1">{{ form.guarantee_2_tracking_code.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                            <div class="col-12">
-                                <label for="id_description" class="form-label">توضیحات رزرو</label>
-                                {{ form.description }}
-                                {% if form.description.errors %}
-                                    <div class="text-danger small mt-1">{{ form.description.errors }}</div>
-                                {% endif %}
-                            </div>
-
-                        </div>
-                    </div>
-
-                    {% if form.non_field_errors %}
-                        <div class="alert alert-danger mt-4 mb-0">
-                            {{ form.non_field_errors }}
-                        </div>
-                    {% endif %}
-                </div>
-
-                <div class="modal-footer">
-                    <button type="button" class="btn btn-outline-secondary d-none" id="createPrevStepBtn">
-                        مرحله قبل
-                    </button>
-
-                    <button type="button" class="btn btn-info" id="checkCreateStep1Btn">
-                        بررسی مرحله اول
-                    </button>
-
-                    <button type="button" class="btn btn-primary d-none" id="createNextStepBtn" disabled>
-                        مرحله بعد
-                    </button>
-
-                    <button type="submit" class="btn btn-success d-none" id="createSubmitBtn">
-                        ثبت رزرو
-                    </button>
-                </div>
-            </form>
-        </div>
-    </div>
 </div>
 
-<script>
-(function () {
-    const modalId = 'createReservationModal';
-    const formId = 'createReservationForm';
-    const checkAvailabilityUrl = "{% url 'reservations:check_availability' %}";
-
-    let initialized = false;
-
-    function setupCreateReservationModal() {
-        if (initialized) return;
-
-        const form = document.getElementById(formId);
-        if (!form) return;
-
-        initialized = true;
-
-        const step1 = document.getElementById('createStep1');
-        const step2 = document.getElementById('createStep2');
-
-        const stepIndicator1 = document.getElementById('createStepIndicator1');
-        const stepIndicator2 = document.getElementById('createStepIndicator2');
-
-        const prevBtn = document.getElementById('createPrevStepBtn');
-        const checkStep1Btn = document.getElementById('checkCreateStep1Btn');
-        const nextBtn = document.getElementById('createNextStepBtn');
-        const submitBtn = document.getElementById('createSubmitBtn');
-
-        const customerField = document.getElementById('id_customer');
-        const dressField = document.getElementById('id_dress');
-        const rentDaysField = document.getElementById('id_rent_days');
-        const rentDateField = document.getElementById('id_rent_date');
-        const returnDateField = document.getElementById('id_return_date');
-        const ceremonyDateField = document.getElementById('id_ceremony_date');
-
-        const paymentMethodField = document.getElementById('id_payment_method');
-        const paymentTrackingCodeField = document.getElementById('id_payment_tracking_code');
-        const depositField = document.getElementById('id_deposit_amount');
-
-        const guaranteeType1Field = document.getElementById('id_guarantee_type_1');
-        const guaranteeCode1Field = document.getElementById('id_guarantee_1_tracking_code');
-        const guaranteeType2Field = document.getElementById('id_guarantee_type_2');
-        const guaranteeCode2Field = document.getElementById('id_guarantee_2_tracking_code');
-
-        const availabilityStatus = document.getElementById('availabilityStatus');
-        const availabilityMessage = document.getElementById('availabilityMessage');
-
-        const finalAmountDisplay = document.getElementById('finalAmountDisplay');
-        const remainingAmountDisplay = document.getElementById('remainingAmountDisplay');
-        const remainingAmountAlert = document.getElementById('remainingAmountAlert');
-        const depositError = document.getElementById('depositError');
-
-        let step1Approved = false;
-        let currentDressPrice = 0;
-
-        function toEnglishDigits(value) {
-            if (!value) return '';
-            const map = {
-                '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
-                '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9',
-                '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
-                '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9'
-            };
-            return String(value).replace(/[۰-۹٠-٩]/g, function (w) {
-                return map[w] || w;
-            });
-        }
-
-        function normalizeNumber(value) {
-            return toEnglishDigits(String(value || '')).replace(/,/g, '').trim();
-        }
-
-        function formatMoney(value) {
-            return Number(value || 0).toLocaleString('en-US');
-        }
-
-        function parsePositiveInt(value) {
-            const normalized = normalizeNumber(value);
-            const num = parseInt(normalized, 10);
-            return Number.isInteger(num) && num > 0 ? num : null;
-        }
-
-        function parseNonNegativeInt(value) {
-            const normalized = normalizeNumber(value);
-            if (normalized === '') return 0;
-            const num = parseInt(normalized, 10);
-            return Number.isInteger(num) && num >= 0 ? num : null;
-        }
-
-        function getSelectedOptionData(selectEl, attrName) {
-            if (!selectEl || !selectEl.selectedOptions || !selectEl.selectedOptions.length) {
-                return '';
-            }
-            return selectEl.selectedOptions[0].getAttribute(attrName) || '';
-        }
-
-        function loadCustomerCeremonyDate() {
-            if (!customerField || !ceremonyDateField) return;
-            const ceremonyDate = getSelectedOptionData(customerField, 'data-ceremony-date') || '';
-            ceremonyDateField.value = ceremonyDate;
-        }
-
-        function setAvailability(state, message, cssClass) {
-            if (availabilityStatus) {
-                availabilityStatus.value = state;
-            }
-
-            if (availabilityMessage) {
-                availabilityMessage.innerHTML = '<span class="' + cssClass + '">' + message + '</span>';
-            }
-        }
-
-        function resetAvailability() {
-            step1Approved = false;
-
-            if (nextBtn) {
-                nextBtn.disabled = true;
-            }
-
-            setAvailability(
-                'نیاز به بررسی مجدد',
-                'اطلاعات تغییر کرده است. دوباره بررسی کنید.',
-                'text-warning'
-            );
-        }
-
-        function calculateReturnDate() {
-            if (!rentDateField || !rentDaysField || !returnDateField) return;
-
-            const rentDateValue = (rentDateField.value || '').trim();
-            const rentDaysValue = parsePositiveInt(rentDaysField.value);
-
-            if (!rentDateValue || !rentDaysValue) {
-                returnDateField.value = '';
-                return;
-            }
-
-            const payload = new URLSearchParams();
-            payload.append('dress_id', dressField ? dressField.value : '');
-            payload.append('rent_date', rentDateValue);
-            payload.append('rent_days', String(rentDaysValue));
-            payload.append('only_calculate', '1');
-
-            fetch(checkAvailabilityUrl, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                    'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: payload.toString()
-            })
-            .then(response => response.json())
-            .then(data => {
-                if (data.return_date && returnDateField) {
-                    returnDateField.value = data.return_date;
-                }
-            })
-            .catch(() => {
-                // عمداً silent
-            });
-        }
-
-        function updatePricing() {
-            if (dressField && dressField.selectedOptions.length > 0) {
-                const selectedOption = dressField.selectedOptions[0];
-                currentDressPrice =
-                    parseInt(selectedOption.getAttribute('data-rent-price'), 10) ||
-                    parseInt(selectedOption.getAttribute('data-price'), 10) ||
-                    0;
-            } else {
-                currentDressPrice = 0;
-            }
-
-            if (finalAmountDisplay) {
-                finalAmountDisplay.value = formatMoney(currentDressPrice);
-            }
-
-            const depositValue = depositField ? parseNonNegativeInt(depositField.value) : 0;
-            const safeDeposit = depositValue === null ? 0 : depositValue;
-            const remaining = currentDressPrice - safeDeposit;
-
-            if (depositValue === null || safeDeposit > currentDressPrice) {
-                if (depositError) depositError.classList.remove('d-none');
-                if (depositField) depositField.classList.add('is-invalid');
-
-                if (remainingAmountDisplay) {
-                    remainingAmountDisplay.textContent = 'خطا در مبلغ بیعانه';
-                }
-
-                if (remainingAmountAlert) {
-                    remainingAmountAlert.classList.remove('alert-info', 'alert-success');
-                    remainingAmountAlert.classList.add('alert-danger');
-                }
-
-                if (submitBtn) submitBtn.disabled = true;
-                return;
-            }
-
-            if (depositError) depositError.classList.add('d-none');
-            if (depositField) depositField.classList.remove('is-invalid');
-
-            if (remainingAmountDisplay) {
-                remainingAmountDisplay.textContent = formatMoney(remaining) + ' تومان';
-            }
-
-            if (remainingAmountAlert) {
-                remainingAmountAlert.classList.remove('alert-danger');
-
-                if (remaining === 0) {
-                    remainingAmountAlert.classList.remove('alert-info');
-                    remainingAmountAlert.classList.add('alert-success');
-                } else {
-                    remainingAmountAlert.classList.remove('alert-success');
-                    remainingAmountAlert.classList.add('alert-info');
-                }
-            }
-
-            if (submitBtn) submitBtn.disabled = false;
-        }
-
-        function validateStep1Fields() {
-            if (!customerField || !customerField.value) {
-                setAvailability('نامعتبر', 'مشتری را انتخاب کنید.', 'text-danger');
-                return false;
-            }
-
-            if (!dressField || !dressField.value) {
-                setAvailability('نامعتبر', 'لباس را انتخاب کنید.', 'text-danger');
-                return false;
-            }
-
-            const rentDays = parsePositiveInt(rentDaysField ? rentDaysField.value : '');
-            if (!rentDays) {
-                setAvailability('نامعتبر', 'تعداد روز اجاره معتبر نیست.', 'text-danger');
-                return false;
-            }
-
-            if (!rentDateField || !rentDateField.value.trim()) {
-                setAvailability('نامعتبر', 'تاریخ شروع اجاره را وارد کنید.', 'text-danger');
-                return false;
-            }
-
-            return true;
-        }
-
-        async function checkAvailability() {
-            loadCustomerCeremonyDate();
-            updatePricing();
-
-            if (!validateStep1Fields()) {
-                step1Approved = false;
-                if (nextBtn) nextBtn.disabled = true;
-                return;
-            }
-
-            step1Approved = false;
-            if (nextBtn) nextBtn.disabled = true;
-
-            setAvailability('در حال بررسی...', 'لطفاً صبر کنید.', 'text-muted');
-
-            try {
-                const payload = new URLSearchParams();
-                payload.append('dress_id', dressField.value);
-                payload.append('rent_date', rentDateField.value.trim());
-                payload.append('rent_days', String(parsePositiveInt(rentDaysField.value)));
-                payload.append('reservation_id', '');
-
-                const response = await fetch(checkAvailabilityUrl, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8',
-                        'X-CSRFToken': form.querySelector('[name=csrfmiddlewaretoken]').value,
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: payload.toString()
-                });
-
-                const data = await response.json();
-
-                if (!response.ok) {
-                    setAvailability('خطا', data.message || 'خطا در بررسی وضعیت رزرو.', 'text-danger');
-                    return;
-                }
-
-                if (data.return_date && returnDateField) {
-                    returnDateField.value = data.return_date;
-                }
-
-                if (data.available) {
-                    step1Approved = true;
-                    if (nextBtn) nextBtn.disabled = false;
-                    setAvailability('آزاد', data.message || 'لباس در این بازه زمانی آزاد است.', 'text-success');
-                } else {
-                    step1Approved = false;
-                    if (nextBtn) nextBtn.disabled = true;
-                    setAvailability('رزرو شده', data.message || 'این لباس در این بازه زمانی قابل رزرو نیست.', 'text-danger');
-                }
-            } catch (error) {
-                step1Approved = false;
-                if (nextBtn) nextBtn.disabled = true;
-                setAvailability('خطا', 'خطا در ارتباط با سرور هنگام بررسی وضعیت رزرو.', 'text-danger');
-                console.error('checkAvailability error:', error);
-            }
-        }
-
-        function validateStep2() {
-            if (!paymentMethodField || !paymentMethodField.value) {
-                alert('روش پرداخت را انتخاب کنید.');
-                if (paymentMethodField) paymentMethodField.focus();
-                return false;
-            }
-
-            if (!paymentTrackingCodeField || !paymentTrackingCodeField.value.trim()) {
-                alert('کد پیگیری پرداخت را وارد کنید.');
-                if (paymentTrackingCodeField) paymentTrackingCodeField.focus();
-                return false;
-            }
-
-            if (!depositField || !depositField.value.trim()) {
-                alert('مبلغ بیعانه را وارد کنید.');
-                if (depositField) depositField.focus();
-                return false;
-            }
-
-            const depositValue = parseNonNegativeInt(depositField.value);
-
-            if (depositValue === null) {
-                alert('مبلغ بیعانه نامعتبر است.');
-                depositField.focus();
-                return false;
-            }
-
-            if (depositValue > currentDressPrice) {
-                alert('مبلغ بیعانه نمی‌تواند بیشتر از مبلغ کل باشد.');
-                depositField.focus();
-                return false;
-            }
-
-            if (!guaranteeType1Field || !guaranteeType1Field.value) {
-                alert('ضمانت اول اجباری است.');
-                if (guaranteeType1Field) guaranteeType1Field.focus();
-                return false;
-            }
-
-            if (!guaranteeCode1Field || !guaranteeCode1Field.value.trim()) {
-                alert('کد ضمانت اول را وارد کنید.');
-                if (guaranteeCode1Field) guaranteeCode1Field.focus();
-                return false;
-            }
-
-            if (guaranteeType2Field && guaranteeType2Field.value && (!guaranteeCode2Field || !guaranteeCode2Field.value.trim())) {
-                alert('برای ضمانت دوم، کد ضمانت دوم را هم وارد کنید.');
-                if (guaranteeCode2Field) guaranteeCode2Field.focus();
-                return false;
-            }
-
-            return true;
-        }
-
-        function showStep1() {
-            if (step1) step1.classList.remove('d-none');
-            if (step2) step2.classList.add('d-none');
-
-            if (stepIndicator1) {
-                stepIndicator1.classList.remove('bg-secondary');
-                stepIndicator1.classList.add('bg-primary');
-            }
-
-            if (stepIndicator2) {
-                stepIndicator2.classList.remove('bg-primary');
-                stepIndicator2.classList.add('bg-secondary');
-            }
-
-            if (prevBtn) prevBtn.classList.add('d-none');
-            if (submitBtn) submitBtn.classList.add('d-none');
-            if (checkStep1Btn) checkStep1Btn.classList.remove('d-none');
-            if (nextBtn) nextBtn.classList.remove('d-none');
-        }
-
-        function showStep2() {
-            if (step1) step1.classList.add('d-none');
-            if (step2) step2.classList.remove('d-none');
-
-            if (stepIndicator1) {
-                stepIndicator1.classList.remove('bg-primary');
-                stepIndicator1.classList.add('bg-secondary');
-            }
-
-            if (stepIndicator2) {
-                stepIndicator2.classList.remove('bg-secondary');
-                stepIndicator2.classList.add('bg-primary');
-            }
-
-            if (prevBtn) prevBtn.classList.remove('d-none');
-            if (submitBtn) submitBtn.classList.remove('d-none');
-            if (checkStep1Btn) checkStep1Btn.classList.add('d-none');
-            if (nextBtn) nextBtn.classList.add('d-none');
-        }
-
-        if (checkStep1Btn) {
-            checkStep1Btn.addEventListener('click', checkAvailability);
-        }
-
-        if (nextBtn) {
-            nextBtn.addEventListener('click', function () {
-                if (!step1Approved) {
-                    alert('ابتدا مرحله اول را بررسی و تأیید کنید.');
-                    return;
-                }
-
-                updatePricing();
-                showStep2();
-            });
-        }
-
-        if (prevBtn) {
-            prevBtn.addEventListener('click', function () {
-                showStep1();
-            });
-        }
-
-        form.addEventListener('submit', function (e) {
-            loadCustomerCeremonyDate();
-            updatePricing();
-
-            if (!step1Approved) {
-                e.preventDefault();
-                alert('ابتدا مرحله اول را بررسی و تأیید کنید.');
-                showStep1();
-                return;
-            }
-
-            if (!validateStep2()) {
-                e.preventDefault();
-            }
-        });
-
-        [customerField, dressField, rentDateField].forEach(function (field) {
-            if (!field) return;
-
-            field.addEventListener('change', function () {
-                loadCustomerCeremonyDate();
-                updatePricing();
-                resetAvailability();
-            });
-        });
-
-        if (rentDaysField) {
-            rentDaysField.addEventListener('input', function () {
-                resetAvailability();
-            });
-
-            rentDaysField.addEventListener('change', function () {
-                resetAvailability();
-            });
-        }
-
-        if (depositField) {
-            depositField.addEventListener('input', function () {
-                updatePricing();
-            });
-
-            depositField.addEventListener('change', function () {
-                updatePricing();
-            });
-        }
-
-        loadCustomerCeremonyDate();
-        updatePricing();
-        showStep1();
-    }
-
-    document.addEventListener('DOMContentLoaded', setupCreateReservationModal);
-
-    const modalElement = document.getElementById(modalId);
-    if (modalElement) {
-        modalElement.addEventListener('shown.bs.modal', function () {
-            setupCreateReservationModal();
-        });
-    }
-})();
-</script>
+<div class="modal-body">
+
+<!-- STEP 1 -->
+
+<div id="reservationStep1">
+
+<h6 class="mb-3">
+مرحله اول - اطلاعات رزرو
+</h6>
+
+
+<div class="row">
+
+<div class="col-md-6">
+
+<label>مشتری</label>
+
+<select
+name="customer"
+class="form-control"
+required
+>
+
+<option value="">انتخاب مشتری</option>
+
+{% for customer in customers %}
+
+<option value="{{ customer.id }}">
+{{ customer }}
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+
+<div class="col-md-6">
+
+<label>لباس</label>
+
+<select
+name="dress"
+class="form-control"
+required
+>
+
+<option value="">انتخاب لباس</option>
+
+{% for dress in dresses %}
+
+<option value="{{ dress.id }}">
+{{ dress }}
+</option>
+
+{% endfor %}
+
+</select>
+
+</div>
+
+</div>
+
+
+<div class="row mt-3">
+
+<div class="col-md-6">
+
+<label>تاریخ شروع اجاره</label>
+
+<input
+type="text"
+name="start_date"
+class="form-control jalali-datepicker"
+required
+>
+
+</div>
+
+<div class="col-md-6">
+
+<label>مدت اجاره (روز)</label>
+
+<input
+type="number"
+name="rental_days"
+class="form-control"
+required
+>
+
+</div>
+
+</div>
+
+
+<div class="row mt-4">
+
+<div class="col-md-4">
+
+<label>تاریخ مراسم</label>
+
+<input
+type="text"
+id="event_date"
+class="form-control"
+readonly
+>
+
+</div>
+
+<div class="col-md-4">
+
+<label>تاریخ پایان</label>
+
+<input
+type="text"
+id="end_date"
+class="form-control"
+readonly
+>
+
+</div>
+
+<div class="col-md-4">
+
+<label>هزینه اجاره</label>
+
+<input
+type="text"
+id="rent_price"
+class="form-control"
+readonly
+>
+
+</div>
+
+</div>
+
+</div>
+
+
+<!-- STEP 2 -->
+
+<div id="reservationStep2" style="display:none">
+
+<h6 class="mb-3">
+مرحله دوم - اطلاعات مالی
+</h6>
+
+
+<div class="row">
+
+<div class="col-md-6">
+
+<label>روش پرداخت</label>
+
+<select
+name="payment_method"
+class="form-control"
+required
+>
+
+<option value="">انتخاب کنید</option>
+
+<option value="CASH">نقدی</option>
+<option value="CARD">کارت به کارت</option>
+<option value="POS">کارتخوان</option>
+
+</select>
+
+</div>
+
+
+<div class="col-md-6">
+
+<label>کد رهگیری پرداخت</label>
+
+<input
+type="text"
+name="payment_tracking_code"
+class="form-control"
+required
+>
+
+</div>
+
+</div>
+
+
+<div class="row mt-3">
+
+<div class="col-md-6">
+
+<label>نوع ضمانت اول</label>
+
+<select
+name="guarantee1_type"
+class="form-control"
+required
+>
+
+<option value="CHECK">چک</option>
+<option value="CASH">پول</option>
+<option value="GOLD">طلا</option>
+<option value="PROMISSORY">سفته</option>
+
+</select>
+
+</div>
+
+<div class="col-md-6">
+
+<label>کد رهگیری ضمانت</label>
+
+<input
+type="text"
+name="guarantee1_tracking_code"
+class="form-control"
+required
+>
+
+</div>
+
+</div>
+
+
+<div class="row mt-3">
+
+<div class="col-md-6">
+
+<label>نوع ضمانت دوم</label>
+
+<select
+name="guarantee2_type"
+class="form-control"
+>
+
+<option value="">ندارد</option>
+
+<option value="CHECK">چک</option>
+<option value="CASH">پول</option>
+<option value="GOLD">طلا</option>
+<option value="PROMISSORY">سفته</option>
+
+</select>
+
+</div>
+
+<div class="col-md-6">
+
+<label>کد رهگیری ضمانت دوم</label>
+
+<input
+type="text"
+name="guarantee2_tracking_code"
+class="form-control"
+>
+
+</div>
+
+</div>
+
+
+<div class="row mt-4">
+
+<div class="col-md-6">
+
+<label>بیعانه</label>
+
+<input
+type="number"
+name="deposit_amount"
+class="form-control"
+required
+>
+
+</div>
+
+<div class="col-md-6">
+
+<label>تخفیف</label>
+
+<input
+type="number"
+name="discount_amount"
+class="form-control"
+>
+
+</div>
+
+</div>
+
+</div>
+
+</div>
+
+
+<div class="modal-footer">
+
+<button
+type="button"
+class="btn btn-secondary"
+data-bs-dismiss="modal"
+>
+انصراف
+</button>
+
+<button
+type="button"
+class="btn btn-primary"
+id="nextStepButton"
+>
+مرحله بعد
+</button>
+
+<button
+type="submit"
+class="btn btn-success"
+id="createReservationButton"
+style="display:none"
+>
+ثبت رزرو
+</button>
+
+</div>
+
+</form>
+
+</div>
+
+</div>
+
+</div>

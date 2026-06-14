@@ -1,24 +1,59 @@
 # reservations/urls.py
 
 from django.urls import path
+
 from .views import (
-    ReservationListView,
-    ReservationCreateView,
-    ReservationUpdateView,
-    ReservationDetailView,
-    ReservationDeleteView,
-    change_reservation_status_view,
-    CheckAvailabilityView
+    reservation_list,
+    reservation_step_one,
+    reservation_create,
+    reservation_detail,
+    reservation_delete,
+    check_availability,
 )
 
-app_name = 'reservations'
+app_name = "reservations"
 
 urlpatterns = [
-    path('', ReservationListView.as_view(), name='list'),
-    path('create/', ReservationCreateView.as_view(), name='create'),
-    path('<int:pk>/edit/', ReservationUpdateView.as_view(), name='edit'),
-    path('<int:pk>/detail/', ReservationDetailView.as_view(), name='detail'),
-    path('<int:pk>/delete/', ReservationDeleteView.as_view(), name='delete'),
-    path('<int:pk>/status/<str:new_status>/', change_reservation_status_view, name='change_status'),
-    path('check-availability/',CheckAvailabilityView.as_view(),name='check_availability'),
+
+    # list page
+    path(
+        "",
+        reservation_list,
+        name="list"
+    ),
+
+    # step one validation
+    path(
+        "step-one/",
+        reservation_step_one,
+        name="step_one"
+    ),
+
+    # create reservation
+    path(
+        "create/",
+        reservation_create,
+        name="create"
+    ),
+
+    # ajax check availability
+    path(
+        "check-availability/",
+        check_availability,
+        name="check_availability"
+    ),
+
+    # detail modal
+    path(
+        "<int:pk>/detail/",
+        reservation_detail,
+        name="detail"
+    ),
+
+    # cancel reservation
+    path(
+        "<int:pk>/delete/",
+        reservation_delete,
+        name="delete"
+    ),
 ]
