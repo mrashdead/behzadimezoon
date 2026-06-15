@@ -1,0 +1,28 @@
+{% extends 'base.html' %} {% block content %}
+<body>
+
+    <div class="container">
+      <div class="maintenance-wrapper text-center">
+        <div class="maintenance-status">
+          درحال
+          <br />
+          ساخت و ساز
+        </div>
+        <h2 class="maintenance-heading text-primary mb-3">
+          این صفحه در دست ساخت است. ما به زودی زنده خواهیم بود.
+        </h2>
+        <p class="maintenance-text mb-4 maxw-md-500px mx-auto">
+          وب سایت ما در حال ساخت است، اما ما آماده راه اندازی هستیم! سورپرایز
+          ویژه فقط برای مشترکین ما
+        </p>
+        <a
+          class="btn btn-primary waves-effect waves-light"
+          href="{% url 'dashboard:index' %}"
+        >
+          <i class="fi fi-rr-arrow-small-right scale-4x me-1"> </i>
+          بازگشت به داشبورد
+        </a>
+      </div>
+    </div>
+</body>
+{% endblock %}
