@@ -1,73 +1,27 @@
 {% if messages %}
-<div class="app-toast-stack" aria-live="polite" aria-atomic="true">
+<div class="toast-container position-fixed bottom-0 end-0 p-3">
     {% for message in messages %}
-        <div
-            class="app-toast app-toast--{{ message.tags|default:'info' }} js-app-toast"
-            role="alert"
-            data-delay="4200"
-        >
-            <div class="app-toast__accent"></div>
-            <div class="app-toast__content">
-                <div class="app-toast__icon">
-                    {% if message.tags == 'success' %}
-                        ✓
-                    {% elif message.tags == 'error' %}
-                        !
-                    {% elif message.tags == 'warning' %}
-                        !
-                    {% else %}
-                        i
-                    {% endif %}
-                </div>
-
-                <div class="app-toast__body">
-                    <div class="app-toast__title">
-                        {% if message.tags == 'success' %}
-                            موفق
-                        {% elif message.tags == 'error' %}
-                            خطا
-                        {% elif message.tags == 'warning' %}
-                            هشدار
-                        {% else %}
-                            اطلاعیه
-                        {% endif %}
-                    </div>
-                    <div class="app-toast__message">{{ message }}</div>
-                </div>
-
-                <button type="button" class="app-toast__close" aria-label="بستن">×</button>
+    <div class="toast align-items-center text-bg-{{ message.tags|default:'primary' }} border-0 show" role="alert" aria-live="assertive" aria-atomic="true" data-delay="5000">
+        <div class="d-flex">
+            <div class="toast-body">
+                {{ message }}
             </div>
+            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
         </div>
+    </div>
     {% endfor %}
 </div>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        document.querySelectorAll('.js-app-toast').forEach(function (toast) {
-            const delay = Number(toast.dataset.delay || 4200);
-            const closeButton = toast.querySelector('.app-toast__close');
-
-            requestAnimationFrame(function () {
-                toast.classList.add('is-visible');
-            });
-
-            const hideToast = function () {
-                toast.classList.remove('is-visible');
-                toast.classList.add('is-hiding');
-                setTimeout(function () {
-                    toast.remove();
-                }, 320);
-            };
-
-            const timer = setTimeout(hideToast, delay);
-
-            if (closeButton) {
-                closeButton.addEventListener('click', function () {
-                    clearTimeout(timer);
-                    hideToast();
-                });
-            }
-        });
+document.addEventListener('DOMContentLoaded', function () {
+    const toasts = document.querySelectorAll('.toast');
+    toasts.forEach(function(toastEl) {
+        const delay = 5000;
+        setTimeout(function () {
+            toastEl.classList.remove('show');
+            toastEl.classList.add('hide');
+        }, delay);
     });
+});
 </script>
 {% endif %}
