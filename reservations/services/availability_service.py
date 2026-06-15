@@ -26,6 +26,7 @@ class ReservationAvailabilityService:
             ReservationStatus.CONFIRMED,
             ReservationStatus.DELIVERED,
             ReservationStatus.RETURNED,
+            ReservationStatus.LAUNDRY,
         ]
 
 

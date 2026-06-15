@@ -7,14 +7,16 @@ class ReservationStatus:
     DELIVERED = "DELIVERED"
     RETURNED = "RETURNED"
     LAUNDRY = "LAUNDRY"
+    READY = "READY"
     CANCELLED = "CANCELLED"
 
     CHOICES = (
         (DRAFT, "پیش‌نویس"),
         (CONFIRMED, "قطعی"),
-        (DELIVERED, "تحویل شده"),
-        (RETURNED, "بازگشت داده شده"),
-        (LAUNDRY, "خشکشویی"),
+        (DELIVERED, "تحویل به مشتری"),
+        (RETURNED, "بازگشت از مشتری"),
+        (LAUNDRY, "ارسال شده به خشکشویی"),
+        (READY, "آماده و آزاد"),
         (CANCELLED, "لغو شده"),
     )
 

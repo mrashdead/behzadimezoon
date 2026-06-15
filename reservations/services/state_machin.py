@@ -20,7 +20,10 @@ class ReservationStateMachine:
         ReservationStatus.RETURNED: [
             ReservationStatus.LAUNDRY,
         ],
-        ReservationStatus.LAUNDRY: [],
+        ReservationStatus.LAUNDRY: [
+            ReservationStatus.READY,
+        ],
+        ReservationStatus.READY: [],
         ReservationStatus.CANCELLED: [],
     }
 

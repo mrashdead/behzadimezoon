@@ -79,9 +79,33 @@
                     <button
                       type="submit"
                       class="btn btn-subtle-info btn-sm btn-shadow btn-icon waves-effect"
-                      title="بازگشت داده شده"
+                      title="بازگشت از مشتری"
                     >
                       <i class="fi fi-rr-rotate-left"></i>
+                    </button>
+                  </form>
+                  {% endif %}
+                  {% if can_change_reservation_status and 'LAUNDRY' in reservation.allowed_transitions %}
+                  <form method="post" action="{% url 'reservations:laundry' reservation.pk %}" class="d-inline me-1">
+                    {% csrf_token %}
+                    <button
+                      type="submit"
+                      class="btn btn-subtle-warning btn-sm btn-shadow btn-icon waves-effect"
+                      title="ارسال به خشکشویی"
+                    >
+                      <i class="fi fi-rr-laundry"></i>
+                    </button>
+                  </form>
+                  {% endif %}
+                  {% if can_change_reservation_status and 'READY' in reservation.allowed_transitions %}
+                  <form method="post" action="{% url 'reservations:ready' reservation.pk %}" class="d-inline me-1">
+                    {% csrf_token %}
+                    <button
+                      type="submit"
+                      class="btn btn-subtle-success btn-sm btn-shadow btn-icon waves-effect"
+                      title="تایید نهایی"
+                    >
+                      <i class="fi fi-rr-check"></i>
                     </button>
                   </form>
                   {% endif %}
@@ -142,7 +166,29 @@
                         {% csrf_token %}
                         <button type="submit" class="dropdown-item py-2 d-flex align-items-center gap-2">
                           <i class="fi fi-rr-rotate-left text-info"></i>
-                          <span>بازگشت داده شده</span>
+                          <span>بازگشت از مشتری</span>
+                        </button>
+                      </form>
+                    </li>
+                    {% endif %}
+                    {% if can_change_reservation_status and 'LAUNDRY' in reservation.allowed_transitions %}
+                    <li>
+                      <form method="post" action="{% url 'reservations:laundry' reservation.pk %}" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="dropdown-item py-2 d-flex align-items-center gap-2">
+                          <i class="fi fi-rr-laundry text-warning"></i>
+                          <span>ارسال به خشکشویی</span>
+                        </button>
+                      </form>
+                    </li>
+                    {% endif %}
+                    {% if can_change_reservation_status and 'READY' in reservation.allowed_transitions %}
+                    <li>
+                      <form method="post" action="{% url 'reservations:ready' reservation.pk %}" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="dropdown-item py-2 d-flex align-items-center gap-2">
+                          <i class="fi fi-rr-check text-success"></i>
+                          <span>تایید نهایی</span>
                         </button>
                       </form>
                     </li>

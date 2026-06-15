@@ -11,6 +11,7 @@
             <p class="text-muted mb-0">مدیریت لباس‌ها و قیمت اجاره روزانه</p>
         </div>
 
+        {% if can_create_product %}
         <button
             type="button"
             class="btn btn-primary"
@@ -19,6 +20,7 @@
         >
             افزودن محصول
         </button>
+        {% endif %}
     </div>
     <div class="card border-0 shadow-sm customer-list-card">
     <div class="card-body">
@@ -46,9 +48,15 @@
                             </td>
 
                             <td data-label="وضعیت">
-                                <span class="badge bg-success">
-                                    {{ dress.get_status_display }}
+                                {% if dress.is_currently_rented %}
+                                <span class="badge bg-danger">
+                                    {{ dress.availability_label }}
                                 </span>
+                                {% else %}
+                                <span class="badge bg-success">
+                                    {{ dress.availability_label }}
+                                </span>
+                                {% endif %}
                             </td>
 
                             <td data-label="تاریخ ثبت">
@@ -59,6 +67,7 @@
                             <td data-label="عملیات" class="text-end">
                                 <!-- دسکتاپ -->
                                 <div class="d-none d-md-flex justify-content-end gap-2 flex-wrap table-actions">
+                                    {% if can_edit_product %}
                                     <button
                                         class="btn btn-subtle-primary btn-sm btn-shadow btn-icon waves-effect me-1"
                                         type="button"
@@ -68,7 +77,9 @@
                                     >
                                         <i class="fi fi-rr-edit"></i>
                                     </button>
+                                    {% endif %}
 
+                                    {% if can_delete_product %}
                                     <button
                                         class="btn btn-subtle-danger btn-sm btn-shadow btn-icon waves-effect me-1"
                                         type="button"
@@ -78,6 +89,7 @@
                                     >
                                         <i class="fi fi-rr-trash"></i>
                                     </button>
+                                    {% endif %}
                                 </div>
 
                                 <!-- موبایل -->
@@ -92,6 +104,7 @@
                                     </button>
 
                                     <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg" style="border-radius: 12px; min-width: 180px;">
+                                        {% if can_edit_product %}
                                         <li>
                                             <button
                                                 class="dropdown-item py-2 d-flex align-items-center gap-2"
@@ -103,7 +116,9 @@
                                                 <span>ویرایش محصول</span>
                                             </button>
                                         </li>
+                                        {% endif %}
 
+                                        {% if can_delete_product %}
                                         <li><hr class="dropdown-divider opacity-50"></li>
 
                                         <li>
@@ -117,6 +132,7 @@
                                                 <span>حذف محصول</span>
                                             </button>
                                         </li>
+                                        {% endif %}
                                     </ul>
                                 </div>
                             </td>
@@ -138,7 +154,9 @@
     </div>
 </div>
 
+{% if can_create_product %}
 {% include 'products/partials/_add_modal.html' %}
+{% endif %}
 
 {% for dress in dresses %}
   {% include 'products/partials/_edit_modal.html' %}

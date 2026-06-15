@@ -6,7 +6,7 @@ def user_can_create_customer(user):
         return False
     if user.is_superuser:
         return True
-    return getattr(user, 'role', None) in ['seller', 'manager', 'admin']
+    return getattr(user, 'role', None) in ['SELLER', 'MANAGER', 'SUPER_ADMIN']
 
 
 def user_can_edit_customer(user):
@@ -14,7 +14,7 @@ def user_can_edit_customer(user):
         return False
     if user.is_superuser:
         return True
-    return getattr(user, 'role', None) in ['manager', 'admin']
+    return getattr(user, 'role', None) in ['MANAGER', 'SUPER_ADMIN']
 
 
 def user_can_delete_customer(user):
@@ -22,4 +22,4 @@ def user_can_delete_customer(user):
         return False
     if user.is_superuser:
         return True
-    return getattr(user, 'role', None) in ['manager', 'admin']
+    return getattr(user, 'role', None) in ['MANAGER', 'SUPER_ADMIN']

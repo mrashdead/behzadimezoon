@@ -96,6 +96,18 @@ class ReservationStatusTransitionTests(TestCase):
         reservation.refresh_from_db()
         self.assertEqual(reservation.status, ReservationStatus.RETURNED)
 
+        laundry_url = reverse('reservations:laundry', args=[reservation.pk])
+        response = self.client.post(laundry_url)
+        self.assertEqual(response.status_code, 302)
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, ReservationStatus.LAUNDRY)
+
+        ready_url = reverse('reservations:ready', args=[reservation.pk])
+        response = self.client.post(ready_url)
+        self.assertEqual(response.status_code, 302)
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, ReservationStatus.READY)
+
     def test_super_admin_can_mark_delivered_and_returned(self):
         reservation = Reservation.objects.create(
             customer=self.customer,
@@ -154,5 +166,98 @@ class ReservationStatusTransitionTests(TestCase):
         self.assertEqual(response.status_code, 400)
         self.assertJSONEqual(response.content, {
             "success": False,
-            "message": "انتقال وضعیت از بازگشت داده شده به لغو شده مجاز نیست."
+            "message": "انتقال وضعیت از بازگشت از مشتری به لغو شده مجاز نیست."
         })
+
+    def test_duplicate_reservation_request_is_rejected(self):
+        self.client.login(username='manager_user', password='password123')
+
+        post_data = {
+            'customer': str(self.customer.id),
+            'dress': str(self.dress.id),
+            'start_date': '1402/01/01',
+            'rental_days': '3',
+            'payment_method': 'CASH',
+            'payment_tracking_code': 'PAY123',
+            'guarantee1_type': 'CASH',
+            'guarantee1_tracking_code': 'G1',
+            'deposit_amount': '50000',
+            'discount_amount': '0',
+        }
+
+        url = reverse('reservations:create')
+        response1 = self.client.post(url, post_data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response1.status_code, 200)
+        self.assertJSONEqual(response1.content, {"success": True, "message": "رزرو با موفقیت ثبت شد."})
+
+        response2 = self.client.post(url, post_data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response2.status_code, 200)
+        self.assertJSONEqual(response2.content, {
+            "success": False,
+            "message": "این لباس در این بازه زمانی رزرو شده است."
+        })
+
+    def test_overlapping_reservation_is_rejected(self):
+        Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=50000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        create_url = reverse('reservations:create')
+        post_data = {
+            'customer': str(self.customer.id),
+            'dress': str(self.dress.id),
+            'start_date': '1402/01/01',
+            'rental_days': '3',
+            'payment_method': 'CASH',
+            'payment_tracking_code': 'PAY456',
+            'guarantee1_type': 'CASH',
+            'guarantee1_tracking_code': 'G2',
+            'deposit_amount': '50000',
+            'discount_amount': '0',
+        }
+
+        response = self.client.post(create_url, post_data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, {
+            "success": False,
+            "message": "این لباس در این بازه زمانی رزرو شده است."
+        })
+
+    def test_seller_cannot_delete_reservation(self):
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=50000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='seller_user', password='password123')
+        delete_url = reverse('reservations:delete', args=[reservation.pk])
+        response = self.client.post(delete_url)
+        self.assertEqual(response.status_code, 403)

@@ -125,9 +125,12 @@ def reservation_create(request):
         step1_form = ReservationStepOneForm(request.POST)
         if not step1_form.is_valid():
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                message = " ".join(
+                    [str(e) for errors in step1_form.errors.values() for e in errors]
+                )
                 return JsonResponse({
                     "success": False,
-                    "errors": step1_form.errors
+                    "message": message
                 })
             return render(request, "reservations/list.html", {
                 "customers": Customer.objects.all(),
@@ -151,9 +154,12 @@ def reservation_create(request):
     form = ReservationStepTwoForm(request.POST)
     if not form.is_valid():
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            message = " ".join(
+                [str(e) for errors in form.errors.values() for e in errors]
+            )
             return JsonResponse({
                 "success": False,
-                "errors": form.errors
+                "message": message
             })
         return render(request, "reservations/list.html", {
             "customers": Customer.objects.all(),
@@ -266,6 +272,60 @@ def reservation_mark_returned(request, pk):
         ReservationStatusService.change_status(
             reservation,
             ReservationStatus.RETURNED,
+            request.user
+        )
+    except ValueError:
+        return JsonResponse({
+            "success": False,
+            "message": "این تغییر وضعیت مجاز نیست."
+        }, status=400)
+
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JsonResponse({"success": True})
+
+    return redirect("reservations:list")
+
+
+@login_required
+@require_POST
+def reservation_mark_laundry(request, pk):
+
+    if not can_change_reservation_status(request.user):
+        return HttpResponseForbidden()
+
+    reservation = get_object_or_404(Reservation, pk=pk)
+
+    try:
+        ReservationStatusService.change_status(
+            reservation,
+            ReservationStatus.LAUNDRY,
+            request.user
+        )
+    except ValueError:
+        return JsonResponse({
+            "success": False,
+            "message": "این تغییر وضعیت مجاز نیست."
+        }, status=400)
+
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JsonResponse({"success": True})
+
+    return redirect("reservations:list")
+
+
+@login_required
+@require_POST
+def reservation_mark_ready(request, pk):
+
+    if not can_change_reservation_status(request.user):
+        return HttpResponseForbidden()
+
+    reservation = get_object_or_404(Reservation, pk=pk)
+
+    try:
+        ReservationStatusService.change_status(
+            reservation,
+            ReservationStatus.READY,
             request.user
         )
     except ValueError:

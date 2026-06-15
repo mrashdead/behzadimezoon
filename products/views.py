@@ -1,5 +1,6 @@
 #products/views.py
 from django.contrib import messages
+from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views import View
@@ -7,6 +8,22 @@ from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from .forms import DressForm
 from .models import Dress
+
+
+class ProductManagerPermissionMixin(LoginRequiredMixin, UserPassesTestMixin):
+    raise_exception = True
+
+    def test_func(self):
+        user = self.request.user
+        return user.is_superuser or getattr(user, 'role', None) in ['SUPER_ADMIN', 'MANAGER']
+
+
+class ProductCreatePermissionMixin(LoginRequiredMixin, UserPassesTestMixin):
+    raise_exception = True
+
+    def test_func(self):
+        user = self.request.user
+        return user.is_superuser or getattr(user, 'role', None) in ['SUPER_ADMIN', 'MANAGER', 'SELLER']
 
 
 class DressListView(ListView):
@@ -19,9 +36,21 @@ class DressListView(ListView):
         context = super().get_context_data(**kwargs)
         context['page_title'] = 'محصولات'
         context['form'] = DressForm()
+        user = self.request.user
+        can_create_product = user.is_authenticated and (
+            user.is_superuser or getattr(user, 'role', None) in ['SUPER_ADMIN', 'MANAGER', 'SELLER']
+        )
+        can_edit_product = user.is_authenticated and (
+            user.is_superuser or getattr(user, 'role', None) in ['SUPER_ADMIN', 'MANAGER']
+        )
+        can_delete_product = can_edit_product
+        context['can_create_product'] = can_create_product
+        context['can_edit_product'] = can_edit_product
+        context['can_delete_product'] = can_delete_product
+        context['can_manage_product'] = can_edit_product or can_delete_product
         return context
 
-class DressCreateView(CreateView):
+class DressCreateView(ProductCreatePermissionMixin, CreateView):
     model = Dress
     form_class = DressForm
     template_name = 'products/form.html'
@@ -43,7 +72,7 @@ class DressCreateView(CreateView):
         return context
 
 
-class DressUpdateView(UpdateView):
+class DressUpdateView(ProductManagerPermissionMixin, UpdateView):
     model = Dress
     form_class = DressForm
     template_name = 'products/form.html'
@@ -66,7 +95,7 @@ class DressUpdateView(UpdateView):
         return context
 
 
-class DressDeleteView(View):
+class DressDeleteView(ProductManagerPermissionMixin, View):
     def post(self, request, pk):
         dress = get_object_or_404(Dress, pk=pk)
         dress.delete()

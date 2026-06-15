@@ -1,0 +1,50 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block title %}{% if form_mode == 'update' %}ویرایش محصول{% else %}افزودن محصول{% endif %}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="app-page-head d-flex flex-wrap gap-2 align-items-center justify-content-between">
+    <div>
+      <h1 class="h3 mb-2">{% if form_mode == 'update' %}ویرایش محصول{% else %}افزودن محصول جدید{% endif %}</h1>
+      <p class="text-muted mb-0">از این فرم برای ثبت یا ویرایش اطلاعات لباس استفاده کنید.</p>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <form method="post" novalidate>
+        {% csrf_token %}
+
+        <div class="row g-3">
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label for="id_code" class="form-label">کد لباس</label>
+              {{ form.code }}
+              {% if form.code.errors %}
+              <div class="invalid-feedback d-block">{{ form.code.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+          </div>
+
+          <div class="col-md-6">
+            <div class="mb-3">
+              <label for="id_daily_rent_price" class="form-label">قیمت اجاره روزانه</label>
+              {{ form.daily_rent_price }}
+              {% if form.daily_rent_price.errors %}
+              <div class="invalid-feedback d-block">{{ form.daily_rent_price.errors|join:", " }}</div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        <div class="d-flex justify-content-end gap-2 mt-4">
+          <a href="{% url 'products:list' %}" class="btn btn-light">بازگشت</a>
+          <button type="submit" class="btn btn-primary">{% if form_mode == 'update' %}ذخیره تغییرات{% else %}ثبت محصول{% endif %}</button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>
+{% endblock %}

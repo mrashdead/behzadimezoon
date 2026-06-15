@@ -32,17 +32,17 @@ class CustomerListView(LoginRequiredMixin, ListView):
     def can_create_customer(self, user):
         if user.is_superuser:
             return True
-        return getattr(user, "role", None) in ["seller", "manager", "admin"]
+        return getattr(user, "role", None) in ["SELLER", "MANAGER", "SUPER_ADMIN"]
 
     def can_edit_customer(self, user):
         if user.is_superuser:
             return True
-        return getattr(user, "role", None) in ["manager", "admin"]
+        return getattr(user, "role", None) in ["MANAGER", "SUPER_ADMIN"]
 
     def can_delete_customer(self, user):
         if user.is_superuser:
             return True
-        return getattr(user, "role", None) in ["manager", "admin"]
+        return getattr(user, "role", None) in ["MANAGER", "SUPER_ADMIN"]
 
 
 class CustomerCreateView(LoginRequiredMixin, CreateView):

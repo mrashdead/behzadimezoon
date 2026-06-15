@@ -9,6 +9,8 @@ from .views import (
     reservation_detail,
     reservation_mark_delivered,
     reservation_mark_returned,
+    reservation_mark_laundry,
+    reservation_mark_ready,
     reservation_edit,
     reservation_delete,
     check_availability,
@@ -72,6 +74,20 @@ urlpatterns = [
         "<int:pk>/returned/",
         reservation_mark_returned,
         name="returned"
+    ),
+
+    # send to laundry
+    path(
+        "<int:pk>/laundry/",
+        reservation_mark_laundry,
+        name="laundry"
+    ),
+
+    # approve laundry completion
+    path(
+        "<int:pk>/ready/",
+        reservation_mark_ready,
+        name="ready"
     ),
 
     # cancel reservation
