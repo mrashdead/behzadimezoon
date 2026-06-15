@@ -77,6 +77,12 @@ class ReservationStepOneForm(forms.Form):
 
 class ReservationStepTwoForm(forms.ModelForm):
 
+    discount_amount = forms.IntegerField(
+        min_value=0,
+        required=False,
+        label="تخفیف"
+    )
+
     class Meta:
         model = Reservation
 
@@ -107,7 +113,10 @@ class ReservationStepTwoForm(forms.ModelForm):
         cleaned_data = super().clean()
 
         deposit = cleaned_data.get("deposit_amount") or 0
-        discount = cleaned_data.get("discount_amount") or 0
+        discount = cleaned_data.get("discount_amount")
+        if discount is None:
+            discount = 0
+            cleaned_data["discount_amount"] = 0
 
         if deposit < 0:
             raise ValidationError("بیعانه نمی‌تواند منفی باشد.")

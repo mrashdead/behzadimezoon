@@ -14,7 +14,10 @@ class ReservationStatusService:
             reservation.status,
             new_status
         ):
-            raise ValueError("تغییر وضعیت مجاز نیست.")
+            readable_status = dict(ReservationStatus.CHOICES).get(new_status, new_status)
+            raise ValueError(
+                f"انتقال وضعیت از {reservation.get_status_display()} به {readable_status} مجاز نیست."
+            )
 
         if new_status == ReservationStatus.CANCELLED:
             reservation.cancelled_at = timezone.now()

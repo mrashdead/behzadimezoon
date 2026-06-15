@@ -61,6 +61,30 @@
                   >
                     <i class="icon-eye"></i>
                   </button>
+                  {% if can_change_reservation_status and 'DELIVERED' in reservation.allowed_transitions %}
+                  <form method="post" action="{% url 'reservations:delivered' reservation.pk %}" class="d-inline me-1">
+                    {% csrf_token %}
+                    <button
+                      type="submit"
+                      class="btn btn-subtle-success btn-sm btn-shadow btn-icon waves-effect"
+                      title="تحویل شده"
+                    >
+                      <i class="fi fi-rr-check"></i>
+                    </button>
+                  </form>
+                  {% endif %}
+                  {% if can_change_reservation_status and 'RETURNED' in reservation.allowed_transitions %}
+                  <form method="post" action="{% url 'reservations:returned' reservation.pk %}" class="d-inline me-1">
+                    {% csrf_token %}
+                    <button
+                      type="submit"
+                      class="btn btn-subtle-info btn-sm btn-shadow btn-icon waves-effect"
+                      title="بازگشت داده شده"
+                    >
+                      <i class="fi fi-rr-rotate-left"></i>
+                    </button>
+                  </form>
+                  {% endif %}
                   {% if can_edit_reservation %}
                   <button
                     type="button"
@@ -72,7 +96,7 @@
                    <i class="fi fi-rr-edit"></i>
                   </button>
                   {% endif %}
-                  {% if can_delete_reservation %}
+                  {% if can_delete_reservation and 'CANCELLED' in reservation.allowed_transitions %}
                   <button
                     type="button"
                     class="btn btn-subtle-danger btn-sm btn-shadow btn-icon waves-effect me-1"
@@ -101,6 +125,28 @@
                         <span>مشاهده جزئیات</span>
                       </button>
                     </li>
+                    {% if can_change_reservation_status and 'DELIVERED' in reservation.allowed_transitions %}
+                    <li>
+                      <form method="post" action="{% url 'reservations:delivered' reservation.pk %}" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="dropdown-item py-2 d-flex align-items-center gap-2">
+                          <i class="fi fi-rr-check text-success"></i>
+                          <span>تحویل شده</span>
+                        </button>
+                      </form>
+                    </li>
+                    {% endif %}
+                    {% if can_change_reservation_status and 'RETURNED' in reservation.allowed_transitions %}
+                    <li>
+                      <form method="post" action="{% url 'reservations:returned' reservation.pk %}" class="m-0">
+                        {% csrf_token %}
+                        <button type="submit" class="dropdown-item py-2 d-flex align-items-center gap-2">
+                          <i class="fi fi-rr-rotate-left text-info"></i>
+                          <span>بازگشت داده شده</span>
+                        </button>
+                      </form>
+                    </li>
+                    {% endif %}
                     {% if can_edit_reservation %}
                     <li>
                       <button class="dropdown-item py-2 d-flex align-items-center gap-2" type="button" data-bs-toggle="modal" data-bs-target="#editReservationModal{{ reservation.id }}">
@@ -109,7 +155,7 @@
                       </button>
                     </li>
                     {% endif %}
-                    {% if can_delete_reservation %}
+                    {% if can_delete_reservation and 'CANCELLED' in reservation.allowed_transitions %}
                     <li><hr class="dropdown-divider opacity-50"></li>
                     <li>
                       <button class="dropdown-item py-2 d-flex align-items-center gap-2 text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteReservationModal{{ reservation.id }}">

@@ -7,6 +7,8 @@ from .views import (
     reservation_step_one,
     reservation_create,
     reservation_detail,
+    reservation_mark_delivered,
+    reservation_mark_returned,
     reservation_edit,
     reservation_delete,
     check_availability,
@@ -56,6 +58,20 @@ urlpatterns = [
         "<int:pk>/edit/",
         reservation_edit,
         name="edit"
+    ),
+
+    # mark delivered
+    path(
+        "<int:pk>/delivered/",
+        reservation_mark_delivered,
+        name="delivered"
+    ),
+
+    # mark returned
+    path(
+        "<int:pk>/returned/",
+        reservation_mark_returned,
+        name="returned"
     ),
 
     # cancel reservation

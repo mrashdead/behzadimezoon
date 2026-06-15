@@ -101,242 +101,260 @@ document.addEventListener('DOMContentLoaded', function () {
 </script>
 
 <script>
-
 document.addEventListener("DOMContentLoaded", function () {
 
-let step1 = document.getElementById("reservationStep1")
-let step2 = document.getElementById("reservationStep2")
+  const step1 = document.getElementById("reservationStep1")
+  const step2 = document.getElementById("reservationStep2")
+  const step2Card = document.getElementById("reservationStep2Card")
 
-let nextBtn = document.getElementById("nextStepButton")
-let submitBtn = document.getElementById("createReservationButton")
+  const nextBtn = document.getElementById("nextStepButton")
+  const submitBtn = document.getElementById("createReservationButton")
+  const form = document.getElementById("reservationCreateForm")
 
-let form = document.getElementById("reservationCreateForm")
+  if (!form) return
 
-if(!form) return
+  const customerSelect = form.querySelector("select[name='customer']")
+  const dressSelect = form.querySelector("select[name='dress']")
+  const startDateInput = form.querySelector("input[name='start_date']")
+  const rentalDaysInput = form.querySelector("input[name='rental_days']")
 
+  const eventDateField = document.getElementById("event_date")
+  const endDateField = document.getElementById("end_date")
+  const rentPriceField = document.getElementById("rent_price")
+  const remainingAmountField = document.getElementById("remaining_amount")
 
-let customerSelect = form.querySelector("select[name='customer']")
-let dressSelect = form.querySelector("select[name='dress']")
-let startDateInput = form.querySelector("input[name='start_date']")
-let rentalDaysInput = form.querySelector("input[name='rental_days']")
+  const depositInput = form.querySelector("input[name='deposit_amount']")
+  const discountInput = form.querySelector("input[name='discount_amount']")
 
-let eventDateField = document.getElementById("event_date")
-let endDateField = document.getElementById("end_date")
-let rentPriceField = document.getElementById("rent_price")
-let remainingAmountField = document.getElementById("remaining_amount")
-
-let depositInput = form.querySelector("input[name='deposit_amount']")
-let discountInput = form.querySelector("input[name='discount_amount']")
-
-let rentPrice = 0
-
+  let rentPrice = 0
 
 
-function checkAvailability() {
-
-let dress = dressSelect.value
-let customer = customerSelect.value
-let start_date = startDateInput.value
-let rental_days = rentalDaysInput.value
-
-if(!dress || !customer || !start_date || !rental_days){
-  return
-}
-
-fetch("/reservations/check-availability/", {
-
-method: "POST",
-
-headers: {
-"Content-Type": "application/x-www-form-urlencoded",
-"X-CSRFToken": getCookie("csrftoken")
-},
-
-body: new URLSearchParams({
-  customer_id: customer,
-  dress_id: dress,
-  start_date: start_date,
-  rental_days: rental_days
-})
-
-})
-.then(response => response.json())
-.then(data => {
-
-if(data.success){
-
-if(data.available){
-
-      endDateField.value = data.end_date
-      eventDateField.value = data.event_date
-      rentPrice = parseFloat(data.rent_price) || 0
-      rentPriceField.value = formatCurrency(rentPrice)
-      if (remainingAmountField) {
-        remainingAmountField.value = formatCurrency(rentPrice)
+  function getCookie(name) {
+    let cookieValue = null
+    if (document.cookie && document.cookie !== "") {
+      const cookies = document.cookie.split(";")
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim()
+        if (cookie.substring(0, name.length + 1) === name + "=") {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1))
+          break
+        }
       }
-
-      nextBtn.disabled = false
-
-    } else {
-
-nextBtn.disabled = true
-
-}
-
-}else{
-
-alert(data.message)
-
-}
-
-})
-
-}
-
-
-
-function saveReservationStepOne() {
-  let formData = new URLSearchParams({
-    customer: customerSelect.value,
-    dress: dressSelect.value,
-    start_date: startDateInput.value,
-    rental_days: rentalDaysInput.value
-  })
-
-  return fetch("/reservations/step-one/", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/x-www-form-urlencoded",
-      "X-CSRFToken": getCookie("csrftoken")
-    },
-    body: formData
-  }).then(response => response.json())
-}
-
-dressSelect.addEventListener("change", checkAvailability)
-startDateInput.addEventListener("change", checkAvailability)
-rentalDaysInput.addEventListener("input", checkAvailability)
-
-
-
-nextBtn.addEventListener("click", function(){
-  saveReservationStepOne().then(data => {
-    if (data.success) {
-      step1.style.display = "none"
-      step2.style.display = "block"
-
-      nextBtn.style.display = "none"
-      submitBtn.classList.remove('d-none')
-      submitBtn.style.display = "inline-block"
-      submitBtn.disabled = false
-    } else {
-      let message = data.message || ''
-      if (data.errors) {
-        message = Object.values(data.errors).flat().join('\n')
-      }
-      alert(message || 'مرحله اول به درستی ثبت نشد.')
     }
-  }).catch(() => {
-    alert('خطا در ذخیره اطلاعات مرحله اول. لطفا دوباره تلاش کنید.')
-  })
-})
-
-
-
-function formatCurrency(value) {
-  if (Number.isNaN(value) || value === null) {
-    return ''
-  }
-  return Number(Math.round(value)).toLocaleString('en-US')
-}
-
-function calculateRemaining(){
-  let deposit = parseFloat(depositInput.value || 0)
-  let discount = parseFloat(discountInput.value || 0)
-
-  let remaining = rentPrice - deposit - discount
-
-  if(remaining < 0){
-    remaining = 0
+    return cookieValue
   }
 
-  if (remainingAmountField) {
-    remainingAmountField.value = formatCurrency(remaining)
+
+  function formatCurrency(value) {
+    if (Number.isNaN(value) || value === null) return ""
+    return Number(Math.round(value)).toLocaleString("en-US")
   }
-}
 
 
+  function calculateRemaining() {
+    const deposit = parseFloat(depositInput.value || 0)
+    const discount = parseFloat(discountInput.value || 0)
 
-depositInput.addEventListener("input", calculateRemaining)
-discountInput.addEventListener("input", calculateRemaining)
+    let remaining = rentPrice - deposit - discount
+    if (remaining < 0) remaining = 0
+
+    if (remainingAmountField) {
+      remainingAmountField.value = formatCurrency(remaining)
+    }
+  }
 
 
+  function setStep2Visibility(visible) {
+    if (step2Card) step2Card.classList.toggle("d-none", !visible)
+    if (step2) step2.style.display = visible ? "block" : "none"
+  }
 
-form.addEventListener("submit", function(e){
 
-  e.preventDefault()
+  function setSubmitButtonVisible(visible) {
+    if (submitBtn) {
+      submitBtn.classList.toggle("d-none", !visible)
+      submitBtn.disabled = !visible
+    }
+  }
 
-  let formData = new FormData(form)
 
-  fetch("/reservations/create/", {
+  function checkAvailability() {
 
-    method: "POST",
+    const dress = dressSelect.value
+    const customer = customerSelect.value
+    const start_date = startDateInput.value
+    const rental_days = rentalDaysInput.value
 
-    headers:{
-      "X-CSRFToken": getCookie("csrftoken")
-    },
-
-    body: formData
-
-  })
-  .then(res => res.json())
-  .then(data => {
-
-    if(data.success){
-      location.reload()
+    if (!dress || !customer || !start_date || !rental_days) {
+      nextBtn.disabled = true
       return
     }
 
-    let message = data.message || ''
-    if (data.errors) {
-      message = Object.values(data.errors).flat().join('\n')
-    }
-    alert(message || "خطا در ثبت رزرو")
+    fetch("/reservations/check-availability/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-CSRFToken": getCookie("csrftoken"),
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      body: new URLSearchParams({
+        customer_id: customer,
+        dress_id: dress,
+        start_date: start_date,
+        rental_days: rental_days
+      })
+    })
+    .then(response => response.json())
+    .then(data => {
+
+      if (!data.success) {
+        nextBtn.disabled = true
+        alert(data.message || "خطا در بررسی موجودی")
+        return
+      }
+
+      if (data.available) {
+
+        endDateField.value = data.end_date || ""
+        eventDateField.value = data.event_date || ""
+
+        rentPrice = parseFloat(data.rent_price) || 0
+
+        rentPriceField.value = formatCurrency(rentPrice)
+
+        if (remainingAmountField) {
+          remainingAmountField.value = formatCurrency(rentPrice)
+        }
+
+        nextBtn.disabled = false
+
+      } else {
+
+        nextBtn.disabled = true
+        alert(data.message || "این لباس در این بازه زمانی رزرو شده است.")
+
+      }
+
+    })
+    .catch(error => {
+      console.error("Availability check error:", error)
+      nextBtn.disabled = true
+    })
+
+  }
+
+
+  function saveReservationStepOne() {
+
+    const formData = new URLSearchParams({
+      customer: customerSelect.value,
+      dress: dressSelect.value,
+      start_date: startDateInput.value,
+      rental_days: rentalDaysInput.value
+    })
+
+    return fetch("/reservations/step-one/", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/x-www-form-urlencoded",
+        "X-CSRFToken": getCookie("csrftoken"),
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      body: formData
+    }).then(response => response.json())
+  }
+
+
+
+  customerSelect.addEventListener("change", checkAvailability)
+  dressSelect.addEventListener("change", checkAvailability)
+  startDateInput.addEventListener("change", checkAvailability)
+  startDateInput.addEventListener("input", checkAvailability)
+  rentalDaysInput.addEventListener("input", checkAvailability)
+
+  if (depositInput) depositInput.addEventListener("input", calculateRemaining)
+  if (discountInput) discountInput.addEventListener("input", calculateRemaining)
+
+
+  setStep2Visibility(false)
+  setSubmitButtonVisible(false)
+
+
+  nextBtn.addEventListener("click", function () {
+
+    saveReservationStepOne().then(data => {
+
+      if (data.success) {
+
+        if (step1) step1.style.display = "none"
+
+        setStep2Visibility(true)
+        setSubmitButtonVisible(true)
+
+        nextBtn.style.display = "none"
+
+      } else {
+
+        let message = data.message || ""
+
+        if (data.errors) {
+          message = Object.values(data.errors).flat().join("\n")
+        }
+
+        alert(message || "مرحله اول به درستی ثبت نشد.")
+
+      }
+
+    }).catch(error => {
+
+      console.error("Save step one error:", error)
+      alert("خطا در ذخیره اطلاعات مرحله اول.")
+
+    })
+
+  })
+
+
+  form.addEventListener("submit", function (e) {
+
+    e.preventDefault()
+
+    const formData = new FormData(form)
+
+    fetch("/reservations/create/", {
+      method: "POST",
+      headers: {
+        "X-CSRFToken": getCookie("csrftoken"),
+        "X-Requested-With": "XMLHttpRequest"
+      },
+      body: formData
+    })
+    .then(res => res.json())
+    .then(data => {
+
+      if (data.success) {
+        location.reload()
+        return
+      }
+
+      let message = data.message || ""
+
+      if (data.errors) {
+        message = Object.values(data.errors).flat().join("\n")
+      }
+
+      alert(message || "خطا در ثبت رزرو")
+
+    })
+    .catch(error => {
+
+      console.error("Reservation create error:", error)
+      alert("خطا در ثبت رزرو")
+
+    })
 
   })
 
 })
-
-
-
-function getCookie(name) {
-
-let cookieValue = null
-
-if (document.cookie && document.cookie !== '') {
-
-let cookies = document.cookie.split(';')
-
-for (let i = 0; i < cookies.length; i++) {
-
-let cookie = cookies[i].trim()
-
-if (cookie.substring(0, name.length + 1) === (name + '=')) {
-
-cookieValue = decodeURIComponent(cookie.substring(name.length + 1))
-
-break
-
-}
-
-}
-
-}
-
-return cookieValue
-
-}
-
-})
-
 </script>
+

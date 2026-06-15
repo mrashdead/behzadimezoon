@@ -8,6 +8,7 @@ from customers.models import Customer
 from products.models import Dress
 
 from .constants import ReservationStatus, GuaranteeType, PaymentMethod
+from .services.state_machin import ReservationStateMachine
 
 
 User = settings.AUTH_USER_MODEL
@@ -237,6 +238,10 @@ class Reservation(models.Model):
         self.calculate_financials()
 
         super().save(*args, **kwargs)
+
+    @property
+    def allowed_transitions(self):
+        return ReservationStateMachine.TRANSITIONS.get(self.status, [])
 
     def __str__(self):
         return f"{self.customer} - {self.dress} - {self.start_date}"
