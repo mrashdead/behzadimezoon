@@ -27,12 +27,12 @@
         {{ form.end_date_j }}
       </div>
 
-      <div class="mb-3">
+      <div class="mb-3 time-fields">
         <label class="form-label">از ساعت (برای مرخصی ساعتی)</label>
         {{ form.from_time }}
       </div>
 
-      <div class="mb-3">
+      <div class="mb-3 time-fields">
         <label class="form-label">تا ساعت (برای مرخصی ساعتی)</label>
         {{ form.to_time }}
       </div>
@@ -52,12 +52,32 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
 <script>
+  function toggleLeaveTimeFields() {
+    const type = document.querySelector('select[name="leave_type"]').value;
+    document.querySelectorAll('.time-fields').forEach(function (element) {
+      if (type === 'HOURLY') {
+        element.style.display = '';
+      } else {
+        element.style.display = 'none';
+        const input = element.querySelector('input');
+        if (input) {
+          input.value = '';
+        }
+      }
+    });
+  }
+
   $(function(){
     $('.jalali-date').persianDatepicker({
       format: 'YYYY/MM/DD',
       initialValueType: 'gregorian',
       autoClose: true,
     });
+    const leaveType = document.querySelector('select[name="leave_type"]');
+    if (leaveType) {
+      leaveType.addEventListener('change', toggleLeaveTimeFields);
+      toggleLeaveTimeFields();
+    }
   });
 </script>
 

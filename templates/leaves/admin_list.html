@@ -1,4 +1,7 @@
-{% extends 'base.html' %} {% block content %}
+{% extends 'base.html' %}
+{% load jalali_tags %}
+{% load jformat %}
+{% block content %}
 <div class="card">
   <div class="card-header d-flex justify-content-between align-items-center">
     <h5 class="card-title mb-0">درخواست‌های مرخصی</h5>
@@ -31,9 +34,9 @@
             <td>{{ item.get_leave_type_display }}</td>
             <td>{{ item.get_category_display }}</td>
             <td>
-              {{ item.start_date|date:"Y-m-d" }}
+              {{ item.start_date|jformat:"%Y/%m/%d" }}
               {% if item.end_date and item.end_date != item.start_date %}
-              - {{ item.end_date|date:"Y-m-d" }}
+              - {{ item.end_date|jformat:"%Y/%m/%d" }}
               {% endif %}
             </td>
             <td>

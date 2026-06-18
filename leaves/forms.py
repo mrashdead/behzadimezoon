@@ -38,11 +38,20 @@ class LeaveRequestForm(forms.ModelForm):
             except Exception:
                 raise forms.ValidationError('فرمت تاریخ پایان صحیح نیست (YYYY/MM/DD)')
 
-        # Validate hourly fields when leave_type is HOURLY
+        # Normalize dates and times based on leave type
         lt = cleaned.get('leave_type')
-        if lt == LeaveRequest.LeaveType.HOURLY:
+        if lt == LeaveRequest.LeaveType.DAILY:
+            cleaned['from_time'] = None
+            cleaned['to_time'] = None
+            if cleaned.get('start_date') and not cleaned.get('end_date'):
+                cleaned['end_date'] = cleaned['start_date']
+        elif lt == LeaveRequest.LeaveType.HOURLY:
             if not cleaned.get('from_time') or not cleaned.get('to_time'):
                 raise forms.ValidationError('برای مرخصی ساعتی باید زمان شروع و پایان مشخص شود.')
+
+        if cleaned.get('start_date') and cleaned.get('end_date'):
+            if cleaned['end_date'] < cleaned['start_date']:
+                raise forms.ValidationError('تاریخ پایان نمی‌تواند قبل از تاریخ شروع باشد.')
 
         return cleaned
 
