@@ -11,6 +11,7 @@ from .views import (
     reservation_mark_returned,
     reservation_mark_laundry,
     reservation_mark_ready,
+    reservation_finalize_delivery,
     reservation_edit,
     reservation_delete,
     check_availability,
@@ -67,6 +68,13 @@ urlpatterns = [
         "<int:pk>/delivered/",
         reservation_mark_delivered,
         name="delivered"
+    ),
+
+    # finalize delivery (with payment verification)
+    path(
+        "<int:pk>/finalize-delivery/",
+        reservation_finalize_delivery,
+        name="finalize_delivery"
     ),
 
     # mark returned

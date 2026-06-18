@@ -62,16 +62,15 @@
                     <i class="icon-eye"></i>
                   </button>
                   {% if can_change_reservation_status and 'DELIVERED' in reservation.allowed_transitions %}
-                  <form method="post" action="{% url 'reservations:delivered' reservation.pk %}" class="d-inline me-1">
-                    {% csrf_token %}
-                    <button
-                      type="submit"
-                      class="btn btn-subtle-success btn-sm btn-shadow btn-icon waves-effect"
-                      title="تحویل شده"
-                    >
-                      <i class="fi fi-rr-check"></i>
-                    </button>
-                  </form>
+                  <button
+                    type="button"
+                    class="btn btn-subtle-success btn-sm btn-shadow btn-icon waves-effect me-1"
+                    data-bs-toggle="modal"
+                    data-bs-target="#finalizeDeliveryModal{{ reservation.id }}"
+                    title="تایید تحویل"
+                  >
+                    <i class="fi fi-rr-check"></i>
+                  </button>
                   {% endif %}
                   {% if can_change_reservation_status and 'RETURNED' in reservation.allowed_transitions %}
                   <form method="post" action="{% url 'reservations:returned' reservation.pk %}" class="d-inline me-1">
@@ -93,7 +92,7 @@
                       class="btn btn-subtle-warning btn-sm btn-shadow btn-icon waves-effect"
                       title="ارسال به خشکشویی"
                     >
-                      <i class="fi fi-rr-laundry"></i>
+                      <i class="fi fi-ts-washer"></i>
                     </button>
                   </form>
                   {% endif %}
@@ -109,7 +108,7 @@
                     </button>
                   </form>
                   {% endif %}
-                  {% if can_edit_reservation %}
+                  {% if can_edit_reservation and reservation.status not in 'DELIVERED,RETURNED,LAUNDRY,READY,CANCELLED' %}
                   <button
                     type="button"
                     class="btn btn-subtle-primary btn-sm btn-shadow btn-icon waves-effect me-1"
@@ -151,13 +150,10 @@
                     </li>
                     {% if can_change_reservation_status and 'DELIVERED' in reservation.allowed_transitions %}
                     <li>
-                      <form method="post" action="{% url 'reservations:delivered' reservation.pk %}" class="m-0">
-                        {% csrf_token %}
-                        <button type="submit" class="dropdown-item py-2 d-flex align-items-center gap-2">
-                          <i class="fi fi-rr-check text-success"></i>
-                          <span>تحویل شده</span>
-                        </button>
-                      </form>
+                      <button class="dropdown-item py-2 d-flex align-items-center gap-2" type="button" data-bs-toggle="modal" data-bs-target="#finalizeDeliveryModal{{ reservation.id }}">
+                        <i class="fi fi-rr-check text-success"></i>
+                        <span>تایید تحویل</span>
+                      </button>
                     </li>
                     {% endif %}
                     {% if can_change_reservation_status and 'RETURNED' in reservation.allowed_transitions %}
@@ -193,7 +189,7 @@
                       </form>
                     </li>
                     {% endif %}
-                    {% if can_edit_reservation %}
+                    {% if can_edit_reservation and reservation.status not in 'DELIVERED,RETURNED,LAUNDRY,READY,CANCELLED' %}
                     <li>
                       <button class="dropdown-item py-2 d-flex align-items-center gap-2" type="button" data-bs-toggle="modal" data-bs-target="#editReservationModal{{ reservation.id }}">
                         <i class="fi fi-rr-edit text-primary"></i>
@@ -233,6 +229,10 @@
 
 {% if can_edit_reservation %}
 {% include 'reservations/partials/_edit_modal.html' %}
+{% endif %}
+
+{% if can_change_reservation_status %}
+{% include 'reservations/partials/_finalize_delivery_modal.html' %}
 {% endif %}
 
 {% if can_delete_reservation %}

@@ -12,7 +12,71 @@
             <div class="col-12">
               <div class="card shadow-none border mb-3">
                 <div class="card-header bg-body-tertiary">
-                  <h6 class="mb-0">اطلاعات پرداخت</h6>
+                  <h6 class="mb-0">اطلاعات لباس و رزرو</h6>
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <label class="form-label">لباس</label>
+                      <select name="dress" class="form-control" required>
+                        <option value="">انتخاب کنید</option>
+                        {% load static %}
+                        {% for dress in dresses %}
+                          <option value="{{ dress.id }}" {% if reservation.dress.id == dress.id %}selected{% endif %}>{{ dress }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">تاریخ شروع اجاره</label>
+                      <input type="text" name="start_date" class="form-control" value="{{ reservation.start_date }}" required>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">مدت اجاره (روز)</label>
+                      <input type="number" name="rental_days" class="form-control" min="1" value="{{ reservation.rental_days }}" required>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="card shadow-none border mb-3">
+                <div class="card-header bg-body-tertiary">
+                  <h6 class="mb-0">اطلاعات مالی</h6>
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <div class="mb-3">
+                        <label class="form-label">هزینه اجاره</label>
+                        <div class="form-control bg-light" style="pointer-events: none;">{{ reservation.rent_price }}</div>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <div class="mb-3">
+                        <label class="form-label">بیعانه (ثابت)</label>
+                        <div class="form-control bg-light" style="pointer-events: none;">{{ reservation.deposit_amount }}</div>
+                      </div>
+                    </div>
+                    <div class="col-md-6">
+                      <label class="form-label">تخفیف</label>
+                      <input type="number" name="discount_amount" class="form-control" min="0" value="{{ reservation.discount_amount }}">
+                    </div>
+                    <div class="col-md-6">
+                      <div class="mb-3">
+                        <label class="form-label">باقی مانده</label>
+                        <div class="form-control bg-light" style="pointer-events: none;">{{ reservation.remaining_amount }}</div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="card shadow-none border">
+                <div class="card-header bg-body-tertiary">
+                  <h6 class="mb-0">اطلاعات پرداخت و ضمانت</h6>
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
@@ -30,18 +94,6 @@
                       <label class="form-label">کد رهگیری پرداخت</label>
                       <input type="text" name="payment_tracking_code" class="form-control" value="{{ reservation.payment_tracking_code }}" required>
                     </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-12">
-              <div class="card shadow-none border">
-                <div class="card-header bg-body-tertiary">
-                  <h6 class="mb-0">اطلاعات ضمانت و هزینه</h6>
-                </div>
-                <div class="card-body">
-                  <div class="row g-3">
                     <div class="col-md-6">
                       <label class="form-label">نوع ضمانت اول</label>
                       <select name="guarantee1_type" class="form-control" required>
@@ -68,14 +120,6 @@
                     <div class="col-md-6">
                       <label class="form-label">کد رهگیری ضمانت دوم</label>
                       <input type="text" name="guarantee2_tracking_code" class="form-control" value="{{ reservation.guarantee2_tracking_code }}">
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">بیعانه</label>
-                      <input type="number" name="deposit_amount" class="form-control" min="0" value="{{ reservation.deposit_amount }}" required>
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">تخفیف</label>
-                      <input type="number" name="discount_amount" class="form-control" min="0" value="{{ reservation.discount_amount }}">
                     </div>
                   </div>
                 </div>

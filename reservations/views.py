@@ -14,7 +14,8 @@ from customers.models import Customer
 from reservations.models import Reservation
 from reservations.forms import (
     ReservationStepOneForm,
-    ReservationStepTwoForm
+    ReservationStepTwoForm,
+    ReservationEditForm
 )
 from .services.availability_service import ReservationAvailabilityService
 from .services.change_status import ReservationStatusService
@@ -341,6 +342,42 @@ def reservation_mark_ready(request, pk):
 
 
 @login_required
+@require_POST
+def reservation_finalize_delivery(request, pk):
+
+    if not can_change_reservation_status(request.user):
+        return HttpResponseForbidden()
+
+    reservation = get_object_or_404(Reservation, pk=pk)
+
+    try:
+        ReservationStatusService.change_status(
+            reservation,
+            ReservationStatus.DELIVERED,
+            request.user
+        )
+    except ValueError as e:
+        error_message = str(e) or "این رزرو آماده برای تحویل نیست."
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({
+                "success": False,
+                "message": error_message
+            }, status=400)
+
+        messages.error(request, error_message)
+        return redirect("reservations:list")
+
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JsonResponse({
+            "success": True,
+            "message": "لباس با موفقیت تحویل شد."
+        })
+
+    messages.success(request, "لباس با موفقیت تحویل شد.")
+    return redirect("reservations:list")
+
+
+@login_required
 def reservation_detail(request, pk):
 
     reservation = get_object_or_404(Reservation, pk=pk)
@@ -360,7 +397,31 @@ def reservation_edit(request, pk):
         return HttpResponseForbidden()
 
     reservation = get_object_or_404(Reservation, pk=pk)
-    form = ReservationStepTwoForm(request.POST, instance=reservation)
+
+    locked_statuses = [
+        ReservationStatus.DELIVERED,
+        ReservationStatus.RETURNED,
+        ReservationStatus.LAUNDRY,
+        ReservationStatus.READY,
+        ReservationStatus.CANCELLED
+    ]
+
+    if reservation.status in locked_statuses:
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({
+                "success": False,
+                "errors": {"__all__": ["اطلاعات پرداخت بعد از تحویل قابل تغییر نیست."]}
+            })
+        return redirect("reservations:list")
+
+    form = ReservationEditForm(
+        request.POST,
+        instance=reservation,
+        original_dress=reservation.dress,
+        original_start_date=reservation.start_date,
+        original_rental_days=reservation.rental_days,
+        reservation_id=reservation.id
+    )
 
     if not form.is_valid():
         if request.headers.get("x-requested-with") == "XMLHttpRequest":

@@ -2,6 +2,7 @@
 
 from django.utils import timezone
 from reservations.services.state_machin import ReservationStateMachine
+from reservations.services.payment_guards import PaymentGuardService
 from reservations.constants import ReservationStatus
 
 
@@ -18,6 +19,9 @@ class ReservationStatusService:
             raise ValueError(
                 f"انتقال وضعیت از {reservation.get_status_display()} به {readable_status} مجاز نیست."
             )
+
+        if new_status == ReservationStatus.DELIVERED:
+            PaymentGuardService.verify_payment_for_delivery(reservation)
 
         if new_status == ReservationStatus.CANCELLED:
             reservation.cancelled_at = timezone.now()

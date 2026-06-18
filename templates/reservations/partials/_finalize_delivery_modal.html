@@ -1,0 +1,96 @@
+<div class="modal fade" id="finalizeDeliveryModal{{ reservation.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <div class="modal-header">
+        <h5 class="modal-title">تایید تحویل لباس</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+      </div>
+      <div class="modal-body">
+        <div class="mb-4">
+          <h6 class="text-muted mb-3">مشتری: <strong>{{ reservation.customer }}</strong></h6>
+          <h6 class="text-muted mb-3">لباس: <strong>{{ reservation.dress }}</strong></h6>
+        </div>
+
+        <div class="card shadow-none border mb-3">
+          <div class="card-body">
+            <div class="row mb-2">
+              <div class="col-6">
+                <span class="text-muted">هزینه اجاره:</span>
+              </div>
+              <div class="col-6 text-end">
+                <strong>{{ reservation.rent_price }}</strong>
+              </div>
+            </div>
+            {% if reservation.discount_amount > 0 %}
+            <div class="row mb-2">
+              <div class="col-6">
+                <span class="text-muted">تخفیف:</span>
+              </div>
+              <div class="col-6 text-end">
+                <strong>-{{ reservation.discount_amount }}</strong>
+              </div>
+            </div>
+            {% endif %}
+            <hr>
+            <div class="row mb-2">
+              <div class="col-6">
+                <span class="text-muted">قیمت نهایی:</span>
+              </div>
+              <div class="col-6 text-end">
+                <strong>{{ reservation.final_price }}</strong>
+              </div>
+            </div>
+            <div class="row mb-2">
+              <div class="col-6">
+                <span class="text-muted">بیعانه دریافت شده:</span>
+              </div>
+              <div class="col-6 text-end">
+                <strong>{{ reservation.deposit_amount }}</strong>
+              </div>
+            </div>
+            <hr>
+            <div class="row">
+              <div class="col-6">
+                <span class="text-dark"><strong>باقی مانده:</strong></span>
+              </div>
+              <div class="col-6 text-end">
+                <strong class="{% if reservation.remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}">
+                  {{ reservation.remaining_amount }}
+                </strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {% if reservation.remaining_amount > 0 %}
+        <div class="alert alert-danger" role="alert">
+          <i class="fi fi-rr-info me-2"></i>
+          <strong>توجه:</strong> قبل از تحویل لباس، باقی‌مانده را از مشتری دریافت کنید.
+          <br>
+          <span class="small">باقی‌مانده: <strong>{{ reservation.remaining_amount }} تومان</strong></span>
+        </div>
+        {% else %}
+        <div class="alert alert-success" role="alert">
+          <i class="fi fi-rr-check-circle me-2"></i>
+          مشتری تمام وجوه را پرداخت کرده است. می‌توانید لباس را تحویل دهید.
+        </div>
+        {% endif %}
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">انصراف</button>
+        <form method="post" action="{% url 'reservations:finalize_delivery' reservation.pk %}" class="d-inline" id="finalizeDeliveryForm{{ reservation.id }}">
+          {% csrf_token %}
+          <button
+            type="submit"
+            class="btn btn-success"
+            {% if reservation.remaining_amount > 0 %}disabled{% endif %}
+            id="finalizeDeliveryBtn{{ reservation.id }}"
+          >
+            <i class="fi fi-rr-check me-1"></i>
+            تایید تحویل
+          </button>
+        </form>
+      </div>
+    </div>
+  </div>
+</div>
