@@ -1,0 +1,64 @@
+{% extends 'base.html' %}
+{% load static %}
+{% block content %}
+<div class="card">
+  <div class="card-header">
+    <h5 class="card-title mb-0">درخواست مرخصی</h5>
+  </div>
+  <div class="card-body">
+    <form method="post" novalidate>
+      {% csrf_token %}
+      <div class="mb-3">
+        <label class="form-label">نوع مرخصی</label>
+        {{ form.leave_type }}
+      </div>
+      <div class="mb-3">
+        <label class="form-label">دسته‌بندی</label>
+        {{ form.category }}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">تاریخ شروع (شمسی)</label>
+        {{ form.start_date_j }}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">تاریخ پایان (شمسی، برای مرخصی روزانه)</label>
+        {{ form.end_date_j }}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">از ساعت (برای مرخصی ساعتی)</label>
+        {{ form.from_time }}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">تا ساعت (برای مرخصی ساعتی)</label>
+        {{ form.to_time }}
+      </div>
+
+      <div class="mb-3">
+        <label class="form-label">توضیحات (اختیاری)</label>
+        {{ form.message }}
+      </div>
+
+      <button class="btn btn-primary" type="submit">ارسال درخواست</button>
+    </form>
+  </div>
+</div>
+
+<!-- Persian datepicker: include CDN for persian-datepicker (requires jQuery) -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
+<script>
+  $(function(){
+    $('.jalali-date').persianDatepicker({
+      format: 'YYYY/MM/DD',
+      initialValueType: 'gregorian',
+      autoClose: true,
+    });
+  });
+</script>
+
+{% endblock %}

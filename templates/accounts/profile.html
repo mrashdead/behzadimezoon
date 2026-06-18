@@ -151,15 +151,36 @@
       </div>
     </div>
 
-    {% if user.is_staff or user.is_superuser %}
+      {% if user.role == 'SELLER' %}
+      <div class="card mt-4">
+        <div class="card-header d-flex justify-content-between align-items-center">
+          <h5 class="card-title mb-0">درخواست مرخصی</h5>
+          <div>
+            <a href="{% url 'leaves:leave-create' %}" class="btn btn-sm btn-primary">ارسال درخواست</a>
+            <a href="{% url 'leaves:seller-leaves' %}" class="btn btn-sm btn-light">درخواست‌های من</a>
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-0">در این بخش میتوانید درخواست مرخصی روزانه یا ساعتی ثبت و وضعیت آن را مشاهده کنید.</p>
+        </div>
+      </div>
+
+      {% endif %}
+
+      {% if user.is_staff or user.is_superuser %}
     <div class="card mt-4">
       <div
         class="card-header d-flex justify-content-between align-items-center"
       >
         <h5 class="card-title mb-0">بخش مدیریتی ادمین</h5>
-        <a href="{% url 'accounts:user-list' %}" class="btn btn-sm btn-primary">
-          مشاهده همه کاربران
-        </a>
+        <div class="d-flex gap-2">
+          <a href="{% url 'accounts:user-list' %}" class="btn btn-sm btn-primary">
+            مشاهده همه کاربران
+          </a>
+          <a href="{% url 'leaves:management-list' %}" class="btn btn-sm btn-outline-secondary">
+            مدیریت درخواست‌های مرخصی
+          </a>
+        </div>
       </div>
       <div class="card-body">
         <p class="text-muted mb-4">

@@ -1,0 +1,70 @@
+{% extends 'base.html' %} {% block content %}
+<div class="card">
+  <div class="card-header d-flex justify-content-between align-items-center">
+    <h5 class="card-title mb-0">درخواست‌های مرخصی</h5>
+  </div>
+  <div class="card-body">
+    {% if leaves %}
+    <div class="table-responsive">
+      <table class="table align-middle mb-0">
+        <thead>
+          <tr>
+            <th>فروشنده</th>
+            <th>نوع</th>
+            <th>دسته</th>
+            <th>تاریخ</th>
+            <th>مدت</th>
+            <th>از</th>
+            <th>تا</th>
+            <th>توضیحات</th>
+            <th>وضعیت</th>
+            <th>عملیات</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for item in leaves %}
+          <tr>
+            <td>
+              {{ item.user.first_name }} {{ item.user.last_name }}<br />
+              <small class="text-muted">{{ item.user.username }}</small>
+            </td>
+            <td>{{ item.get_leave_type_display }}</td>
+            <td>{{ item.get_category_display }}</td>
+            <td>
+              {{ item.start_date|date:"Y-m-d" }}
+              {% if item.end_date and item.end_date != item.start_date %}
+              - {{ item.end_date|date:"Y-m-d" }}
+              {% endif %}
+            </td>
+            <td>
+              {% if item.leave_type == 'DAILY' %}{{ item.duration }} روز{% else %}{{ item.duration }} ساعت{% endif %}
+            </td>
+            <td>{{ item.from_time|default:'-' }}</td>
+            <td>{{ item.to_time|default:'-' }}</td>
+            <td>{{ item.message|default:'-' }}</td>
+            <td>{{ item.get_status_display }}</td>
+            <td>
+              {% if item.status == 'PENDING' %}
+              <form method="post" action="{% url 'leaves:approve-leave' item.pk %}" style="display:inline">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-success" type="submit">تایید</button>
+              </form>
+              <form method="post" action="{% url 'leaves:reject-leave' item.pk %}" style="display:inline">
+                {% csrf_token %}
+                <button class="btn btn-sm btn-danger" type="submit">رد</button>
+              </form>
+              {% else %}
+              -
+              {% endif %}
+            </td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    {% else %}
+    <div class="alert alert-light">درخواستی یافت نشد.</div>
+    {% endif %}
+  </div>
+</div>
+{% endblock %}
