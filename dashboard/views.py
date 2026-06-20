@@ -19,3 +19,18 @@ class DashboardView(TemplateView):
 
         context['page_title'] = 'داشبورد'
         return context
+
+class TempUIView(TemplateView):
+    template_name = 'dashboard/temp-ui.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = 'صفحه آزمایشی'
+        return context
+class TempFormsView(TemplateView):
+    template_name = 'dashboard/temp-forms.html'
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = 'صفحه آزمایشی'
+        return context

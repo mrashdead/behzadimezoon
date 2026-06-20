@@ -1,0 +1,602 @@
+{% extends 'base.html' %}
+
+{% block content %}
+
+<!-- نمونه برای بخش مالی  -->
+ <!-- Example for the financial sector -->
+<div class="row">
+	  <div class="col-xxl-9 col-xl-8">
+	   <div class="row">
+		<div class="col-xxl-3 col-sm-6">
+		 <div class="card">
+		  <div class="card-body d-flex gap-3 align-items-center">
+		   <div class="avatar bg-success-subtle rounded-circle text-success">
+			<i class="fi fi-rr-coins">
+			</i>
+		   </div>
+		   <div class="clearfix">
+			<span class="fw-semibold text-muted">
+			 کل درآمد
+			</span>
+			<h2 class="fw-bold mb-0 mt-1">
+			 $120,540
+			</h2>
+		   </div>
+		  </div>
+		 </div>
+		</div>
+		<div class="col-xxl-3 col-sm-6">
+		 <div class="card">
+		  <div class="card-body d-flex gap-3 align-items-center">
+		   <div class="avatar bg-danger-subtle rounded-circle text-danger">
+			<i class="fi fi-rr-credit-card">
+			</i>
+		   </div>
+		   <div class="clearfix">
+			<span class="fw-semibold text-muted">
+			 مجموع هزینه ها
+			</span>
+			<h2 class="fw-bold mb-0 mt-1">
+			 $84,320
+			</h2>
+		   </div>
+		  </div>
+		 </div>
+		</div>
+		<div class="col-xxl-3 col-sm-6">
+		 <div class="card">
+		  <div class="card-body d-flex gap-3 align-items-center">
+		   <div class="avatar bg-info-subtle rounded-circle text-info">
+			<i class="fi fi-rr-chart-histogram">
+			</i>
+		   </div>
+		   <div class="clearfix">
+			<span class="fw-semibold text-muted">
+			 سود خالص
+			</span>
+			<h2 class="fw-bold mb-0 mt-1">
+			 $36,220
+			</h2>
+		   </div>
+		  </div>
+		 </div>
+		</div>
+		<div class="col-xxl-3 col-sm-6">
+		 <div class="card">
+		  <div class="card-body d-flex gap-3 align-items-center">
+		   <div class="avatar bg-warning-subtle rounded-circle text-warning">
+			<i class="fi fi-rr-calendar">
+			</i>
+		   </div>
+		   <div class="clearfix">
+			<span class="fw-semibold text-muted">
+			 فاکتورهای معلق
+			</span>
+			<h2 class="fw-bold mb-0 mt-1">
+			 12
+			</h2>
+		   </div>
+		  </div>
+		 </div>
+		</div>
+	   </div>
+	  </div>
+	  <div class="col-lg-12">
+	   <div class="card">
+		<div class="card-header d-flex flex-wrap gap-3 align-items-center justify-content-between border-0 pb-0">
+		 <h6 class="card-title mb-0">
+		  معاملات اخیر
+		 </h6>
+		 <div id="dt_RecentTransactions_Search">
+		 </div>
+		</div>
+		<div class="card-body px-1 pt-2 pb-2">
+		 <table class="table table-sm display table-row-rounded" id="dt_RecentTransactions">
+		  <thead class="table-light">
+		   <tr>
+			<th class="minw-150px">
+			 نام
+			</th>
+			<th class="minw-150px">
+			 تاریخ
+			</th>
+			<th class="minw-200px">
+			 توضیحات
+			</th>
+			<th>
+			 دسته بندی
+			</th>
+			<th>
+			 مقدار
+			</th>
+			<th>
+			 وضعیت
+			</th>
+		   </tr>
+		  </thead>
+		  <tbody>
+		   <tr>
+			<td>
+			 <div class="d-flex align-items-center">
+			  <div class="avatar avatar-xxs rounded-circle me-2">
+			   <img alt="" src="assets/images/avatar/avatar1.webp"/>
+			  </div>
+			  نسترن سلطانی
+			 </div>
+			</td>
+			<td>
+			 ۲۸ شهریور ۱۴۰۴
+			</td>
+			<td>
+			 کیف پول
+			</td>
+			<td>
+			 درآمد
+			</td>
+			<td class="text-success fw-bold">
+			 +$2,500
+			</td>
+			<td>
+			 <span class="badge badge-lg bg-success-subtle text-success">
+			  تکمیل شد
+			 </span>
+			</td>
+		   </tr>
+		   <tr>
+			<td>
+			 <div class="d-flex align-items-center">
+			  <div class="avatar avatar-xxs rounded-circle me-2">
+			   <img alt="" src="assets/images/avatar/avatar2.webp"/>
+			  </div>
+			  باربد باباخانی
+			 </div>
+			</td>
+			<td>
+			 ۲۶ شهریور ۱۴۰۴
+			</td>
+			<td>
+			 اجاره دفتر
+			</td>
+			<td>
+			 هزینه
+			</td>
+			<td class="text-danger fw-bold">
+			 -$1,200
+			</td>
+			<td>
+			 <span class="badge badge-lg bg-danger-subtle text-danger">
+			  پرداخت شده است
+			 </span>
+			</td>
+		   </tr>
+		   <tr>
+			<td>
+			 <div class="d-flex align-items-center">
+			  <div class="avatar avatar-xxs rounded-circle me-2">
+			   <img alt="" src="assets/images/avatar/avatar3.webp"/>
+			  </div>
+			  شیرین رضایی
+			 </div>
+			</td>
+			<td>
+			 ۲۳ شهریور ۱۴۰۴
+			</td>
+			<td>
+			 اشتراک نرم افزار
+			</td>
+			<td>
+			 هزینه
+			</td>
+			<td class="text-danger fw-bold">
+			 -$89
+			</td>
+			<td>
+			 <span class="badge badge-lg bg-warning-subtle text-warning">
+			  در انتظار
+			 </span>
+			</td>
+		   </tr>
+		  </tbody>
+		 </table>
+		</div>
+	   </div>
+	  </div>
+	 </div>
+	 <!-- پایان بخش نمونه برای بخش مالی  -->
+ <!-- end of the Example for the financial sector -->
+
+ <!-- شروع بخش نمونه مودل ها  -->
+	  <!-- Example for modals -->
+<div class="col-lg-4">
+	   <div class="card">
+		<div class="card-header">
+		 <h6 class="card-title">
+		  پس زمینه ایستا
+		 </h6>
+		</div>
+		<div class="card-body">
+		 <!-- Button trigger modal -->
+		 <button class="btn btn-primary waves-effect waves-light" data-bs-target="#staticBackdrop" data-bs-toggle="modal" type="button">
+		  حالت پس زمینه ایستا را راه اندازی کنید
+		 </button>
+		 <!-- Modal -->
+		 <div aria-hidden="true" aria-labelledby="staticBackdropLabel" class="modal fade" data-bs-backdrop="static" data-bs-keyboard="false" id="staticBackdrop" tabindex="-1">
+		  <div class="modal-dialog">
+		   <div class="modal-content">
+			<div class="modal-header">
+			 <h1 class="modal-title fs-5" id="staticBackdropLabel">
+			  عنوان مدال
+			 </h1>
+			 <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button">
+			 </button>
+			</div>
+			<div class="modal-body">
+			 Lorem Ipsum به سادگی متن ساختگی صنعت چاپ و حروفچینی است. لورم ایپسوم از دهه 1500 به عنوان متن ساختگی استاندارد صنعت بوده است، زمانی که یک چاپگر ناشناخته یک گالری از نوع را برداشت و آن را به هم زد تا یک کتاب نمونه بسازد. نه تنها از پنج قرن، بلکه از جهش به حروفچینی الکترونیکی نیز جان سالم به در برده است که اساساً بدون تغییر باقی مانده است.
+			</div>
+			<div class="modal-footer">
+			 <button class="btn btn-light waves-effect waves-light" data-bs-dismiss="modal" type="button">
+			  بستن
+			 </button>
+			 <button class="btn btn-primary waves-effect waves-light" type="button">
+			  فهمیده شد
+			 </button>
+			</div>
+		   </div>
+		  </div>
+		 </div>
+		</div>
+	   </div>
+	  </div>
+	  <div class="col-lg-3">
+	   <div class="card">
+		<div class="card-header">
+		 <h6 class="card-title">
+		  پیمایش مطالب طولانی
+		 </h6>
+		</div>
+		<div class="card-body">
+		 <div class="d-flex gap-3 flex-wrap">
+		  <!-- Launch demo modal -->
+		  <button class="btn btn-primary waves-effect waves-light" data-bs-target="#exampleModalScrollable" data-bs-toggle="modal" type="button">
+		   مودال دمو را راه اندازی کنید
+		  </button>
+		  <div aria-hidden="true" aria-labelledby="exampleModalScrollableTitle" class="modal fade" id="exampleModalScrollable" tabindex="-1">
+		   <div class="modal-dialog modal-dialog-scrollable">
+			<div class="modal-content">
+			 <div class="modal-header">
+			  <h1 class="modal-title fs-5" id="exampleModalScrollableTitle">
+			   عنوان مدال
+			  </h1>
+			  <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button">
+			  </button>
+			 </div>
+			 <div class="modal-body">
+			  <p>
+			   Lorem Ipsum به سادگی متن ساختگی صنعت چاپ و حروفچینی است. لورم ایپسوم از دهه 1500 به عنوان متن ساختگی استاندارد صنعت بوده است، زمانی که یک چاپگر ناشناخته یک گالری از نوع را برداشت و آن را به هم زد تا یک کتاب نمونه بسازد. نه تنها از پنج قرن، بلکه از جهش به حروفچینی الکترونیکی نیز جان سالم به در برده است که اساساً بدون تغییر باقی مانده است. در دهه 1960 با انتشار برگه های Letraset حاوی معابر Lorem Ipsum و اخیراً با نرم افزار انتشار دسکتاپ مانند Aldus PageMaker از جمله نسخه های Lorem Ipsum رایج شد.
+			  </p>
+			  <p>
+			   Lorem Ipsum به سادگی متن ساختگی صنعت چاپ و حروفچینی است. لورم ایپسوم از دهه 1500 به عنوان متن ساختگی استاندارد صنعت بوده است، زمانی که یک چاپگر ناشناخته یک گالری از نوع را برداشت و آن را به هم زد تا یک کتاب نمونه بسازد. نه تنها از پنج قرن، بلکه از جهش به حروفچینی الکترونیکی نیز جان سالم به در برده است که اساساً بدون تغییر باقی مانده است. در دهه 1960 با انتشار برگه های Letraset حاوی معابر Lorem Ipsum و اخیراً با نرم افزار انتشار دسکتاپ مانند Aldus PageMaker از جمله نسخه های Lorem Ipsum رایج شد.
+			  </p>
+			  <p>
+			   Lorem Ipsum به سادگی متن ساختگی صنعت چاپ و حروفچینی است. لورم ایپسوم از دهه 1500 به عنوان متن ساختگی استاندارد صنعت بوده است، زمانی که یک چاپگر ناشناخته یک گالری از نوع را برداشت و آن را به هم زد تا یک کتاب نمونه بسازد. نه تنها از پنج قرن، بلکه از جهش به حروفچینی الکترونیکی نیز جان سالم به در برده است که اساساً بدون تغییر باقی مانده است. در دهه 1960 با انتشار برگه های Letraset حاوی معابر Lorem Ipsum و اخیراً با نرم افزار انتشار دسکتاپ مانند Aldus PageMaker از جمله نسخه های Lorem Ipsum رایج شد.
+			  </p>
+			  <p>
+			   Lorem Ipsum به سادگی متن ساختگی صنعت چاپ و حروفچینی است. لورم ایپسوم از دهه 1500 به عنوان متن ساختگی استاندارد صنعت بوده است، زمانی که یک چاپگر ناشناخته یک گالری از نوع را برداشت و آن را به هم زد تا یک کتاب نمونه بسازد. نه تنها از پنج قرن، بلکه از جهش به حروفچینی الکترونیکی نیز جان سالم به در برده است که اساساً بدون تغییر باقی مانده است. در دهه 1960 با انتشار برگه های Letraset حاوی معابر Lorem Ipsum و اخیراً با نرم افزار انتشار دسکتاپ مانند Aldus PageMaker از جمله نسخه های Lorem Ipsum رایج شد.
+			  </p>
+			 </div>
+			 <div class="modal-footer">
+			  <button class="btn btn-light waves-effect waves-light" data-bs-dismiss="modal" type="button">
+			   بستن
+			  </button>
+			  <button class="btn btn-primary waves-effect waves-light" type="button">
+			   ذخیره تغییرات
+			  </button>
+			 </div>
+			</div>
+		   </div>
+		  </div>
+		 </div>
+		</div>
+	   </div>
+	  </div>
+	  <div class="col-lg-4">
+	   <div class="card">
+		<div class="card-header">
+		 <h6 class="card-title">
+		  جابه&zwnj;جایی بین حالت&zwnj;ها
+		 </h6>
+		</div>
+		<div class="card-body">
+		 <div aria-hidden="true" aria-labelledby="exampleModalToggleLabel" class="modal fade" id="exampleModalToggle" tabindex="-1">
+		  <div class="modal-dialog modal-dialog-centered">
+		   <div class="modal-content">
+			<div class="modal-header">
+			 <h1 class="modal-title fs-5" id="exampleModalToggleLabel">
+			  مدال 1
+			 </h1>
+			 <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button">
+			 </button>
+			</div>
+			<div class="modal-body">
+			 حالت دوم را نشان دهید و با دکمه زیر آن را پنهان کنید.
+			</div>
+			<div class="modal-footer">
+			 <button class="btn btn-primary waves-effect waves-light" data-bs-target="#exampleModalToggle2" data-bs-toggle="modal">
+			  حالت دوم را باز کنید
+			 </button>
+			</div>
+		   </div>
+		  </div>
+		 </div>
+		 <div aria-hidden="true" aria-labelledby="exampleModalToggleLabel2" class="modal fade" id="exampleModalToggle2" tabindex="-1">
+		  <div class="modal-dialog modal-dialog-centered">
+		   <div class="modal-content">
+			<div class="modal-header">
+			 <h1 class="modal-title fs-5" id="exampleModalToggleLabel2">
+			  مدال 2
+			 </h1>
+			 <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button">
+			 </button>
+			</div>
+			<div class="modal-body">
+			 این مدال را مخفی کنید و اولین مورد را با دکمه زیر نشان دهید.
+			</div>
+			<div class="modal-footer">
+			 <button class="btn btn-primary waves-effect waves-light" data-bs-target="#exampleModalToggle" data-bs-toggle="modal">
+			  بازگشت به اول
+			 </button>
+			</div>
+		   </div>
+		  </div>
+		 </div>
+		 <button class="btn btn-primary waves-effect waves-light" data-bs-target="#exampleModalToggle" data-bs-toggle="modal">
+		  اولین مدال را باز کنید
+		 </button>
+		</div>
+	   </div>
+	  </div>
+	  <div class="col-lg-6">
+	   <div class="card">
+		<div class="card-header">
+		 <h6 class="card-title">
+		  عمودی در مرکز
+		 </h6>
+		</div>
+		<div class="card-body">
+		 <div class="d-flex gap-3 flex-wrap">
+		  <!-- Vertically centered modal -->
+		  <button class="btn btn-primary waves-effect waves-light" data-bs-target="#exampleModalCenter" data-bs-toggle="modal" type="button">
+		   مودال مرکز عمودی
+		  </button>
+		  <div aria-hidden="true" aria-labelledby="exampleModalCenterTitle" class="modal fade" id="exampleModalCenter" tabindex="-1">
+		   <div class="modal-dialog modal-dialog-centered">
+			<div class="modal-content">
+			 <div class="modal-header">
+			  <h1 class="modal-title fs-5" id="exampleModalCenterTitle">
+			   عنوان مدال
+			  </h1>
+			  <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button">
+			  </button>
+			 </div>
+			 <div class="modal-body">
+			  Lorem Ipsum به سادگی متن ساختگی صنعت چاپ و حروفچینی است. لورم ایپسوم از دهه 1500 به عنوان متن ساختگی استاندارد صنعت بوده است، زمانی که یک چاپگر ناشناخته یک گالری از نوع را برداشت و آن را به هم زد تا یک کتاب نمونه بسازد. نه تنها از پنج قرن، بلکه از جهش به حروفچینی الکترونیکی نیز جان سالم به در برده است که اساساً بدون تغییر باقی مانده است. در دهه 1960 با انتشار برگه های Letraset حاوی معابر Lorem Ipsum و اخیراً با نرم افزار انتشار دسکتاپ مانند Aldus PageMaker از جمله نسخه های Lorem Ipsum رایج شد.
+			 </div>
+			 <div class="modal-footer">
+			  <button class="btn btn-light waves-effect waves-light" data-bs-dismiss="modal" type="button">
+			   بستن
+			  </button>
+			  <button class="btn btn-primary waves-effect waves-light" type="button">
+			   ذخیره تغییرات
+			  </button>
+			 </div>
+			</div>
+		   </div>
+		  </div>
+		  <!-- Vertically centered scrollable modal -->
+		  <button class="btn btn-primary waves-effect waves-light" data-bs-target="#exampleModalCenteredScrollable" data-bs-toggle="modal" type="button">
+		   مودال پیمایشی در مرکز عمودی
+		  </button>
+		  <div aria-hidden="true" aria-labelledby="exampleModalCenteredScrollableTitle" class="modal fade" id="exampleModalCenteredScrollable" tabindex="-1">
+		   <div class="modal-dialog modal-dialog-centered modal-dialog-scrollable">
+			<div class="modal-content">
+			 <div class="modal-header">
+			  <h1 class="modal-title fs-5" id="exampleModalCenteredScrollableTitle">
+			   عنوان مدال
+			  </h1>
+			  <button aria-label="Close" class="btn-close" data-bs-dismiss="modal" type="button">
+			  </button>
+			 </div>
+			 <div class="modal-body">
+			  <p>
+			   این مقداری از محتوای نگهدارنده مکان برای نشان دادن یک مدال در مرکز عمودی است. ما چند نسخه اضافی را در اینجا اضافه کرده&zwnj;ایم تا نشان دهیم که چگونه وسط عمودی مدال هنگام ترکیب با مدال&zwnj;های قابل پیمایش کار می&zwnj;کند. ما همچنین از چند شکست مکرر خط برای افزایش سریع ارتفاع محتوا استفاده می کنیم و در نتیجه پیمایش را آغاز می کنیم. وقتی محتوا از حداکثر ارتفاع از پیش تعریف شده مودال بلندتر شود، محتوا برش داده می&zwnj;شود و در حالت مودال قابل پیمایش است.
+			  </p>
+			  <br/>
+			  <br/>
+			  <br/>
+			  <br/>
+			  <br/>
+			  <br/>
+			  <br/>
+			  <br/>
+			  <br/>
+			  <br/>
+			  <p>
+			   همینطور.
+			  </p>
+			 </div>
+			 <div class="modal-footer">
+			  <button class="btn btn-light waves-effect waves-light" data-bs-dismiss="modal" type="button">
+			   بستن
+			  </button>
+			  <button class="btn btn-primary waves-effect waves-light" type="button">
+			   ذخیره تغییرات
+			  </button>
+			 </div>
+			</div>
+		   </div>
+		  </div>
+		 </div>
+		</div>
+	   </div>
+	  </div>
+ <!-- پایان بخش نمونه مودل ها  -->
+  	  <!-- end Example for modals -->
+ <!-- بخش نمونه برای Breadcrumbs  -->
+	  <div class="col-lg-6">
+	   <div class="card">
+		<div class="card-header">
+		 <h6 class="card-title">
+		  اساسی
+		 </h6>
+		</div>
+		<div class="card-body">
+		 <nav aria-label="breadcrumb">
+		  <ol class="breadcrumb">
+		   <li aria-current="page" class="breadcrumb-item active">
+			صفحه اصلی
+		   </li>
+		  </ol>
+		 </nav>
+		 <nav aria-label="breadcrumb">
+		  <ol class="breadcrumb">
+		   <li class="breadcrumb-item">
+			<a href="javascript:void(0);">
+			 صفحه اصلی
+			</a>
+		   </li>
+		   <li aria-current="page" class="breadcrumb-item active">
+			کتابخانه
+		   </li>
+		  </ol>
+		 </nav>
+		 <nav aria-label="breadcrumb">
+		  <ol class="breadcrumb">
+		   <li class="breadcrumb-item">
+			<a href="javascript:void(0);">
+			 صفحه اصلی
+			</a>
+		   </li>
+		   <li class="breadcrumb-item">
+			<a href="javascript:void(0);">
+			 کتابخانه
+			</a>
+		   </li>
+		   <li aria-current="page" class="breadcrumb-item active">
+			داده ها
+		   </li>
+		  </ol>
+		 </nav>
+		</div>
+	   </div>
+	  </div>
+<!-- پایان بخش نمونه برای Breadcrumbs   -->
+<!-- end Example for Breadcrumbs  -->
+
+<!-- شروع بخش tabs یا تب ها -->
+<div class="col-lg-6">
+	   <h6 class="card-title mb-3">
+		پر کنید و توجیه کنید
+	   </h6>
+	   <div class="clearfix">
+		<div class="card">
+		 <div class="card-header">
+		  <ul class="nav nav-pills nav-fill card-header-pills" id="myTabPillsFill" role="tablist">
+		   <li class="nav-item" role="presentation">
+			<button aria-controls="homePillsFill" aria-selected="true" class="nav-link active" data-bs-target="#homePillsFill" data-bs-toggle="tab" id="home-tabPillsFill" role="tab" type="button">
+			 صفحه اصلی
+			</button>
+		   </li>
+		   <li class="nav-item" role="presentation">
+			<button aria-controls="profilePillsFill" aria-selected="false" class="nav-link" data-bs-target="#profilePillsFill" data-bs-toggle="tab" id="profile-tabPillsFill" role="tab" type="button">
+			 نمایه
+			</button>
+		   </li>
+		   <li class="nav-item" role="presentation">
+			<button aria-controls="messagesPillsFill" aria-selected="false" class="nav-link" data-bs-target="#messagesPillsFill" data-bs-toggle="tab" id="messages-tabPillsFill" role="tab" type="button">
+			 پیام ها
+			</button>
+		   </li>
+		  </ul>
+		 </div>
+		 <div class="card-body">
+		  <div class="tab-content">
+		   <div aria-labelledby="home-tabPillsFill" class="tab-pane fade show active" id="homePillsFill" role="tabpanel" tabindex="0">
+			<p>
+			 Lorem Ipsum به سادگی متن ساختگی صنعت چاپ و حروفچینی است. لورم ایپسوم متن ساختگی استاندارد صنعت از سال 1500 بوده است.
+			</p>
+			<p>
+			 Lorem Ipsum به سادگی متن ساختگی صنعت چاپ و حروفچینی است. در دهه 1960 با انتشار برگه های Letraset حاوی معابر Lorem Ipsum و اخیراً با نرم افزار انتشار دسکتاپ مانند Aldus PageMaker از جمله نسخه های Lorem Ipsum رایج شد.
+			</p>
+		   </div>
+		   <div aria-labelledby="profile-tabPillsFill" class="tab-pane fade" id="profilePillsFill" role="tabpanel" tabindex="0">
+			<p>
+			 Lorem Ipsum به سادگی متن ساختگی صنعت چاپ و حروفچینی است. لورم ایپسوم متن ساختگی استاندارد صنعت از سال 1500 بوده است.
+			</p>
+			<p>
+			 Lorem Ipsum به سادگی متن ساختگی صنعت چاپ و حروفچینی است. در دهه 1960 با انتشار برگه های Letraset حاوی معابر Lorem Ipsum و اخیراً با نرم افزار انتشار دسکتاپ مانند Aldus PageMaker از جمله نسخه های Lorem Ipsum رایج شد.
+			</p>
+		   </div>
+		   <div aria-labelledby="messages-tabPillsFill" class="tab-pane fade" id="messagesPillsFill" role="tabpanel" tabindex="0">
+			<p>
+			 Lorem Ipsum به سادگی متن ساختگی صنعت چاپ و حروفچینی است. لورم ایپسوم متن ساختگی استاندارد صنعت از سال 1500 بوده است.
+			</p>
+			<p>
+			 Lorem Ipsum به سادگی متن ساختگی صنعت چاپ و حروفچینی است. در دهه 1960 با انتشار برگه های Letraset حاوی معابر Lorem Ipsum و اخیراً با نرم افزار انتشار دسکتاپ مانند Aldus PageMaker از جمله نسخه های Lorem Ipsum رایج شد.
+			</p>
+		   </div>
+		  </div>
+		 </div>
+		</div>
+	   </div>
+	  </div>
+	  <!-- پایان بخش tabs یا تب ها  -->
+
+	  <!-- شروع بخش دکمه ها  -->
+	   <div class="col-lg-6">
+	   <div class="card">
+		<div class="card-header">
+		 <h6 class="card-title">
+		  گروه لیست
+		 </h6>
+		 <p class="card-text">
+		  Bootstrap انواع دکمه ها را برای اهداف معنایی و سفارشی سازی ارائه می دهد.
+		 </p>
+		</div>
+		<div class="card-body">
+		 <div class="d-flex flex-wrap gap-2">
+		  <button class="btn btn-primary waves-effect waves-light" type="button">
+		   اولیه
+		  </button>
+		  <button class="btn btn-secondary waves-effect waves-light" type="button">
+		   ثانویه
+		  </button>
+		  <button class="btn btn-success waves-effect waves-light" type="button">
+		   موفقیت
+		  </button>
+		  <button class="btn btn-danger waves-effect waves-light" type="button">
+		   خطر
+		  </button>
+		  <button class="btn btn-warning waves-effect waves-light" type="button">
+		   هشدار
+		  </button>
+		  <button class="btn btn-info waves-effect waves-light" type="button">
+		   اطلاعات
+		  </button>
+		  <button class="btn btn-light waves-effect waves-light" type="button">
+		   نور
+		  </button>
+		  <button class="btn btn-dark waves-effect waves-light" type="button">
+		   تاریک
+		  </button>
+		  <button class="btn btn-white waves-effect waves-light" type="button">
+		   سفید
+		  </button>
+		  <button class="btn btn-link" type="button">
+		   پیوند
+		  </button>
+		 </div>
+		</div>
+	   </div>
+	  </div>
+	  <!-- پایان بخش دکمه ها  -->
+{% endblock %}

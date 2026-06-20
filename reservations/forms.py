@@ -8,6 +8,7 @@ import jdatetime
 from customers.models import Customer
 from products.models import Dress
 from reservations.models import Reservation
+from reservations.constants import PaymentMethod
 from reservations.services.availability_service import ReservationAvailabilityService
 from .utils import parse_reservation_date
 
@@ -83,6 +84,10 @@ class ReservationStepTwoForm(forms.ModelForm):
         label="تخفیف"
     )
 
+    def __init__(self, *args, **kwargs):
+        self.rent_price = kwargs.pop("rent_price", None)
+        super().__init__(*args, **kwargs)
+
     class Meta:
         model = Reservation
 
@@ -113,10 +118,7 @@ class ReservationStepTwoForm(forms.ModelForm):
         cleaned_data = super().clean()
 
         deposit = cleaned_data.get("deposit_amount") or 0
-        discount = cleaned_data.get("discount_amount")
-        if discount is None:
-            discount = 0
-            cleaned_data["discount_amount"] = 0
+        discount = cleaned_data.get("discount_amount") or 0
 
         if deposit < 0:
             raise ValidationError("بیعانه نمی‌تواند منفی باشد.")
@@ -124,6 +126,17 @@ class ReservationStepTwoForm(forms.ModelForm):
         if discount < 0:
             raise ValidationError("تخفیف نمی‌تواند منفی باشد.")
 
+        if self.rent_price is None:
+            raise ValidationError("اطلاعات هزینه اجاره کامل نیست.")
+
+        final_price = self.rent_price - discount
+        if final_price < 0:
+            final_price = 0
+
+        if deposit > final_price:
+            raise ValidationError("بیعانه نمی‌تواند بیشتر از هزینه نهایی اجاره باشد.")
+
+        cleaned_data["discount_amount"] = discount
         return cleaned_data
 
 
@@ -229,3 +242,54 @@ class ReservationEditForm(forms.ModelForm):
         cleaned_data["end_date"] = end_date
 
         return cleaned_data
+
+class RemainingPaymentForm(forms.Form):
+
+    remaining_payment_amount = forms.IntegerField(
+        min_value=1,
+        required=False,
+        label="مبلغ پرداخت باقی‌مانده"
+    )
+
+    remaining_payment_method = forms.ChoiceField(
+        choices=[("", "انتخاب کنید")] + list(PaymentMethod.CHOICES),
+        required=False,
+        label="روش پرداخت باقی‌مانده"
+    )
+
+    remaining_payment_tracking_code = forms.CharField(
+        max_length=100,
+        required=False,
+        label="کد رهگیری پرداخت باقی‌مانده"
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        amount = cleaned_data.get("remaining_payment_amount")
+        method = cleaned_data.get("remaining_payment_method")
+        code = cleaned_data.get("remaining_payment_tracking_code")
+
+        has_amount = amount is not None and amount > 0
+        has_method = method and method != ""
+        has_code = code and code.strip() != ""
+
+        if has_amount or has_method or has_code:
+            if not (has_amount and has_method and has_code):
+                raise ValidationError(
+                    "باید تمام اطلاعات پرداخت باقی‌مانده را وارد کنید یا هیچ‌کدام را وارد نکنید."
+                )
+
+        return cleaned_data
+
+    def validate_payment_amount(self, remaining_amount):
+        """Validate that payment amount matches the remaining amount."""
+        amount = self.cleaned_data.get("remaining_payment_amount")
+
+        if amount is None or amount == 0:
+            return
+
+        if amount != remaining_amount:
+            raise ValidationError(
+                f"مبلغ پرداخت باید برابر با باقی‌مانده ({remaining_amount} تومان) باشد."
+            )

@@ -6,6 +6,8 @@ from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils.dateparse import parse_date
+from django.utils import timezone
+from django.core.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404, redirect
 import jdatetime
 from .utils import parse_reservation_date
@@ -15,7 +17,8 @@ from reservations.models import Reservation
 from reservations.forms import (
     ReservationStepOneForm,
     ReservationStepTwoForm,
-    ReservationEditForm
+    ReservationEditForm,
+    RemainingPaymentForm
 )
 from .services.availability_service import ReservationAvailabilityService
 from .services.change_status import ReservationStatusService
@@ -94,7 +97,6 @@ def reservation_step_one(request):
     end_date = form.cleaned_data["end_date"]
 
     event_date = getattr(customer, "ceremony_date", None)
-
     rent_price = dress.daily_rent_price
 
     request.session["reservation_step1"] = {
@@ -102,6 +104,7 @@ def reservation_step_one(request):
         "dress_id": dress.id,
         "start_date": str(start_date),
         "rental_days": rental_days,
+        "rent_price": rent_price,
     }
 
     return JsonResponse({
@@ -143,6 +146,7 @@ def reservation_create(request):
             })
 
         cleaned = step1_form.cleaned_data
+        rent_price = cleaned["dress"].daily_rent_price
         step1_data = {
             "customer_id": cleaned["customer"].id,
             "dress_id": cleaned["dress"].id,
@@ -150,9 +154,25 @@ def reservation_create(request):
             "rental_days": cleaned["rental_days"],
             "end_date": str(cleaned["end_date"]),
             "event_date": str(getattr(cleaned["customer"], "ceremony_date", "")) if getattr(cleaned["customer"], "ceremony_date", None) else None,
+            "rent_price": rent_price,
         }
 
-    form = ReservationStepTwoForm(request.POST)
+    rent_price = None
+    if step1_data:
+        rent_price = step1_data.get("rent_price")
+        if rent_price is not None:
+            try:
+                rent_price = int(rent_price)
+            except (TypeError, ValueError):
+                rent_price = None
+
+    if rent_price is None and step1_data and step1_data.get("dress_id"):
+        try:
+            rent_price = Dress.objects.get(id=step1_data["dress_id"]).daily_rent_price
+        except Dress.DoesNotExist:
+            rent_price = None
+
+    form = ReservationStepTwoForm(request.POST, rent_price=rent_price)
     if not form.is_valid():
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
             message = " ".join(
@@ -349,6 +369,45 @@ def reservation_finalize_delivery(request, pk):
         return HttpResponseForbidden()
 
     reservation = get_object_or_404(Reservation, pk=pk)
+
+    form = RemainingPaymentForm(request.POST)
+
+    if not form.is_valid():
+        error_message = " ".join(
+            [str(e) for errors in form.errors.values() for e in errors]
+        )
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({
+                "success": False,
+                "errors": form.errors
+            }, status=400)
+
+        messages.error(request, error_message)
+        return redirect("reservations:list")
+
+    amount = form.cleaned_data.get("remaining_payment_amount")
+    method = form.cleaned_data.get("remaining_payment_method")
+    code = form.cleaned_data.get("remaining_payment_tracking_code")
+
+    if amount and amount > 0:
+        try:
+            form.validate_payment_amount(reservation.remaining_amount)
+        except ValidationError as e:
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({
+                    "success": False,
+                    "errors": {"remaining_payment_amount": [str(e)]}
+                }, status=400)
+
+            messages.error(request, str(e))
+            return redirect("reservations:list")
+
+        reservation.remaining_payment_amount = amount
+        reservation.remaining_payment_method = method
+        reservation.remaining_payment_tracking_code = code
+        reservation.remaining_paid_at = timezone.now()
+        reservation.remaining_amount = 0
+        reservation.save()
 
     try:
         ReservationStatusService.change_status(

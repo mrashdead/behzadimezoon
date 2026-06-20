@@ -3,26 +3,23 @@
 <div class="modal fade" id="createReservationModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
     <div class="modal-content border-0 shadow">
-      <form id="reservationCreateForm" class="h-100 d-flex flex-column" action="{% url 'reservations:create' %}" method="post">
-        {% csrf_token %}
-
-        <div class="modal-header">
-          <h5 class="modal-title">رزرو جدید</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
-        </div>
-
-        <div class="modal-body" style="max-height: calc(60vh); overflow-y: auto;">
-          <div class="row g-3">
-            <div class="col-12">
-              <div class="card shadow-none border mb-3">
-                <div class="card-header bg-body-tertiary">
-                  <h6 class="mb-0">مرحله اول - اطلاعات رزرو</h6>
-                </div>
-                <div class="card-body">
-                  <div id="reservationStep1">
-                    <div class="row g-3">
-                      <div class="col-md-6">
-                        <label class="form-label">مشتری</label>
+      <div class="modal-header">
+        <h5 class="modal-title">رزرو جدید</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+      </div>
+      <div class="modal-body" style="max-height: calc(70vh); overflow-y: auto;">
+        <form id="reservationStepOneForm" class="row g-3">
+          <div class="col-12">
+            <div class="card shadow-none border mb-3">
+              <div class="card-header bg-body-tertiary">
+                <h6 class="mb-0">مرحله اول - اطلاعات رزرو</h6>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <div class="row align-items-center mb-3">
+                      <label class="col-sm-3 text-sm-end col-form-label">مشتری</label>
+                      <div class="col-sm-9">
                         <select name="customer" class="form-control" required>
                           <option value="">انتخاب مشتری</option>
                           {% for customer in customers %}
@@ -30,9 +27,13 @@
                           {% endfor %}
                         </select>
                       </div>
+                    </div>
+                  </div>
 
-                      <div class="col-md-6">
-                        <label class="form-label">لباس</label>
+                  <div class="col-md-6">
+                    <div class="row align-items-center mb-3">
+                      <label class="col-sm-3 text-sm-end col-form-label">لباس</label>
+                      <div class="col-sm-9">
                         <select name="dress" class="form-control" required>
                           <option value="">انتخاب لباس</option>
                           {% for dress in dresses %}
@@ -40,24 +41,40 @@
                           {% endfor %}
                         </select>
                       </div>
+                    </div>
+                  </div>
 
-                      <div class="col-md-6">
-                        <label class="form-label">تاریخ شروع اجاره</label>
+                  <div class="col-md-6">
+                    <div class="row align-items-center mb-3">
+                      <label class="col-sm-3 text-sm-end col-form-label">تاریخ شروع اجاره</label>
+                      <div class="col-sm-9">
                         <input type="text" name="start_date" class="form-control jalali-datepicker" required>
                       </div>
+                    </div>
+                  </div>
 
-                      <div class="col-md-6">
-                        <label class="form-label">مدت اجاره (روز)</label>
+                  <div class="col-md-6">
+                    <div class="row align-items-center mb-3">
+                      <label class="col-sm-3 text-sm-end col-form-label">مدت اجاره (روز)</label>
+                      <div class="col-sm-9">
                         <input type="number" name="rental_days" class="form-control" min="1" required>
                       </div>
+                    </div>
+                  </div>
 
-                      <div class="col-md-4">
-                        <label class="form-label">تاریخ مراسم</label>
+                  <div class="col-md-6">
+                    <div class="row align-items-center mb-3">
+                      <label class="col-sm-3 text-sm-end col-form-label">تاریخ مراسم</label>
+                      <div class="col-sm-9">
                         <input type="text" id="event_date" class="form-control" readonly>
                       </div>
+                    </div>
+                  </div>
 
-                      <div class="col-md-4">
-                        <label class="form-label">تاریخ پایان</label>
+                  <div class="col-md-6">
+                    <div class="row align-items-center mb-3">
+                      <label class="col-sm-3 text-sm-end col-form-label">تاریخ پایان</label>
+                      <div class="col-sm-9">
                         <input type="text" id="end_date" class="form-control" readonly>
                       </div>
                     </div>
@@ -65,81 +82,133 @@
                 </div>
               </div>
             </div>
+          </div>
+        </form>
+      </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-light" data-bs-dismiss="modal">انصراف</button>
+        <button type="button" class="btn btn-primary" id="nextStepButton" disabled>مرحله بعد</button>
+      </div>
+    </div>
+  </div>
+</div>
 
-            <div class="col-12 d-none" id="reservationStep2Card">
-              <div class="card shadow-none border">
-                <div class="card-header bg-body-tertiary">
-                  <h6 class="mb-0">مرحله دوم - اطلاعات مالی</h6>
+<div class="modal fade" id="createReservationStep2Modal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
+    <div class="modal-content border-0 shadow">
+      <form id="reservationCreateForm" action="{% url 'reservations:create' %}" method="post">
+        {% csrf_token %}
+        <div class="modal-header">
+          <h5 class="modal-title">مرحله دوم - اطلاعات مالی</h5>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+        </div>
+        <div class="modal-body" style="max-height: calc(70vh); overflow-y: auto;">
+          <div class="card shadow-none border mb-3">
+            <div class="card-body">
+              <div class="row g-3">
+                <div class="col-md-6">
+                  <div class="row align-items-center mb-3">
+                    <label class="col-sm-3 text-sm-end col-form-label">روش پرداخت</label>
+                    <div class="col-sm-9">
+                      <select name="payment_method" class="form-control" required>
+                        <option value="">انتخاب کنید</option>
+                        <option value="CASH">نقدی</option>
+                        <option value="CARD">کارت به کارت</option>
+                        <option value="TRANSFER">انتقال بانکی</option>
+                        <option value="POS">کارتخوان</option>
+                      </select>
+                    </div>
+                  </div>
                 </div>
-                <div class="card-body overflow-auto" style="max-height: calc(50vh);">
-                  <div id="reservationStep2">
-                    <div class="row g-3">
-                      <div class="col-md-6">
-                        <label class="form-label">روش پرداخت</label>
-                        <select name="payment_method" class="form-control" required>
-                          <option value="">انتخاب کنید</option>
-                          <option value="CASH">نقدی</option>
-                          <option value="CARD">کارت به کارت</option>
-                          <option value="TRANSFER">انتقال بانکی</option>
-                          <option value="POS">کارتخوان</option>
-                        </select>
-                      </div>
 
-                      <div class="col-md-6">
-                        <label class="form-label">کد رهگیری پرداخت</label>
-                        <input type="text" name="payment_tracking_code" class="form-control" required>
-                      </div>
+                <div class="col-md-6">
+                  <div class="row align-items-center mb-3">
+                    <label class="col-sm-3 text-sm-end col-form-label">کد رهگیری پرداخت</label>
+                    <div class="col-sm-9">
+                      <input type="text" name="payment_tracking_code" class="form-control" required>
+                    </div>
+                  </div>
+                </div>
 
-                      <div class="col-md-6">
-                        <label class="form-label">نوع ضمانت اول</label>
-                        <select name="guarantee1_type" class="form-control" required>
-                          <option value="CHECK">چک</option>
-                          <option value="CASH">پول</option>
-                          <option value="GOLD">طلا</option>
-                          <option value="PROMISSORY">سفته</option>
-                        </select>
-                      </div>
+                <div class="col-md-6">
+                  <div class="row align-items-center mb-3">
+                    <label class="col-sm-3 text-sm-end col-form-label">نوع ضمانت اول</label>
+                    <div class="col-sm-9">
+                      <select name="guarantee1_type" class="form-control" required>
+                        <option value="CHECK">چک</option>
+                        <option value="CASH">پول</option>
+                        <option value="GOLD">طلا</option>
+                        <option value="PROMISSORY">سفته</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
 
-                      <div class="col-md-6">
-                        <label class="form-label">کد رهگیری ضمانت اول</label>
-                        <input type="text" name="guarantee1_tracking_code" class="form-control" required>
-                      </div>
+                <div class="col-md-6">
+                  <div class="row align-items-center mb-3">
+                    <label class="col-sm-3 text-sm-end col-form-label">کد رهگیری ضمانت اول</label>
+                    <div class="col-sm-9">
+                      <input type="text" name="guarantee1_tracking_code" class="form-control" required>
+                    </div>
+                  </div>
+                </div>
 
-                      <div class="col-md-6">
-                        <label class="form-label">نوع ضمانت دوم</label>
-                        <select name="guarantee2_type" class="form-control">
-                          <option value="">ندارد</option>
-                          <option value="CHECK">چک</option>
-                          <option value="CASH">پول</option>
-                          <option value="GOLD">طلا</option>
-                          <option value="PROMISSORY">سفته</option>
-                        </select>
-                      </div>
+                <div class="col-md-6">
+                  <div class="row align-items-center mb-3">
+                    <label class="col-sm-3 text-sm-end col-form-label">نوع ضمانت دوم</label>
+                    <div class="col-sm-9">
+                      <select name="guarantee2_type" class="form-control">
+                        <option value="">ندارد</option>
+                        <option value="CHECK">چک</option>
+                        <option value="CASH">پول</option>
+                        <option value="GOLD">طلا</option>
+                        <option value="PROMISSORY">سفته</option>
+                      </select>
+                    </div>
+                  </div>
+                </div>
 
-                      <div class="col-md-6">
-                        <label class="form-label">کد رهگیری ضمانت دوم</label>
-                        <input type="text" name="guarantee2_tracking_code" class="form-control">
-                      </div>
+                <div class="col-md-6">
+                  <div class="row align-items-center mb-3">
+                    <label class="col-sm-3 text-sm-end col-form-label">کد رهگیری ضمانت دوم</label>
+                    <div class="col-sm-9">
+                      <input type="text" name="guarantee2_tracking_code" class="form-control">
+                    </div>
+                  </div>
+                </div>
 
-                      <div class="col-md-6">
-                        <label class="form-label">بیعانه</label>
-                        <input type="number" name="deposit_amount" class="form-control" min="0" required>
-                      </div>
+                <div class="col-md-6">
+                  <div class="row align-items-center mb-3">
+                    <label class="col-sm-3 text-sm-end col-form-label">بیعانه</label>
+                    <div class="col-sm-9">
+                      <input type="number" name="deposit_amount" class="form-control" min="0" required>
+                    </div>
+                  </div>
+                </div>
 
-                      <div class="col-md-6">
-                        <label class="form-label">تخفیف</label>
-                        <input type="number" name="discount_amount" class="form-control" min="0">
-                      </div>
+                <div class="col-md-6">
+                  <div class="row align-items-center mb-3">
+                    <label class="col-sm-3 text-sm-end col-form-label">تخفیف</label>
+                    <div class="col-sm-9">
+                      <input type="number" name="discount_amount" class="form-control" min="0">
+                    </div>
+                  </div>
+                </div>
 
-                      <div class="col-md-6">
-                        <label class="form-label">هزینه اجاره</label>
-                        <input type="text" id="rent_price" class="form-control" readonly>
-                      </div>
+                <div class="col-md-6">
+                  <div class="row align-items-center mb-3">
+                    <label class="col-sm-3 text-sm-end col-form-label">هزینه اجاره</label>
+                    <div class="col-sm-9">
+                      <input type="text" id="rent_price" class="form-control" readonly>
+                    </div>
+                  </div>
+                </div>
 
-                      <div class="col-md-6">
-                        <label class="form-label">باقی مانده</label>
-                        <input type="text" id="remaining_amount" class="form-control" readonly>
-                      </div>
+                <div class="col-md-6">
+                  <div class="row align-items-center mb-3">
+                    <label class="col-sm-3 text-sm-end col-form-label">باقی مانده</label>
+                    <div class="col-sm-9">
+                      <input type="text" id="remaining_amount" class="form-control" readonly>
                     </div>
                   </div>
                 </div>
@@ -147,14 +216,10 @@
             </div>
           </div>
         </div>
-
         <div class="modal-footer">
           <button type="button" class="btn btn-light" data-bs-dismiss="modal">انصراف</button>
-          <button type="button" class="btn btn-primary" id="nextStepButton" disabled>مرحله بعد</button>
-          <button type="submit" class="btn btn-success d-none" id="createReservationButton">ثبت رزرو</button>
-          <noscript>
-            <button type="submit" class="btn btn-success">ثبت رزرو</button>
-          </noscript>
+          <button type="button" class="btn btn-secondary" id="backToStep1Button">بازگشت</button>
+          <button type="submit" class="btn btn-success" id="createReservationButton">ثبت رزرو</button>
         </div>
       </form>
     </div>

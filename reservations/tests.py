@@ -261,3 +261,228 @@ class ReservationStatusTransitionTests(TestCase):
         delete_url = reverse('reservations:delete', args=[reservation.pk])
         response = self.client.post(delete_url)
         self.assertEqual(response.status_code, 403)
+
+
+class RemainingPaymentTests(TestCase):
+    """Tests for remaining payment at delivery feature"""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.customer = Customer.objects.create(
+            bride_first_name='A',
+            bride_last_name='B',
+            bride_phone='09120000000',
+            ceremony_date=jdatetime.date(1402, 1, 1),
+            how_to_know='test',
+            allow_contact=True
+        )
+        cls.dress = Dress.objects.create(code='D001', daily_rent_price=100000)
+        cls.manager = create_user('manager_user', 'MANAGER')
+        cls.seller = create_user('seller_user', 'SELLER')
+
+    def setUp(self):
+        self.client = Client()
+
+    def test_delivery_blocked_when_remaining_unpaid(self):
+        """Test that delivery is blocked if remaining_amount > 0 and no payment registered"""
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=50000,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        finalize_url = reverse('reservations:finalize_delivery', args=[reservation.pk])
+
+        response = self.client.post(finalize_url, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 400)
+
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, ReservationStatus.CONFIRMED)
+
+    def test_delivery_allowed_after_valid_remaining_payment(self):
+        """Test that delivery succeeds after registering valid remaining payment"""
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=50000,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        finalize_url = reverse('reservations:finalize_delivery', args=[reservation.pk])
+
+        post_data = {
+            'remaining_payment_amount': '50000',
+            'remaining_payment_method': 'CASH',
+            'remaining_payment_tracking_code': 'REC001',
+        }
+
+        response = self.client.post(finalize_url, post_data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, {
+            "success": True,
+            "message": "لباس با موفقیت تحویل شد."
+        })
+
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, ReservationStatus.DELIVERED)
+        self.assertEqual(reservation.remaining_payment_amount, 50000)
+        self.assertEqual(reservation.remaining_payment_method, 'CASH')
+        self.assertEqual(reservation.remaining_payment_tracking_code, 'REC001')
+        self.assertEqual(reservation.remaining_amount, 0)
+        self.assertIsNotNone(reservation.remaining_paid_at)
+
+    def test_invalid_remaining_payment_amount_blocks_delivery(self):
+        """Test that incorrect payment amount blocks delivery"""
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=50000,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        finalize_url = reverse('reservations:finalize_delivery', args=[reservation.pk])
+
+        post_data = {
+            'remaining_payment_amount': '30000',
+            'remaining_payment_method': 'CASH',
+            'remaining_payment_tracking_code': 'REC001',
+        }
+
+        response = self.client.post(finalize_url, post_data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 400)
+
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, ReservationStatus.CONFIRMED)
+        self.assertIsNone(reservation.remaining_paid_at)
+
+    def test_partial_remaining_payment_data_blocks_delivery(self):
+        """Test that partial payment data blocks delivery"""
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=50000,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        finalize_url = reverse('reservations:finalize_delivery', args=[reservation.pk])
+
+        post_data = {
+            'remaining_payment_amount': '50000',
+            'remaining_payment_method': 'CASH',
+        }
+
+        response = self.client.post(finalize_url, post_data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 400)
+
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, ReservationStatus.CONFIRMED)
+
+    def test_delivery_without_payment_when_already_settled(self):
+        """Test that delivery works without payment form if remaining_amount is 0"""
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=100000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        finalize_url = reverse('reservations:finalize_delivery', args=[reservation.pk])
+
+        response = self.client.post(finalize_url, {}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, ReservationStatus.DELIVERED)
+
+    def test_permission_check_on_remaining_payment(self):
+        """Test that only authorized users can register remaining payment"""
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=50000,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='seller_user', password='password123')
+        finalize_url = reverse('reservations:finalize_delivery', args=[reservation.pk])
+
+        post_data = {
+            'remaining_payment_amount': '50000',
+            'remaining_payment_method': 'CASH',
+            'remaining_payment_tracking_code': 'REC001',
+        }
+
+        response = self.client.post(finalize_url, post_data)
+        self.assertEqual(response.status_code, 403)

@@ -1,0 +1,334 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="col-lg-12">
+		 <div class="card">
+		  <div class="card-header">
+		   <h6 class="card-title">
+			ورودی های فرم
+		   </h6>
+		  </div>
+		  <div class="card-body">
+		   <div class="row align-items-center mb-3">
+			<div class="col-sm-3 text-sm-end">
+			 <label class="col-form-label">
+			  متن
+			 </label>
+			</div>
+			<div class="col-sm-9">
+			 <input class="form-control" placeholder="احسان رفیعی" type="text"/>
+			</div>
+		   </div>
+		   <div class="row align-items-center mb-3">
+			<div class="col-sm-3 text-sm-end">
+			 <label class="col-form-label">
+			  جستجو کنید
+			 </label>
+			</div>
+			<div class="col-sm-9 text-sm-end">
+			 <input class="form-control" placeholder="برچسب گذاری اولیه" type="search"/>
+			</div>
+		   </div>
+		   <div class="row align-items-center mb-3">
+			<div class="col-sm-3 text-sm-end">
+			 <label class="col-form-label">
+			  ایمیل
+			 </label>
+			</div>
+			<div class="col-sm-9">
+			 <input class="form-control" placeholder="info@example.com" type="email"/>
+			</div>
+		   </div>
+		   <div class="row align-items-center mb-3">
+			<div class="col-sm-3 text-sm-end">
+			 <label class="col-form-label">
+			  URL
+			 </label>
+			</div>
+			<div class="col-sm-9 text-end">
+			 <input class="form-control" placeholder="https://google.com" type="url"/>
+			</div>
+		   </div>
+		   <div class="row align-items-center mb-3">
+			<div class="col-sm-3 text-sm-end">
+			 <label class="col-form-label">
+			  تلفن
+			 </label>
+			</div>
+			<div class="col-sm-9">
+			 <input class="form-control" placeholder="09010010011" type="tel"/>
+			</div>
+		   </div>
+		   <div class="row align-items-center mb-3">
+			<div class="col-sm-3 text-sm-end">
+			 <label class="col-form-label">
+			  رمز عبور
+			 </label>
+			</div>
+			<div class="col-sm-9 text-end">
+			 <input class="form-control" type="password" value="&bull;&bull;&bull;&bull;&bull;&bull;&bull;&bull;"/>
+			</div>
+		   </div>
+		   <div class="row align-items-center mb-3">
+			<div class="col-sm-3 text-sm-end">
+			 <label class="col-form-label">
+			  شماره
+			 </label>
+			</div>
+			<div class="col-sm-9">
+			 <input class="form-control" type="number" value="25"/>
+			</div>
+		   </div>
+			<div class="row mb-3">
+				<label class="col-sm-3 text-sm-end">تاریخ و زمان</label>
+				<div class="col-sm-9">
+					<input type="text" class="form-control p-date-time" placeholder="انتخاب تاریخ و زمان" />
+				</div>
+			</div>
+
+			<div class="row mb-3">
+				<label class="col-sm-3 text-sm-end">تاریخ</label>
+				<div class="col-sm-9">
+					<input type="text" class="form-control p-date-only" placeholder="انتخاب تاریخ" />
+				</div>
+			</div>
+
+			<div class="row mb-3">
+				<label class="col-sm-3 text-sm-end">ماه</label>
+				<div class="col-sm-9">
+					<input type="text" class="form-control p-month-only" placeholder="انتخاب ماه" />
+				</div>
+			</div>
+
+			<div class="row mb-3">
+				<label class="col-sm-3 text-sm-end">زمان</label>
+				<div class="col-sm-9">
+					<input class="form-control p-time-only" type="text" placeholder="انتخاب زمان" />
+				</div>
+			</div>
+		   <div class="row align-items-center mb-3">
+			<div class="col-sm-3 text-sm-end">
+			 <label class="col-form-label">
+			  هفته
+			 </label>
+			</div>
+			<div class="col-sm-9">
+			 <input type="text" class="form-control p-week-only week-input-target" placeholder="انتخاب هفته" />
+			</div>
+		   </div>
+		   <div class="row align-items-center mb-3">
+			<div class="col-sm-3 text-sm-end">
+			 <label class="col-form-label">
+			  رنگ
+			 </label>
+			</div>
+			<div class="col-sm-9">
+			 <input class="form-control form-control-color" title="Choose your color" type="color" value="#316AFF"/>
+			</div>
+		   </div>
+		   <div class="row align-items-center mb-3">
+			<div class="col-sm-3 text-sm-end">
+			 <label class="col-form-label">
+			  انتخاب کنید
+			 </label>
+			</div>
+			<div class="col-sm-9">
+			 <select class="form-select">
+			  <option selected="">
+			   انتخاب کنید
+			  </option>
+			  <option value="1">
+			   یکی
+			  </option>
+			  <option value="2">
+			   دو
+			  </option>
+			 </select>
+			</div>
+		   </div>
+		   <div class="row align-items-center mb-3">
+			<div class="col-sm-3 text-sm-end">
+			 <label class="col-form-label">
+			  فهرست های داده
+			 </label>
+			</div>
+			<div class="col-sm-9">
+			 <input class="form-control" list="datalistOptions" placeholder="برای جستجو تایپ کنید..."/>
+			 <datalist id="datalistOptions">
+			  <option value="San Francisco">
+			  </option>
+			  <option value="New York">
+			  </option>
+			  <option value="Seattle">
+			  </option>
+			  <option value="Los Angeles">
+			  </option>
+			  <option value="Chicago">
+			  </option>
+			 </datalist>
+			</div>
+		   </div>
+		  </div>
+		 </div>
+		</div>
+
+        <div class="col-lg-12">
+	   <div class="card">
+		<div class="card-header">
+		 <h6 class="card-title">
+		  سبک های سفارشی
+		 </h6>
+		</div>
+		<div class="card-body">
+		 <form class="row g-3 needs-validation" novalidate="">
+		  <div class="col-md-4">
+		   <label class="form-label" for="validationCustom01">
+			نام کوچک
+		   </label>
+		   <input class="form-control" id="validationCustom01" required="" type="text" value="Mark"/>
+		   <div class="valid-feedback">
+			خوب به نظر می رسد!
+		   </div>
+		  </div>
+		  <div class="col-md-4">
+		   <label class="form-label" for="validationCustom02">
+			نام خانوادگی
+		   </label>
+		   <input class="form-control" id="validationCustom02" required="" type="text" value="Otto"/>
+		   <div class="valid-feedback">
+			خوب به نظر می رسد!
+		   </div>
+		  </div>
+		  <div class="col-md-4">
+		   <label class="form-label" for="validationCustomUsername">
+			نام کاربری
+		   </label>
+		   <div class="input-group has-validation">
+			<span class="input-group-text" id="inputGroupPrepend">
+			 @
+			</span>
+			<input aria-describedby="inputGroupPrepend" class="form-control" id="validationCustomUsername" required="" type="text"/>
+			<div class="invalid-feedback">
+			 لطفا یک نام کاربری انتخاب کنید
+			</div>
+		   </div>
+		  </div>
+		  <div class="col-md-6">
+		   <label class="form-label" for="validationCustom03">
+			شهر
+		   </label>
+		   <input class="form-control" id="validationCustom03" required="" type="text"/>
+		   <div class="invalid-feedback">
+			لطفا یک شهر معتبر ارائه دهید.
+		   </div>
+		  </div>
+		  <div class="col-md-3">
+		   <label class="form-label" for="validationCustom04">
+			ایالت
+		   </label>
+		   <select class="form-select" id="validationCustom04" required="">
+			<option disabled="" selected="" value="">
+			 انتخاب کن...
+			</option>
+			<option>
+			 ...
+			</option>
+		   </select>
+		   <div class="invalid-feedback">
+			لطفاً یک حالت معتبر انتخاب کنید.
+		   </div>
+		  </div>
+		  <div class="col-md-3">
+		   <label class="form-label" for="validationCustom05">
+			زیپ
+		   </label>
+		   <input class="form-control" id="validationCustom05" required="" type="text"/>
+		   <div class="invalid-feedback">
+			لطفا یک فایل فشرده معتبر ارائه دهید.
+		   </div>
+		  </div>
+		  <div class="col-12">
+		   <div class="form-check">
+			<input class="form-check-input" id="invalidCheck" required="" type="checkbox" value=""/>
+			<label class="form-check-label" for="invalidCheck">
+			 با شرایط و ضوابط موافقت کنید
+			</label>
+			<div class="invalid-feedback">
+			 قبل از ارسال باید موافقت کنید.
+			</div>
+		   </div>
+		  </div>
+		  <div class="col-12">
+		   <button class="btn btn-primary waves-effect waves-light" type="submit">
+			ارسال فرم
+		   </button>
+		  </div>
+		 </form>
+		</div>
+	   </div>
+	  </div>
+      <div class="row">
+	  <div class="col-lg-12">
+	   <div class="card">
+		<div class="card-header">
+		 <h6 class="card-title">
+		  Persian Datepicker
+		 </h6>
+		</div>
+		<div class="card-body">
+		 <div class="row">
+		  <div class="col-lg-4 col-md-6 mb-4">
+		   <label class="form-label" for="flatpickr_basic">
+			انتخاب تاریخ
+		   </label>
+		   <input type="text" class="form-control p-date-only" placeholder="انتخاب تاریخ" />
+		  </div>
+		  <div class="col-lg-4 col-md-6 mb-4">
+		   <label class="form-label" for="flatpickr_datetime">
+			انتخاب تاریخ و زمان
+		   </label>
+		   <input type="text" class="form-control p-date-time" placeholder="انتخاب تاریخ و زمان" />
+		  </div>
+		  <div class="col-lg-4 col-md-6 mb-4">
+		   <label class="form-label" for="flatpickr_time">
+			انتخاب زمان
+		   </label>
+		   <input class="form-control p-time-only" type="text" placeholder="انتخاب زمان" />
+		  </div>
+		  <div class="col-lg-4 col-md-6 mb-4">
+		   <label class="form-label" for="flatpickr_range">
+			انتخاب کننده محدوده
+		   </label>
+		   <input type="text" class="form-control p-date-range range-input-target" placeholder="از تاریخ - تا تاریخ" />
+		  </div>
+		  <div class="col-lg-4 col-md-6 mb-4">
+		   <label class="form-label" for="flatpickr_multiple_dates">
+			انتخاب کننده تاریخ های متعدد
+		   </label>
+		   <input class="form-control p-multiple-date" id="flatpickr_multiple_dates" placeholder="انتخاب تا ۱۰ تاریخ..." readonly type="text"/>
+		  </div>
+		  <div class="col-lg-4 col-md-6 mb-4">
+		   <label class="form-label" for="flatpickr_localization">
+			انتخابگر محلی سازی
+		   </label>
+		   <input type="text" class="form-control p-date-time" placeholder="انتخاب تاریخ و زمان" />
+		  </div>
+		  <div class="col-lg-4 col-md-6 mb-4">
+		   <label class="form-label" for="flatpickr_weeknumbers">
+			انتخابگر هفته ای
+		   </label>
+		   <input type="text" class="form-control p-week-only week-input-target" placeholder="انتخاب هفته" />
+		  </div>
+		  <div class="col-lg-4 col-md-6 mb-4">
+		   <label class="form-label" for="flatpickr_inline">
+			انتخابگر درون خطی
+		   </label>
+			<input type="text" class="inline-input-target form-control">
+			<div id="inline-calendar-holder" class="mt-3"></div>
+		  </div>
+		 </div>
+		</div>
+	   </div>
+	  </div>
+	 </div>
+{% endblock %}

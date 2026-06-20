@@ -1,3 +1,4 @@
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.conf import settings
 from datetime import timedelta
@@ -104,6 +105,33 @@ class Reservation(models.Model):
     payment_tracking_code = models.CharField(
         max_length=100,
         verbose_name="کد رهگیری پرداخت"
+    )
+
+    remaining_payment_amount = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="مبلغ پرداخت باقی‌مانده"
+    )
+
+    remaining_payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethod.CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="روش پرداخت باقی‌مانده"
+    )
+
+    remaining_payment_tracking_code = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name="کد رهگیری پرداخت باقی‌مانده"
+    )
+
+    remaining_paid_at = jmodels.jDateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="تاریخ پرداخت باقی‌مانده"
     )
 
     # -----------------------
@@ -220,9 +248,35 @@ class Reservation(models.Model):
         if self.final_price < 0:
             self.final_price = 0
 
-        self.remaining_amount = self.final_price - (self.deposit_amount or 0)
-        if self.remaining_amount < 0:
+        if self.remaining_payment_amount and self.remaining_payment_amount > 0:
             self.remaining_amount = 0
+        else:
+            self.remaining_amount = self.final_price - (self.deposit_amount or 0)
+            if self.remaining_amount < 0:
+                self.remaining_amount = 0
+
+    def clean(self):
+        if self.discount_amount is None:
+            self.discount_amount = 0
+
+        if self.rent_price is None:
+            return
+
+        final_price = self.rent_price - (self.discount_amount or 0)
+        if final_price < 0:
+            final_price = 0
+
+        deposit = self.deposit_amount or 0
+
+        if deposit < 0:
+            raise ValidationError({
+                "deposit_amount": "بیعانه نمی‌تواند منفی باشد."
+            })
+
+        if deposit > final_price:
+            raise ValidationError({
+                "deposit_amount": "بیعانه نمی‌تواند بیشتر از هزینه نهایی اجاره باشد."
+            })
 
     def save(self, *args, **kwargs):
 
@@ -236,6 +290,7 @@ class Reservation(models.Model):
 
         self.calculate_dates()
         self.calculate_financials()
+        self.full_clean()
 
         super().save(*args, **kwargs)
 
