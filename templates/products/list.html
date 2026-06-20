@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% load humanize %}
+{% load humanize jformat %}
 
 {% block title %}محصولات{% endblock %}
 
@@ -43,8 +43,7 @@
                             </td>
 
                             <td data-label="قیمت اجاره روزانه">
-                                <span class="js-price" data-price="{{ dress.daily_rent_price }}"></span>
-                                <span class="text-muted">تومان</span>
+                                {{ dress.daily_rent_price|intcomma|default:"-" }} تومان
                             </td>
 
                             <td data-label="وضعیت">
@@ -60,8 +59,7 @@
                             </td>
 
                             <td data-label="تاریخ ثبت">
-                                <span class="js-jalali-datetime"
-                                      data-datetime="{{ dress.created_at|date:'c' }}"></span>
+                                {{ dress.created_at|jformat:"%Y/%m/%d"|default:"-" }}
                             </td>
 
                             <td data-label="عملیات" class="text-end">

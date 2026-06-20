@@ -1,8 +1,48 @@
 #customers/forms.py
+from datetime import date
+import jdatetime
 from django import forms
 from .models import Customer
 from jalali_date.fields import JalaliDateField
 from jalali_date.widgets import AdminJalaliDateWidget
+
+PERSIAN_DIGIT_MAP = str.maketrans(
+    '۰۱۲۳۴۵۶۷۸۹٠١٢٣٤٥٦٧٨٩',
+    '01234567890123456789'
+)
+
+
+def normalize_digits(value):
+    if value is None:
+        return value
+    return str(value).translate(PERSIAN_DIGIT_MAP)
+
+
+def parse_jalali_or_gregorian_date(value):
+    if not value:
+        return None
+
+    value = normalize_digits(value).strip()
+    normalized = value.replace('-', '/')
+    parts = normalized.split('/')
+
+    if len(parts) == 3:
+        try:
+            year = int(parts[0])
+            month = int(parts[1])
+            day = int(parts[2])
+
+            if 1900 <= year <= 2200:
+                return date(year, month, day)
+
+            if 1300 <= year <= 1600:
+                j_date = jdatetime.date(year, month, day)
+                return j_date.togregorian()
+        except (ValueError, OverflowError):
+            pass
+
+    return None
+
 
 class CustomerForm(forms.ModelForm):
     ceremony_date = JalaliDateField(
@@ -49,4 +89,18 @@ class CustomerForm(forms.ModelForm):
         ]
         for field_name in required_fields:
             self.fields[field_name].required = True
+
+    def clean_ceremony_date(self):
+        raw_value = self.data.get('ceremony_date') or self.cleaned_data.get('ceremony_date')
+
+        if isinstance(raw_value, date):
+            return raw_value
+
+        if raw_value:
+            parsed_date = parse_jalali_or_gregorian_date(raw_value)
+            if parsed_date is None:
+                raise forms.ValidationError('تاریخ مراسم نامعتبر است. لطفاً قالب را بررسی کنید.')
+            return parsed_date
+
+        return None
 

@@ -164,6 +164,16 @@
               <i class="fi fi-rr-sliders me-2"></i>
               تنظیمات بیشتر
             </a>
+            <a href="{% url 'accounts:change_password' %}" class="btn btn-outline-warning">
+              <i class="fi fi-rr-lock me-2"></i>
+              تغییر رمز عبور
+            </a>
+            {% if can_create_users %}
+            <a href="{% url 'accounts:user-create' %}" class="btn btn-sm btn-outline-primary">
+              <i class="fi fi-rr-user-plus me-2"></i>
+              ایجاد کاربر جدید
+            </a>
+            {% endif %}
           </div>
         </form>
       </div>

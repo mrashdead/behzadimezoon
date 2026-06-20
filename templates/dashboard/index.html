@@ -17,12 +17,12 @@
     </div>
 
     <div class="row mt-3">
-        <div class="col-lg-12">
-            <div class="card border-0 shadow-sm">
+        <div class="col-lg-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
                 <div class="card-header d-flex align-items-center justify-content-between border-0 pb-0">
                     <h6 class="card-title mb-0">
                         <i class="fi fi-rr-list me-2"></i>
-                        معاملات اخیر
+                        ۳ رزرو اخیر
                     </h6>
                 </div>
                 <div class="card-body px-1 pt-2 pb-2">
@@ -30,38 +30,76 @@
                         <table class="table table-sm table-row-rounded align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
-                                    <th class="minw-150px">نام</th>
-                                    <th class="minw-120px">تاریخ</th>
-                                    <th class="minw-200px">توضیحات</th>
-                                    <th class="minw-100px">دسته بندی</th>
-                                    <th class="minw-130px text-end">مقدار</th>
-                                    <th class="minw-100px">وضعیت</th>
+                                    <th>مشتری</th>
+                                    <th>لباس</th>
+                                    <th>تاریخ ایجاد</th>
+                                    <th>وضعیت</th>
                                 </tr>
                             </thead>
                             <tbody>
+                                {% for reservation in recent_reservations %}
                                 <tr>
+                                    <td>{{ reservation.customer.bride_first_name }} {{ reservation.customer.bride_last_name }}</td>
+                                    <td>{{ reservation.dress.code }}</td>
+                                    <td>{{ reservation.created_at|jformat:"%Y/%m/%d" }}</td>
                                     <td>
-                                        <div class="d-flex align-items-center gap-2">
-                                            <div class="avatar avatar-sm rounded-circle bg-light">
-                                                <i class="fi fi-rr-user text-muted"></i>
-                                            </div>
-                                            <span>نسترن سلطانی</span>
-                                        </div>
-                                    </td>
-                                    <td>
-                                        <span class="fw-medium">۲۸/۰۶/۱۴۰۵</span>
-                                    </td>
-                                    <td>کیف پول</td>
-                                    <td>
-                                        <span class="badge bg-success-subtle text-success">درآمد</span>
-                                    </td>
-                                    <td class="text-end">
-                                        <span class="fw-semibold text-success">۱,۲۰۰,۰۰۰ تومان</span>
-                                    </td>
-                                    <td>
-                                        <span class="badge bg-success-subtle text-success">تکمیل شد</span>
+                                        <span class="badge bg-info-subtle text-info">
+                                            {{ reservation.get_status_display }}
+                                        </span>
                                     </td>
                                 </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">
+                                        هنوز رزروی ثبت نشده است.
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6 mb-3">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header d-flex align-items-center justify-content-between border-0 pb-0">
+                    <h6 class="card-title mb-0">
+                        <i class="fi fi-rr-clock-five me-2"></i>
+                        ۳ رزرو فعال
+                    </h6>
+                </div>
+                <div class="card-body px-1 pt-2 pb-2">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-row-rounded align-middle mb-0">
+                            <thead class="table-light">
+                                <tr>
+                                    <th>مشتری</th>
+                                    <th>لباس</th>
+                                    <th>تاریخ</th>
+                                    <th>وضعیت</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reservation in active_reservations %}
+                                <tr>
+                                    <td>{{ reservation.customer.bride_first_name }} {{ reservation.customer.bride_last_name }}</td>
+                                    <td>{{ reservation.dress.code }}</td>
+                                    <td>{{ reservation.start_date|jformat:"%Y/%m/%d" }}</td>
+                                    <td>
+                                        <span class="badge bg-warning-subtle text-warning">
+                                            {{ reservation.get_status_display }}
+                                        </span>
+                                    </td>
+                                </tr>
+                                {% empty %}
+                                <tr>
+                                    <td colspan="4" class="text-center py-4 text-muted">
+                                        رزروی فعال وجود ندارد.
+                                    </td>
+                                </tr>
+                                {% endfor %}
                             </tbody>
                         </table>
                     </div>

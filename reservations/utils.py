@@ -23,6 +23,20 @@ def normalize_digits(value):
     return value.translate(persian_arabic_digits)
 
 
+def date_to_iso(value):
+    """Convert a date or Jalali date value to a Gregorian ISO date string."""
+    if not value:
+        return None
+
+    if hasattr(value, "togregorian"):
+        return value.togregorian().isoformat()
+
+    if hasattr(value, "isoformat"):
+        return value.isoformat()
+
+    return str(value)
+
+
 def get_reservations_for_user(user):
     """
     Get filtered reservations based on user role.

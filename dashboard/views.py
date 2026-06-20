@@ -3,6 +3,8 @@ from django.views.generic import TemplateView
 from django.db.models import Sum
 from customers.models import Customer
 from products.models import Dress
+from reservations.constants import ReservationStatus
+from reservations.utils import get_reservations_for_user
 from reservations.models import Reservation
 
 
@@ -13,20 +15,36 @@ class DashboardView(TemplateView):
         context = super().get_context_data(**kwargs)
 
         # Get filtered reservations based on user role
-        user_reservations = Reservation.objects.all()
-        if self.request.user.role == "SELLER":
-            user_reservations = user_reservations.filter(created_by=self.request.user)
+        user_reservations = get_reservations_for_user(self.request.user)
 
         context['customers_count'] = Customer.objects.count()
         context['dresses_count'] = Dress.objects.count()
         context['active_reservations_count'] = user_reservations.filter(
-            status__in=['DRAFT', 'CONFIRMED', 'DELIVERED']
+            status__in=[
+                ReservationStatus.DRAFT,
+                ReservationStatus.CONFIRMED,
+                ReservationStatus.DELIVERED,
+            ]
         ).count()
 
         total_income = user_reservations.filter(
-            status='DELIVERED'
+            status=ReservationStatus.DELIVERED
         ).aggregate(total=Sum('final_price'))['total'] or 0
         context['total_income'] = total_income
+
+        context['recent_reservations'] = user_reservations.select_related(
+            'customer', 'dress'
+        ).order_by('-created_at')[:3]
+
+        context['active_reservations'] = user_reservations.select_related(
+            'customer', 'dress'
+        ).filter(
+            status__in=[
+                ReservationStatus.DRAFT,
+                ReservationStatus.CONFIRMED,
+                ReservationStatus.DELIVERED,
+            ]
+        ).order_by('-created_at')[:3]
 
         context['page_title'] = 'داشبورد'
         return context

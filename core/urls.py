@@ -18,10 +18,13 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from accounts.views import HomeRedirectView
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('', include('dashboard.urls', namespace='dashboard')),
+    # root entry should redirect to login for anonymous users, or dashboard for authenticated
+    path('', HomeRedirectView.as_view(), name='home'),
+    path('dashboard/', include('dashboard.urls', namespace='dashboard')),
     path('accounts/', include('accounts.urls', namespace='accounts')),
     path('customers/', include('customers.urls', namespace='customers')),
     path('products/', include('products.urls', namespace='products')),

@@ -526,3 +526,54 @@ class PasswordChangeTestCase(TestCase):
             response = client.get(reverse('accounts:change_password'))
             self.assertEqual(response.status_code, 200,
                            f"Role {role} should access password change page")
+
+
+class ProfileTemplateButtonVisibilityTests(TestCase):
+    """Template-level tests for presence/absence of Create User button."""
+
+    def setUp(self):
+        self.client = Client()
+        self.superadmin = User.objects.create_user(
+            username='superadmin_tpl',
+            email='sa_tpl@example.com',
+            password='TplPass123!',
+            role=User.Role.SUPER_ADMIN
+        )
+        self.manager = User.objects.create_user(
+            username='manager_tpl',
+            email='m_tpl@example.com',
+            password='TplPass123!',
+            role=User.Role.MANAGER
+        )
+        self.seller = User.objects.create_user(
+            username='seller_tpl',
+            email='s_tpl@example.com',
+            password='TplPass123!',
+            role=User.Role.SELLER
+        )
+
+    def _has_create_user_button(self, response):
+        content = response.content.decode('utf-8')
+        try:
+            url = reverse('accounts:user-create')
+        except Exception:
+            url = '/accounts/users/create/'
+        return 'ایجاد کاربر جدید' in content and url in content
+
+    def test_superadmin_sees_create_user_button(self):
+        self.client.login(username='superadmin_tpl', password='TplPass123!')
+        response = self.client.get(reverse('accounts:profile'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(self._has_create_user_button(response))
+
+    def test_manager_sees_create_user_button(self):
+        self.client.login(username='manager_tpl', password='TplPass123!')
+        response = self.client.get(reverse('accounts:profile'))
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(self._has_create_user_button(response))
+
+    def test_seller_does_not_see_create_user_button(self):
+        self.client.login(username='seller_tpl', password='TplPass123!')
+        response = self.client.get(reverse('accounts:profile'))
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(self._has_create_user_button(response))

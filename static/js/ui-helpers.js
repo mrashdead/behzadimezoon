@@ -178,6 +178,12 @@ function setupModalForms() {
         return;
       }
 
+      if (form.classList.contains('needs-validation') && !form.checkValidity()) {
+        e.preventDefault();
+        form.classList.add('was-validated');
+        return;
+      }
+
       e.preventDefault();
 
       const formData = normalizeFormDataForSubmission(form);

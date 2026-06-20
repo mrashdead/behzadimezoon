@@ -1,0 +1,53 @@
+name: Django Tests
+
+on:
+  push:
+    branches: [ main, master ]
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    services:
+      postgres:
+        image: postgres:15
+        env:
+          POSTGRES_DB: behzadi_db
+          POSTGRES_USER: behzadi_user
+          POSTGRES_PASSWORD: Admin123!
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U behzadi_user -d behzadi_db"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      DB_NAME: behzadi_db
+      DB_USER: behzadi_user
+      DB_PASSWORD: Admin123!
+      DB_HOST: localhost
+      DB_PORT: 5432
+      SECRET_KEY: test-secret-key
+      DEBUG: 'False'
+
+    steps:
+      - uses: actions/checkout@v4
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      - name: Wait for Postgres
+        run: |
+          until pg_isready -h localhost -p 5432 -U behzadi_user -d behzadi_db; do sleep 1; done
+      - name: Run Django tests
+        env:
+          DATABASE_URL: postgresql://behzadi_user:Admin123!@localhost:5432/behzadi_db
+        run: |
+          python manage.py test accounts.tests.ProfileTemplateButtonVisibilityTests

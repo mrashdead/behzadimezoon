@@ -22,7 +22,7 @@ class LoginPageView(LoginView):
     redirect_field_name = 'next'
 
     def get_success_url(self):
-        return self.get_redirect_url() or reverse_lazy('accounts:profile')
+        return self.get_redirect_url() or reverse_lazy('dashboard:index')
 
     def form_valid(self, form):
         messages.success(self.request, 'ورود شما با موفقیت انجام شد.')
@@ -48,6 +48,9 @@ class ProfileView(LoginRequiredMixin, TemplateView):
         context = super().get_context_data(**kwargs)
         context["form"] = kwargs.get("form", self.get_form())
         context["page_title"] = "نمایه کاربری"
+
+        # expose whether the current user can create managed users
+        context['can_create_users'] = can_create_users(self.request.user)
 
         if self.request.user.is_staff or self.request.user.is_superuser:
             context["managed_users"] = User.objects.exclude(pk=self.request.user.pk).order_by("username")[:10]
@@ -196,6 +199,14 @@ class LogoutView(LoginRequiredMixin, View):
 
     def get(self, request, *args, **kwargs):
         return redirect('accounts:profile')
+
+
+class HomeRedirectView(View):
+    """Redirect root URL to login or dashboard based on auth state."""
+    def get(self, request, *args, **kwargs):
+        if request.user.is_authenticated:
+            return redirect('dashboard:index')
+        return redirect('accounts:login')
 
 class ForgotPasswordView(TemplateView):
     template_name = 'accounts/forgot-password.html'

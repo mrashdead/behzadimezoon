@@ -11,7 +11,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404, redirect
 import jdatetime
-from .utils import parse_reservation_date, get_reservations_for_user
+from .utils import parse_reservation_date, get_reservations_for_user, date_to_iso
 from products.models import Dress
 from customers.models import Customer
 from reservations.models import Reservation
@@ -118,7 +118,7 @@ def reservation_step_one(request):
     return JsonResponse({
         "success": True,
         "end_date": str(end_date),
-        "event_date": str(event_date) if event_date else None,
+        "event_date": date_to_iso(event_date),
         "rent_price": rent_price
     })
 
@@ -161,7 +161,7 @@ def reservation_create(request):
             "start_date": str(cleaned["start_date"]),
             "rental_days": cleaned["rental_days"],
             "end_date": str(cleaned["end_date"]),
-            "event_date": str(getattr(cleaned["customer"], "ceremony_date", "")) if getattr(cleaned["customer"], "ceremony_date", None) else None,
+            "event_date": date_to_iso(getattr(cleaned["customer"], "ceremony_date", None)),
             "rent_price": rent_price,
         }
 
@@ -650,7 +650,7 @@ def check_availability(request):
             "available": True,
             "end_date": end_date.isoformat() if end_date else None,
             "rent_price": str(dress.daily_rent_price),
-            "event_date": event_date.isoformat() if event_date else None
+            "event_date": date_to_iso(event_date)
         })
 
     return JsonResponse({
