@@ -486,3 +486,121 @@ class RemainingPaymentTests(TestCase):
 
         response = self.client.post(finalize_url, post_data)
         self.assertEqual(response.status_code, 403)
+
+
+class SellerDataIsolationTests(TestCase):
+    """Test that sellers only see their own reservations."""
+
+    @classmethod
+    def setUpTestData(cls):
+        cls.customer1 = Customer.objects.create(
+            bride_first_name='Bride',
+            bride_last_name='One',
+            bride_phone='09120000001',
+            ceremony_date=jdatetime.date(1402, 1, 1),
+            how_to_know='test',
+            allow_contact=True
+        )
+        cls.customer2 = Customer.objects.create(
+            bride_first_name='Bride',
+            bride_last_name='Two',
+            bride_phone='09120000002',
+            ceremony_date=jdatetime.date(1402, 1, 1),
+            how_to_know='test',
+            allow_contact=True
+        )
+        cls.dress = Dress.objects.create(code='D001', daily_rent_price=100000)
+
+        cls.seller1 = create_user('seller1', 'SELLER')
+        cls.seller2 = create_user('seller2', 'SELLER')
+        cls.manager = create_user('manager', 'MANAGER')
+
+        # Seller1 creates a reservation
+        cls.res_seller1 = Reservation.objects.create(
+            customer=cls.customer1,
+            dress=cls.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=100000,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=50000,
+            payment_method='CASH',
+            payment_tracking_code='PAY001',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=cls.seller1
+        )
+
+        # Seller2 creates a different reservation
+        cls.res_seller2 = Reservation.objects.create(
+            customer=cls.customer2,
+            dress=cls.dress,
+            start_date=jdatetime.date(1402, 5, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=100000,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=50000,
+            payment_method='CASH',
+            payment_tracking_code='PAY002',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G2',
+            created_by=cls.seller2
+        )
+
+    def setUp(self):
+        self.client = Client()
+
+    # C1: Seller sees only their own reservations in list
+    def test_seller_sees_only_own_reservations_in_list(self):
+        self.client.login(username='seller1', password='password123')
+        response = self.client.get(reverse('reservations:list'))
+        self.assertEqual(response.status_code, 200)
+
+        reservations = response.context['reservations']
+        reservation_ids = [r.id for r in reservations]
+
+        self.assertIn(self.res_seller1.id, reservation_ids)
+        self.assertNotIn(self.res_seller2.id, reservation_ids)
+
+    # C2: Seller does not see other sellers' reservations in list
+    def test_seller_does_not_see_other_sellers_in_list(self):
+        self.client.login(username='seller2', password='password123')
+        response = self.client.get(reverse('reservations:list'))
+
+        reservations = response.context['reservations']
+        reservation_ids = [r.id for r in reservations]
+
+        self.assertIn(self.res_seller2.id, reservation_ids)
+        self.assertNotIn(self.res_seller1.id, reservation_ids)
+
+    # C3: Seller cannot access another seller's reservation detail
+    def test_seller_cannot_access_other_seller_reservation_detail(self):
+        self.client.login(username='seller1', password='password123')
+        detail_url = reverse('reservations:detail', args=[self.res_seller2.pk])
+        response = self.client.get(detail_url)
+        self.assertEqual(response.status_code, 403)
+
+    # C4: Seller can access own reservation detail
+    def test_seller_can_access_own_reservation_detail(self):
+        self.client.login(username='seller1', password='password123')
+        detail_url = reverse('reservations:detail', args=[self.res_seller1.pk])
+        response = self.client.get(detail_url)
+        self.assertEqual(response.status_code, 200)
+
+    # C5: Manager sees all reservations
+    def test_manager_sees_all_reservations(self):
+        self.client.login(username='manager', password='password123')
+        response = self.client.get(reverse('reservations:list'))
+
+        reservations = response.context['reservations']
+        reservation_ids = [r.id for r in reservations]
+
+        self.assertIn(self.res_seller1.id, reservation_ids)
+        self.assertIn(self.res_seller2.id, reservation_ids)
+

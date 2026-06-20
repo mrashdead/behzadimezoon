@@ -10,7 +10,7 @@ from django.utils import timezone
 from django.core.exceptions import ValidationError
 from django.shortcuts import render, get_object_or_404, redirect
 import jdatetime
-from .utils import parse_reservation_date
+from .utils import parse_reservation_date, get_reservations_for_user
 from products.models import Dress
 from customers.models import Customer
 from reservations.models import Reservation
@@ -49,13 +49,20 @@ def can_change_reservation_status(user):
     return getattr(user, "role", None) in ["MANAGER"]
 
 
+def user_owns_reservation(user, reservation):
+    """Check if user owns the reservation (created it)."""
+    return reservation.created_by_id == user.id
+
+
+
 @login_required
 def reservation_list(request):
 
-    reservations = Reservation.objects.select_related(
+    # Filter reservations based on user role
+    reservations = get_reservations_for_user(request.user).select_related(
         "customer",
         "dress"
-    ).all()
+    )
 
     context = {
         "reservations": reservations,
@@ -260,6 +267,9 @@ def reservation_mark_delivered(request, pk):
     if not can_change_reservation_status(request.user):
         return HttpResponseForbidden()
 
+    if request.user.role == "SELLER":
+        return HttpResponseForbidden()
+
     reservation = get_object_or_404(Reservation, pk=pk)
 
     try:
@@ -285,6 +295,9 @@ def reservation_mark_delivered(request, pk):
 def reservation_mark_returned(request, pk):
 
     if not can_change_reservation_status(request.user):
+        return HttpResponseForbidden()
+
+    if request.user.role == "SELLER":
         return HttpResponseForbidden()
 
     reservation = get_object_or_404(Reservation, pk=pk)
@@ -314,6 +327,9 @@ def reservation_mark_laundry(request, pk):
     if not can_change_reservation_status(request.user):
         return HttpResponseForbidden()
 
+    if request.user.role == "SELLER":
+        return HttpResponseForbidden()
+
     reservation = get_object_or_404(Reservation, pk=pk)
 
     try:
@@ -341,6 +357,9 @@ def reservation_mark_ready(request, pk):
     if not can_change_reservation_status(request.user):
         return HttpResponseForbidden()
 
+    if request.user.role == "SELLER":
+        return HttpResponseForbidden()
+
     reservation = get_object_or_404(Reservation, pk=pk)
 
     try:
@@ -366,6 +385,9 @@ def reservation_mark_ready(request, pk):
 def reservation_finalize_delivery(request, pk):
 
     if not can_change_reservation_status(request.user):
+        return HttpResponseForbidden()
+
+    if request.user.role == "SELLER":
         return HttpResponseForbidden()
 
     reservation = get_object_or_404(Reservation, pk=pk)
@@ -441,6 +463,10 @@ def reservation_detail(request, pk):
 
     reservation = get_object_or_404(Reservation, pk=pk)
 
+    # Sellers can only see their own reservations
+    if request.user.role == "SELLER" and not user_owns_reservation(request.user, reservation):
+        return HttpResponseForbidden()
+
     return render(
         request,
         "reservations/partials/_detail_modal.html",
@@ -456,6 +482,11 @@ def reservation_edit(request, pk):
         return HttpResponseForbidden()
 
     reservation = get_object_or_404(Reservation, pk=pk)
+
+    # Sellers cannot edit (manager-only operation)
+    # Extra protection: sellers trying to tamper with URL
+    if request.user.role == "SELLER":
+        return HttpResponseForbidden()
 
     locked_statuses = [
         ReservationStatus.DELIVERED,
@@ -511,6 +542,10 @@ def reservation_delete(request, pk):
         return HttpResponseForbidden()
 
     reservation = get_object_or_404(Reservation, pk=pk)
+
+    # Sellers cannot delete (manager-only operation)
+    if request.user.role == "SELLER":
+        return HttpResponseForbidden()
 
     try:
         ReservationStatusService.change_status(

@@ -264,3 +264,265 @@ class SettingsViewTestCase(TestCase):
         }, follow=False)
         self.assertEqual(response.status_code, 302)
         self.assertIn('/accounts/settings/', response.url)
+
+
+class ManagedUserCreationTestCase(TestCase):
+    """Test user creation permissions and form validation."""
+
+    def setUp(self):
+        self.client = Client()
+        self.superadmin = User.objects.create_user(
+            username='superadmin',
+            email='superadmin@example.com',
+            password='testpass123',
+            role=User.Role.SUPER_ADMIN
+        )
+        self.manager = User.objects.create_user(
+            username='manager',
+            email='manager@example.com',
+            password='testpass123',
+            role=User.Role.MANAGER
+        )
+        self.seller = User.objects.create_user(
+            username='seller',
+            email='seller@example.com',
+            password='testpass123',
+            role=User.Role.SELLER
+        )
+
+    # A1: Superuser can access user creation page
+    def test_superadmin_can_access_user_create_page(self):
+        self.client.login(username='superadmin', password='testpass123')
+        response = self.client.get(reverse('accounts:user-create'))
+        self.assertEqual(response.status_code, 200)
+
+    # A2: Superuser can create manager user
+    def test_superadmin_can_create_manager(self):
+        self.client.login(username='superadmin', password='testpass123')
+        response = self.client.post(reverse('accounts:user-create'), {
+            'username': 'newmanager',
+            'first_name': 'New',
+            'last_name': 'Manager',
+            'email': 'newmanager@example.com',
+            'password': 'SecurePass123!',
+            'password_confirm': 'SecurePass123!',
+            'role': User.Role.MANAGER
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(User.objects.filter(username='newmanager').exists())
+        new_user = User.objects.get(username='newmanager')
+        self.assertEqual(new_user.role, User.Role.MANAGER)
+
+    # A3: Superuser can create seller user
+    def test_superadmin_can_create_seller(self):
+        self.client.login(username='superadmin', password='testpass123')
+        response = self.client.post(reverse('accounts:user-create'), {
+            'username': 'newseller',
+            'first_name': 'New',
+            'last_name': 'Seller',
+            'email': 'newseller@example.com',
+            'password': 'SecurePass123!',
+            'password_confirm': 'SecurePass123!',
+            'role': User.Role.SELLER
+        })
+        self.assertEqual(response.status_code, 302)
+        self.assertTrue(User.objects.filter(username='newseller').exists())
+        new_user = User.objects.get(username='newseller')
+        self.assertEqual(new_user.role, User.Role.SELLER)
+
+    # A4: Manager can access user creation page
+    def test_manager_can_access_user_create_page(self):
+        self.client.login(username='manager', password='testpass123')
+        response = self.client.get(reverse('accounts:user-create'))
+        self.assertEqual(response.status_code, 200)
+
+    # A5: Manager can create seller user
+    def test_manager_can_create_seller(self):
+        self.client.login(username='manager', password='testpass123')
+        response = self.client.post(reverse('accounts:user-create'), {
+            'username': 'managercreatesseller',
+            'first_name': 'Created',
+            'last_name': 'Seller',
+            'email': 'mcseller@example.com',
+            'password': 'SecurePass123!',
+            'password_confirm': 'SecurePass123!',
+            'role': User.Role.SELLER
+        })
+        self.assertEqual(response.status_code, 302)
+        new_user = User.objects.get(username='managercreatesseller')
+        self.assertEqual(new_user.role, User.Role.SELLER)
+
+    # A6: Manager cannot create manager user, even with tampered POST
+    def test_manager_cannot_create_manager_even_with_tampered_post(self):
+        self.client.login(username='manager', password='testpass123')
+        response = self.client.post(reverse('accounts:user-create'), {
+            'username': 'trymanager',
+            'first_name': 'Try',
+            'last_name': 'Manager',
+            'email': 'trymanager@example.com',
+            'password': 'SecurePass123!',
+            'password_confirm': 'SecurePass123!',
+            'role': User.Role.MANAGER  # Try to sneak this in
+        })
+        # Form should reject it
+        self.assertNotEqual(response.status_code, 302)
+        # User should not be created with MANAGER role
+        if User.objects.filter(username='trymanager').exists():
+            user = User.objects.get(username='trymanager')
+            self.assertNotEqual(user.role, User.Role.MANAGER)
+
+    # A7: Manager cannot create superuser
+    def test_manager_cannot_create_superuser(self):
+        self.client.login(username='manager', password='testpass123')
+        response = self.client.post(reverse('accounts:user-create'), {
+            'username': 'trysuperadmin',
+            'first_name': 'Try',
+            'last_name': 'Super',
+            'email': 'trysuperadmin@example.com',
+            'password': 'SecurePass123!',
+            'password_confirm': 'SecurePass123!',
+            'role': User.Role.SUPER_ADMIN
+        })
+        self.assertNotEqual(response.status_code, 302)
+        if User.objects.filter(username='trysuperadmin').exists():
+            user = User.objects.get(username='trysuperadmin')
+            self.assertNotEqual(user.role, User.Role.SUPER_ADMIN)
+
+    # A8: Seller cannot access user creation page
+    def test_seller_cannot_access_user_create_page(self):
+        self.client.login(username='seller', password='testpass123')
+        response = self.client.get(reverse('accounts:user-create'))
+        # UserPassesTestMixin redirects on permission failure, not 403
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/profile/', response.url)
+
+    # A9: Seller cannot submit user creation POST
+    def test_seller_cannot_submit_user_creation_post(self):
+        self.client.login(username='seller', password='testpass123')
+        response = self.client.post(reverse('accounts:user-create'), {
+            'username': 'sellertries',
+            'first_name': 'Seller',
+            'last_name': 'Tries',
+            'email': 'sellertries@example.com',
+            'password': 'SecurePass123!',
+            'password_confirm': 'SecurePass123!',
+            'role': User.Role.SELLER
+        })
+        # UserPassesTestMixin redirects on permission failure
+        self.assertEqual(response.status_code, 302)
+        self.assertFalse(User.objects.filter(username='sellertries').exists())
+
+    # A10: Anonymous user is redirected to login
+    def test_anonymous_user_redirected_to_login(self):
+        response = self.client.get(reverse('accounts:user-create'))
+        # Should be redirected (either to login or profile with redirect)
+        self.assertEqual(response.status_code, 302)
+
+
+class PasswordChangeTestCase(TestCase):
+    """Test password change functionality."""
+
+    def setUp(self):
+        self.client = Client()
+        self.user = User.objects.create_user(
+            username='testuser',
+            email='test@example.com',
+            password='OldPass123!',
+            role=User.Role.SELLER
+        )
+
+    def test_password_change_page_requires_login(self):
+        response = self.client.get(reverse('accounts:change_password'))
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('/accounts/login/', response.url)
+
+    def test_authenticated_user_can_access_password_change(self):
+        self.client.login(username='testuser', password='OldPass123!')
+        response = self.client.get(reverse('accounts:change_password'))
+        self.assertEqual(response.status_code, 200)
+
+    # E1: Wrong current password fails
+    def test_wrong_current_password_fails(self):
+        self.client.login(username='testuser', password='OldPass123!')
+        response = self.client.post(reverse('accounts:change_password'), {
+            'current_password': 'WrongPass123!',
+            'new_password': 'NewPass123!',
+            'new_password_confirm': 'NewPass123!'
+        })
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(response.context['form'].is_valid())
+
+    # E2: Mismatched new passwords fail
+    def test_mismatched_new_passwords_fail(self):
+        self.client.login(username='testuser', password='OldPass123!')
+        response = self.client.post(reverse('accounts:change_password'), {
+            'current_password': 'OldPass123!',
+            'new_password': 'NewPass123!',
+            'new_password_confirm': 'DifferentPass123!'
+        })
+        self.assertFalse(response.context['form'].is_valid())
+
+    # E3: Weak password fails
+    def test_weak_password_fails(self):
+        self.client.login(username='testuser', password='OldPass123!')
+        response = self.client.post(reverse('accounts:change_password'), {
+            'current_password': 'OldPass123!',
+            'new_password': '123',
+            'new_password_confirm': '123'
+        })
+        self.assertFalse(response.context['form'].is_valid())
+
+    # E4: Valid password change succeeds
+    def test_valid_password_change_succeeds(self):
+        self.client.login(username='testuser', password='OldPass123!')
+        response = self.client.post(reverse('accounts:change_password'), {
+            'current_password': 'OldPass123!',
+            'new_password': 'NewPass123!',
+            'new_password_confirm': 'NewPass123!'
+        })
+        self.assertEqual(response.status_code, 302)
+
+        # Verify password was changed
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password('NewPass123!'))
+
+    # E5: Session remains authenticated after password change
+    def test_session_remains_authenticated_after_password_change(self):
+        self.client.login(username='testuser', password='OldPass123!')
+        response = self.client.post(reverse('accounts:change_password'), {
+            'current_password': 'OldPass123!',
+            'new_password': 'NewPass123!',
+            'new_password_confirm': 'NewPass123!'
+        }, follow=True)
+        # User should still be authenticated
+        self.assertTrue(response.context['user'].is_authenticated)
+
+    # E6: All roles can access password change functionality
+    def test_all_roles_can_change_password(self):
+        users_by_role = {
+            User.Role.SUPER_ADMIN: User.objects.create_user(
+                username='superadmin2',
+                email='sa@example.com',
+                password='Pass123!',
+                role=User.Role.SUPER_ADMIN
+            ),
+            User.Role.MANAGER: User.objects.create_user(
+                username='manager2',
+                email='m@example.com',
+                password='Pass123!',
+                role=User.Role.MANAGER
+            ),
+            User.Role.SELLER: User.objects.create_user(
+                username='seller2',
+                email='s@example.com',
+                password='Pass123!',
+                role=User.Role.SELLER
+            )
+        }
+
+        for role, user in users_by_role.items():
+            client = Client()
+            client.login(username=user.username, password='Pass123!')
+            response = client.get(reverse('accounts:change_password'))
+            self.assertEqual(response.status_code, 200,
+                           f"Role {role} should access password change page")

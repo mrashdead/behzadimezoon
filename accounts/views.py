@@ -1,13 +1,20 @@
 from django.contrib import messages
-from django.contrib.auth import logout
+from django.contrib.auth import logout, update_session_auth_hash
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.contrib.auth.views import LoginView
 from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views import View
-from django.views.generic import TemplateView, ListView, UpdateView
-from .forms import ProfileUpdateForm, SettingsForm, AdminUserUpdateForm
+from django.views.generic import TemplateView, ListView, UpdateView, CreateView
+from .forms import (
+    ProfileUpdateForm,
+    SettingsForm,
+    AdminUserUpdateForm,
+    ManagedUserCreationForm,
+    PasswordChangeFormPersian,
+)
 from .models import User
+from .permissions import can_create_users
 
 class LoginPageView(LoginView):
     template_name = 'accounts/login.html'
@@ -66,6 +73,16 @@ class AdminRequiredMixin(UserPassesTestMixin):
         messages.error(self.request, "شما دسترسی لازم برای این بخش را ندارید.")
         return redirect("accounts:profile")
 
+
+class UserCreationPermissionMixin(UserPassesTestMixin):
+    """Check if user can create managed users."""
+    def test_func(self):
+        return can_create_users(self.request.user)
+
+    def handle_no_permission(self):
+        messages.error(self.request, "شما اجازه ایجاد کاربر ندارید.")
+        return redirect("accounts:profile")
+
 class UserListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
     model = User
     template_name = "accounts/user_list.html"
@@ -110,6 +127,63 @@ class SettingsView(LoginRequiredMixin, TemplateView):
 
         messages.error(request, 'لطفاً خطاهای فرم را بررسی کنید.')
         return self.render_to_response(self.get_context_data(form=form))
+
+
+class PasswordChangeView(LoginRequiredMixin, TemplateView):
+    """Allow users to change their password."""
+    template_name = 'accounts/change_password.html'
+    login_url = reverse_lazy('accounts:login')
+
+    def get_form(self):
+        return PasswordChangeFormPersian(self.request.user)
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = 'تغییر رمز عبور'
+        context['form'] = kwargs.get('form', self.get_form())
+        return context
+
+    def post(self, request, *args, **kwargs):
+        form = PasswordChangeFormPersian(request.user, request.POST)
+
+        if form.is_valid():
+            form.save()
+            # Keep user logged in after password change
+            update_session_auth_hash(request, request.user)
+            messages.success(request, 'رمز عبور شما با موفقیت تغییر یافت.')
+            return redirect('accounts:change_password')
+
+        messages.error(request, 'لطفاً خطاهای فرم را بررسی کنید.')
+        return self.render_to_response(self.get_context_data(form=form))
+
+
+class ManagedUserCreateView(LoginRequiredMixin, UserCreationPermissionMixin, CreateView):
+    """Allow managers/superadmins to create internal users."""
+    model = User
+    form_class = ManagedUserCreationForm
+    template_name = 'accounts/user_create.html'
+    success_url = reverse_lazy('accounts:user-list')
+
+    def get_form_kwargs(self):
+        kwargs = super().get_form_kwargs()
+        # Pass the current user to the form so it can filter role choices
+        kwargs['request_user'] = self.request.user
+        # Store for clean() validation
+        self.form_class._request_user = self.request.user
+        return kwargs
+
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['page_title'] = 'ایجاد کاربر جدید'
+        return context
+
+    def form_valid(self, form):
+        messages.success(self.request, 'کاربر جدید با موفقیت ایجاد شد.')
+        return super().form_valid(form)
+
+    def form_invalid(self, form):
+        messages.error(self.request, 'لطفاً خطاهای فرم را بررسی کنید.')
+        return super().form_invalid(form)
 
 
 class LogoutView(LoginRequiredMixin, View):

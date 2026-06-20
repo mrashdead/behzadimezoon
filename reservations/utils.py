@@ -1,9 +1,15 @@
 from datetime import date
 import jdatetime
 from django.utils.dateparse import parse_date
+from django.conf import settings
+
+User = settings.AUTH_USER_MODEL
 
 
 def normalize_digits(value):
+    """
+    Convert Persian/Arabic digits to English digits.
+    """
     if value is None:
         return ""
 
@@ -15,6 +21,32 @@ def normalize_digits(value):
     )
 
     return value.translate(persian_arabic_digits)
+
+
+def get_reservations_for_user(user):
+    """
+    Get filtered reservations based on user role.
+
+    - SELLER: Only their own reservations (created_by = user)
+    - MANAGER / SUPER_ADMIN: All reservations
+
+    Args:
+        user: User instance
+
+    Returns:
+        QuerySet of Reservation objects
+    """
+    from .models import Reservation
+
+    if not user.is_authenticated:
+        return Reservation.objects.none()
+
+    # Sellers see only their own reservations
+    if user.role == 'SELLER':
+        return Reservation.objects.filter(created_by=user)
+
+    # Managers and admins see all reservations
+    return Reservation.objects.all()
 
 
 def parse_reservation_date(value):

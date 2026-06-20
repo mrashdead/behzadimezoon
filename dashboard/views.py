@@ -12,13 +12,18 @@ class DashboardView(TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
 
+        # Get filtered reservations based on user role
+        user_reservations = Reservation.objects.all()
+        if self.request.user.role == "SELLER":
+            user_reservations = user_reservations.filter(created_by=self.request.user)
+
         context['customers_count'] = Customer.objects.count()
         context['dresses_count'] = Dress.objects.count()
-        context['active_reservations_count'] = Reservation.objects.filter(
+        context['active_reservations_count'] = user_reservations.filter(
             status__in=['DRAFT', 'CONFIRMED', 'DELIVERED']
         ).count()
 
-        total_income = Reservation.objects.filter(
+        total_income = user_reservations.filter(
             status='DELIVERED'
         ).aggregate(total=Sum('final_price'))['total'] or 0
         context['total_income'] = total_income
