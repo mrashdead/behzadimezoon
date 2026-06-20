@@ -8,9 +8,30 @@ class ProfileUpdateForm(forms.ModelForm):
         model = User
         fields = ["first_name", "last_name", "email"]
         widgets = {
-            "first_name": forms.TextInput(attrs={"class": "form-control"}),
-            "last_name": forms.TextInput(attrs={"class": "form-control"}),
-            "email": forms.EmailInput(attrs={"class": "form-control"}),
+            "first_name": forms.TextInput(attrs={"class": "form-control", "placeholder": "نام"}),
+            "last_name": forms.TextInput(attrs={"class": "form-control", "placeholder": "نام خانوادگی"}),
+            "email": forms.EmailInput(attrs={"class": "form-control", "placeholder": "ایمیل"}),
+        }
+        labels = {
+            "first_name": "نام",
+            "last_name": "نام خانوادگی",
+            "email": "ایمیل",
+        }
+
+
+class SettingsForm(forms.ModelForm):
+    class Meta:
+        model = User
+        fields = ["first_name", "last_name", "email"]
+        widgets = {
+            "first_name": forms.TextInput(attrs={"class": "form-control", "placeholder": "نام"}),
+            "last_name": forms.TextInput(attrs={"class": "form-control", "placeholder": "نام خانوادگی"}),
+            "email": forms.EmailInput(attrs={"class": "form-control", "placeholder": "ایمیل"}),
+        }
+        labels = {
+            "first_name": "نام",
+            "last_name": "نام خانوادگی",
+            "email": "ایمیل",
         }
 
 

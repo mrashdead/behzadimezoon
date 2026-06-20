@@ -1,51 +1,74 @@
-{% extends 'base.html' %} {% load static %} {% block content %}
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}نمایه کاربری{% endblock %}
+
+{% block content %}
 <div class="row">
   <!-- Sidebar -->
   <div class="col-xxl-4 col-xl-5">
-    <div class="card overflow-hidden">
+    <div class="card overflow-hidden shadow-sm border-0">
       <div class="card-body text-center">
+        <!-- User Avatar -->
+        <div class="avatar avatar-lg rounded-circle bg-primary-subtle text-primary mx-auto mb-3" style="width: 80px; height: 80px; display: flex; align-items: center; justify-content: center;">
+          <i class="fi fi-rr-circle-user" style="font-size: 2rem;"></i>
+        </div>
+
+        <!-- User Name -->
         <h5 class="mb-1">
-          {% if user.first_name or user.last_name %} {{ user.first_name }} {{
-          user.last_name }} {% else %} {{ user.username }} {% endif %}
+          {% if user.first_name or user.last_name %}
+            {{ user.first_name }} {{ user.last_name }}
+          {% else %}
+            {{ user.username }}
+          {% endif %}
         </h5>
-        <span class="badge bg-primary-subtle text-primary px-3 py-2">
+
+        <!-- Role Badge -->
+        <span class="badge bg-primary-subtle text-primary px-3 py-2 mb-3 d-inline-block">
           {{ user.get_role_display }}
         </span>
 
         <hr class="my-4" />
 
+        <!-- User Info Grid -->
         <div class="text-start">
           <div class="mb-3">
-            <small class="text-muted d-block">نام کاربری</small>
-            <strong>{{ user.username }}</strong>
+            <small class="text-muted d-block mb-1">نام کاربری</small>
+            <strong class="text-body">{{ user.username }}</strong>
           </div>
 
           <div class="mb-3">
-            <small class="text-muted d-block">ایمیل</small>
-            <strong>{{ user.email|default:"ثبت نشده" }}</strong>
+            <small class="text-muted d-block mb-1">ایمیل</small>
+            <strong class="text-body">{{ user.email|default:"ثبت نشده" }}</strong>
           </div>
 
           <div class="mb-3">
-            <small class="text-muted d-block">نام</small>
-            <strong>{{ user.first_name|default:"ثبت نشده" }}</strong>
+            <small class="text-muted d-block mb-1">نام</small>
+            <strong class="text-body">{{ user.first_name|default:"ثبت نشده" }}</strong>
           </div>
 
           <div class="mb-3">
-            <small class="text-muted d-block">نام خانوادگی</small>
-            <strong>{{ user.last_name|default:"ثبت نشده" }}</strong>
+            <small class="text-muted d-block mb-1">نام خانوادگی</small>
+            <strong class="text-body">{{ user.last_name|default:"ثبت نشده" }}</strong>
           </div>
 
           <div class="mb-3">
-            <small class="text-muted d-block">نقش کاربری</small>
-            <strong>{{ user.get_role_display }}</strong>
+            <small class="text-muted d-block mb-1">نقش کاربری</small>
+            <strong class="text-body">{{ user.get_role_display }}</strong>
           </div>
 
           <div class="mb-0">
-            <small class="text-muted d-block">وضعیت حساب</small>
+            <small class="text-muted d-block mb-1">وضعیت حساب</small>
             {% if user.is_active %}
-            <span class="badge bg-success-subtle text-success">فعال</span>
+              <span class="badge bg-success-subtle text-success">
+                <i class="fi fi-rr-check me-1"></i>
+                فعال
+              </span>
             {% else %}
-            <span class="badge bg-danger-subtle text-danger">غیرفعال</span>
+              <span class="badge bg-danger-subtle text-danger">
+                <i class="fi fi-rr-cross me-1"></i>
+                غیرفعال
+              </span>
             {% endif %}
           </div>
         </div>
@@ -55,10 +78,20 @@
 
   <!-- Main Content -->
   <div class="col-xxl-8 col-xl-7">
-    <div class="card">
-      <div
-        class="card-header d-flex align-items-center justify-content-between"
-      >
+    <!-- Messages -->
+    {% if messages %}
+      {% for message in messages %}
+        <div class="alert alert-{{ message.tags|default:'info' }} alert-dismissible fade show mb-3" role="alert">
+          <i class="fi fi-rr-check-circle me-2"></i>
+          {{ message }}
+          <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+      {% endfor %}
+    {% endif %}
+
+    <!-- Profile Edit Form -->
+    <div class="card shadow-sm border-0 mb-4">
+      <div class="card-header d-flex align-items-center justify-content-between border-bottom py-3">
         <h5 class="card-title mb-0">تنظیمات حساب کاربری</h5>
         <span class="badge bg-light text-dark">ویرایش اطلاعات</span>
       </div>
@@ -67,178 +100,188 @@
         <form method="post" novalidate>
           {% csrf_token %}
 
-          <div class="row gy-4">
+          <div class="row gy-3">
             <div class="col-md-6">
-              <label class="form-label" for="{{ form.first_name.id_for_label }}"
-                >نام</label
-              >
-              {{ form.first_name }} {% if form.first_name.errors %}
-              <div class="text-danger small mt-1">
-                {% for error in form.first_name.errors %}
-                <div>{{ error }}</div>
-                {% endfor %}
-              </div>
+              <label class="form-label" for="{{ form.first_name.id_for_label }}">نام</label>
+              {{ form.first_name }}
+              {% if form.first_name.errors %}
+                <div class="text-danger small mt-2">
+                  {% for error in form.first_name.errors %}
+                    <div>{{ error }}</div>
+                  {% endfor %}
+                </div>
               {% endif %}
             </div>
 
             <div class="col-md-6">
-              <label class="form-label" for="{{ form.last_name.id_for_label }}"
-                >نام خانوادگی</label
-              >
-              {{ form.last_name }} {% if form.last_name.errors %}
-              <div class="text-danger small mt-1">
-                {% for error in form.last_name.errors %}
-                <div>{{ error }}</div>
-                {% endfor %}
-              </div>
+              <label class="form-label" for="{{ form.last_name.id_for_label }}">نام خانوادگی</label>
+              {{ form.last_name }}
+              {% if form.last_name.errors %}
+                <div class="text-danger small mt-2">
+                  {% for error in form.last_name.errors %}
+                    <div>{{ error }}</div>
+                  {% endfor %}
+                </div>
               {% endif %}
             </div>
 
             <div class="col-md-6">
               <label class="form-label">نام کاربری</label>
-              <input
-                type="text"
-                class="form-control"
-                value="{{ user.username }}"
-                disabled
-              />
-              <small class="text-muted">نام کاربری قابل تغییر نیست.</small>
+              <input type="text" class="form-control" value="{{ user.username }}" disabled />
+              <small class="text-muted d-block mt-2">نام کاربری قابل تغییر نیست.</small>
             </div>
 
             <div class="col-md-6">
-              <label class="form-label" for="{{ form.email.id_for_label }}"
-                >ایمیل</label
-              >
-              {{ form.email }} {% if form.email.errors %}
-              <div class="text-danger small mt-1">
-                {% for error in form.email.errors %}
-                <div>{{ error }}</div>
-                {% endfor %}
-              </div>
+              <label class="form-label" for="{{ form.email.id_for_label }}">ایمیل</label>
+              {{ form.email }}
+              {% if form.email.errors %}
+                <div class="text-danger small mt-2">
+                  {% for error in form.email.errors %}
+                    <div>{{ error }}</div>
+                  {% endfor %}
+                </div>
               {% endif %}
             </div>
 
             <div class="col-md-6">
               <label class="form-label">نقش</label>
-              <input
-                type="text"
-                class="form-control"
-                value="{{ user.get_role_display }}"
-                disabled
-              />
-              <small class="text-muted"
-                >نقش کاربری توسط سیستم مدیریت می‌شود.</small
-              >
+              <input type="text" class="form-control" value="{{ user.get_role_display }}" disabled />
+              <small class="text-muted d-block mt-2">نقش کاربری توسط سیستم مدیریت می‌شود.</small>
             </div>
 
             <div class="col-md-6">
               <label class="form-label">وضعیت حساب</label>
-              <input
-                type="text"
-                class="form-control"
-                value="{% if user.is_active %}فعال{% else %}غیرفعال{% endif %}"
-                disabled
-              />
+              <input type="text" class="form-control" value="{% if user.is_active %}فعال{% else %}غیرفعال{% endif %}" disabled />
             </div>
           </div>
 
           <div class="mt-4 d-flex flex-wrap gap-2">
-            <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>
-
-            <a href="#" class="btn btn-light"> تغییر پسورد </a>
+            <button type="submit" class="btn btn-primary">
+              <i class="fi fi-rr-check me-2"></i>
+              ذخیره تغییرات
+            </button>
+            <a href="{% url 'accounts:settings' %}" class="btn btn-outline-secondary">
+              <i class="fi fi-rr-sliders me-2"></i>
+              تنظیمات بیشتر
+            </a>
           </div>
         </form>
       </div>
     </div>
 
-      {% if user.role == 'SELLER' %}
-      <div class="card mt-4">
-        <div class="card-header d-flex justify-content-between align-items-center">
+    <!-- Leaves Section -->
+    {% if user.role == 'SELLER' %}
+      <div class="card shadow-sm border-0 mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center border-bottom py-3">
           <h5 class="card-title mb-0">درخواست مرخصی</h5>
-          <div>
-            <a href="{% url 'leaves:leave-create' %}" class="btn btn-sm btn-primary">ارسال درخواست</a>
-            <a href="{% url 'leaves:seller-leaves' %}" class="btn btn-sm btn-light">درخواست‌های من</a>
+          <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'leaves:leave-create' %}" class="btn btn-sm btn-primary">
+              <i class="fi fi-rr-plus me-1"></i>
+              ارسال درخواست
+            </a>
+            <a href="{% url 'leaves:seller-leaves' %}" class="btn btn-sm btn-light">
+              <i class="fi fi-rr-list me-1"></i>
+              درخواست‌های من
+            </a>
           </div>
         </div>
         <div class="card-body">
-          <p class="text-muted mb-0">در این بخش میتوانید درخواست مرخصی روزانه یا ساعتی ثبت و وضعیت آن را مشاهده کنید.</p>
+          <p class="text-muted mb-0">
+            <i class="fi fi-rr-info me-2"></i>
+            در این بخش می‌توانید درخواست مرخصی روزانه یا ساعتی ثبت و وضعیت آن را مشاهده کنید.
+          </p>
         </div>
       </div>
+    {% endif %}
 
-      {% endif %}
+    <!-- Admin Section -->
+    {% if user.is_staff or user.is_superuser %}
+      <div class="card shadow-sm border-0">
+        <div class="card-header d-flex justify-content-between align-items-center border-bottom py-3">
+          <h5 class="card-title mb-0">بخش مدیریتی</h5>
+          <div class="d-flex gap-2 flex-wrap">
+            <a href="{% url 'accounts:user-list' %}" class="btn btn-sm btn-primary">
+              <i class="fi fi-rr-users me-1"></i>
+              مشاهده همه کاربران
+            </a>
+            <a href="{% url 'leaves:management-list' %}" class="btn btn-sm btn-outline-secondary">
+              <i class="fi fi-rr-document me-1"></i>
+              مدیریت درخواست‌های مرخصی
+            </a>
+          </div>
+        </div>
+        <div class="card-body">
+          <p class="text-muted mb-4">
+            <i class="fi fi-rr-shield-admin me-2"></i>
+            شما به عنوان کاربر مدیریتی می‌توانید کاربران سیستم را مشاهده و اطلاعات آن‌ها را مدیریت کنید.
+          </p>
 
-      {% if user.is_staff or user.is_superuser %}
-    <div class="card mt-4">
-      <div
-        class="card-header d-flex justify-content-between align-items-center"
-      >
-        <h5 class="card-title mb-0">بخش مدیریتی ادمین</h5>
-        <div class="d-flex gap-2">
-          <a href="{% url 'accounts:user-list' %}" class="btn btn-sm btn-primary">
-            مشاهده همه کاربران
-          </a>
-          <a href="{% url 'leaves:management-list' %}" class="btn btn-sm btn-outline-secondary">
-            مدیریت درخواست‌های مرخصی
-          </a>
+          {% if managed_users %}
+            <div class="table-responsive">
+              <table class="table align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>نام کاربری</th>
+                    <th>نام</th>
+                    <th>ایمیل</th>
+                    <th>نقش</th>
+                    <th>وضعیت</th>
+                    <th>عملیات</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for item in managed_users %}
+                    <tr>
+                      <td>
+                        <span class="fw-semibold">{{ item.username }}</span>
+                      </td>
+                      <td>
+                        {% if item.first_name or item.last_name %}
+                          {{ item.first_name }} {{ item.last_name }}
+                        {% else %}
+                          <span class="text-muted">-</span>
+                        {% endif %}
+                      </td>
+                      <td>{{ item.email|default:"-" }}</td>
+                      <td>
+                        <span class="badge bg-info-subtle text-info">
+                          {{ item.get_role_display }}
+                        </span>
+                      </td>
+                      <td>
+                        {% if item.is_active %}
+                          <span class="badge bg-success-subtle text-success">
+                            <i class="fi fi-rr-check me-1"></i>
+                            فعال
+                          </span>
+                        {% else %}
+                          <span class="badge bg-danger-subtle text-danger">
+                            <i class="fi fi-rr-cross me-1"></i>
+                            غیرفعال
+                          </span>
+                        {% endif %}
+                      </td>
+                      <td>
+                        <a href="{% url 'accounts:user-update' item.pk %}" class="btn btn-sm btn-outline-primary">
+                          <i class="fi fi-rr-edit me-1"></i>
+                          ویرایش
+                        </a>
+                      </td>
+                    </tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          {% else %}
+            <div class="alert alert-light mb-0">
+              <i class="fi fi-rr-info me-2"></i>
+              کاربری برای مدیریت یافت نشد.
+            </div>
+          {% endif %}
         </div>
       </div>
-      <div class="card-body">
-        <p class="text-muted mb-4">
-          شما به عنوان کاربر مدیریتی می‌توانید کاربران سیستم را مشاهده و اطلاعات
-          آن‌ها را مدیریت کنید.
-        </p>
-
-        {% if managed_users %}
-        <div class="table-responsive">
-          <table class="table align-middle mb-0">
-            <thead>
-              <tr>
-                <th>نام کاربری</th>
-                <th>نام</th>
-                <th>ایمیل</th>
-                <th>نقش</th>
-                <th>وضعیت</th>
-                <th>عملیات</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for item in managed_users %}
-              <tr>
-                <td>{{ item.username }}</td>
-                <td>
-                  {% if item.first_name or item.last_name %} {{ item.first_name
-                  }} {{ item.last_name }} {% else %} - {% endif %}
-                </td>
-                <td>{{ item.email|default:"-" }}</td>
-                <td>{{ item.get_role_display }}</td>
-                <td>
-                  {% if item.is_active %}
-                  <span class="badge bg-success-subtle text-success">فعال</span>
-                  {% else %}
-                  <span class="badge bg-danger-subtle text-danger"
-                    >غیرفعال</span
-                  >
-                  {% endif %}
-                </td>
-                <td>
-                  <a
-                    href="{% url 'accounts:user-update' item.pk %}"
-                    class="btn btn-sm btn-outline-primary"
-                  >
-                    ویرایش
-                  </a>
-                </td>
-              </tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-        {% else %}
-        <div class="alert alert-light mb-0">کاربری برای مدیریت یافت نشد.</div>
-        {% endif %}
-      </div>
-    </div>
     {% endif %}
   </div>
 </div>
 {% endblock %}
+

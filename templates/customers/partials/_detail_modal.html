@@ -2,196 +2,165 @@
 {% load jformat %}
 
 <div class="modal fade" id="detailCustomerModal{{ customer.id }}" tabindex="-1" aria-hidden="true">
-    <div class="modal-dialog modal-lg modal-dialog-scrollable">
-        <div class="modal-content">
-            {% include 'partials/_modal_header.html' with title='جزئیات مشتری' %}
+  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+    <div class="modal-content">
+      {% include 'partials/_modal_header.html' with title='جزئیات مشتری' %}
 
-            <div class="modal-body">
-                <div class="row g-3">
-                    <div class="col-md-6">
-                        <div class="card shadow-none border h-100">
-                            <div class="card-body">
-                                <div class="small text-muted mb-1">نام عروس</div>
-                                <div class="fw-semibold text-body">{{ customer.bride_first_name|default:"-" }}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="card shadow-none border h-100">
-                            <div class="card-body">
-                                <div class="small text-muted mb-1">نام خانوادگی عروس</div>
-                                <div class="fw-semibold text-body">{{ customer.bride_last_name|default:"-" }}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="card shadow-none border h-100">
-                            <div class="card-body">
-                                <div class="small text-muted mb-1">شماره تماس عروس</div>
-                                <div class="fw-semibold text-body">{{ customer.bride_phone|default:"-" }}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="card shadow-none border h-100">
-                            <div class="card-body">
-                                <div class="small text-muted mb-1">تاریخ مراسم</div>
-                                <div class="fw-semibold text-body">{{ customer.ceremony_date|jformat:"%Y/%m/%d"|default:"-" }}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="card shadow-none border h-100">
-                            <div class="card-body">
-                                <div class="small text-muted mb-1">نحوه آشنایی</div>
-                                <div class="fw-semibold text-body">{{ customer.how_to_know|default:"-" }}</div>
-                            </div>
-                        </div>
-                    </div>
-
-                    <div class="col-md-6">
-                        <div class="card shadow-none border h-100">
-                            <div class="card-body">
-                                <div class="small text-muted mb-1">اجازه ارتباط</div>
-                                <div class="fw-semibold">
-                                    {% if customer.allow_contact %}
-                                        <span class="badge bg-success-subtle text-success">بله</span>
-                                    {% else %}
-                                        <span class="badge bg-secondary-subtle text-secondary">خیر</span>
-                                    {% endif %}
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <div class="modal-footer border-top">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
-            </div>
-        </div>
-    </div>
-</div>
-
-        </div>
-
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">نام خانوادگی داماد</div>
-                    <div class="fw-semibold text-body">{{ customer.groom_last_name|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">شماره تماس داماد</div>
-                    <div class="fw-semibold text-body">{{ customer.groom_phone|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">خدمات مورد نظر</div>
-                    <div class="fw-semibold text-body">{{ customer.requested_services|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">بودجه تقریبی</div>
-                    <div class="fw-semibold text-body">{{ customer.estimated_budget|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">خدمات جانبی</div>
-                    <div class="fw-semibold text-body">{{ customer.additional_services|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">مشاور ترجیحی</div>
-                    <div class="fw-semibold text-body">{{ customer.preferred_consultant|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">تعداد مهمان</div>
-                    <div class="fw-semibold text-body">{{ customer.guest_count|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">تشریفات</div>
-                    <div class="fw-semibold text-body">{{ customer.ceremony_decoration|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">سالن زیبایی</div>
-                    <div class="fw-semibold text-body">{{ customer.beauty_salon|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">آتلیه</div>
-                    <div class="fw-semibold text-body">{{ customer.studio_name|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">گروه موسیقی</div>
-                    <div class="fw-semibold text-body">{{ customer.music_band|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-12">
+      <div class="modal-body">
+        <div class="row g-3">
+          <!-- بخش اطلاعات عروس -->
+          <div class="col-12">
             <div class="card shadow-none border">
-                <div class="card-body">
-                    <div class="small text-muted mb-2">یادداشت</div>
-                    <div class="fw-semibold text-body customer-note-value">
-                        {{ customer.customer_note|default:"-" }}
+              <div class="card-header bg-body-tertiary border-bottom py-3">
+                <h6 class="mb-0 fw-semibold">
+                  <i class="fi fi-rr-user me-2"></i>
+                  اطلاعات عروس
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">نام عروس</div>
+                    <div class="fw-semibold">{{ customer.bride_first_name|default:"-" }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">نام خانوادگی عروس</div>
+                    <div class="fw-semibold">{{ customer.bride_last_name|default:"-" }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">شماره تماس عروس</div>
+                    <div class="fw-semibold" dir="ltr">{{ customer.bride_phone|default:"-" }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">تاریخ مراسم</div>
+                    <div class="fw-semibold">{{ customer.ceremony_date|jformat:"%Y/%m/%d"|default:"-" }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">نحوه آشنایی</div>
+                    <div class="fw-semibold">{{ customer.how_to_know|default:"-" }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">اجازه ارتباط</div>
+                    <div class="fw-semibold">
+                      {% if customer.allow_contact %}
+                        <span class="badge bg-success-subtle text-success">بله</span>
+                      {% else %}
+                        <span class="badge bg-secondary-subtle text-secondary">خیر</span>
+                      {% endif %}
                     </div>
+                  </div>
                 </div>
+              </div>
             </div>
-        </div>
+          </div>
 
-    </div>
-</div>
+          <!-- بخش اطلاعات داماد -->
+          <div class="col-12">
+            <div class="card shadow-none border">
+              <div class="card-header bg-body-tertiary border-bottom py-3">
+                <h6 class="mb-0 fw-semibold">
+                  <i class="fi fi-rr-user me-2"></i>
+                  اطلاعات داماد
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">نام داماد</div>
+                    <div class="fw-semibold">{{ customer.groom_first_name|default:"-" }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">نام خانوادگی داماد</div>
+                    <div class="fw-semibold">{{ customer.groom_last_name|default:"-" }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">شماره تماس داماد</div>
+                    <div class="fw-semibold" dir="ltr">{{ customer.groom_phone|default:"-" }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">مشاور ترجیحی</div>
+                    <div class="fw-semibold">{{ customer.preferred_consultant|default:"-" }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
+          <!-- بخش خدمات و مراسم -->
+          <div class="col-12">
+            <div class="card shadow-none border">
+              <div class="card-header bg-body-tertiary border-bottom py-3">
+                <h6 class="mb-0 fw-semibold">
+                  <i class="fi fi-rr-list-check me-2"></i>
+                  خدمات و مراسم
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">خدمات مورد نظر</div>
+                    <div class="fw-semibold">{{ customer.requested_services|default:"-" }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">بودجه تقریبی</div>
+                    <div class="fw-semibold">
+                      {% if customer.estimated_budget %}
+                        <span class="number-display" data-value="{{ customer.estimated_budget }}"></span> تومان
+                      {% else %}
+                        -
+                      {% endif %}
+                    </div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">خدمات جانبی</div>
+                    <div class="fw-semibold">{{ customer.additional_services|default:"-" }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">تعداد مهمان</div>
+                    <div class="fw-semibold">{{ customer.guest_count|default:"-" }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">تشریفات</div>
+                    <div class="fw-semibold">{{ customer.ceremony_decoration|default:"-" }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">سالن زیبایی</div>
+                    <div class="fw-semibold">{{ customer.beauty_salon|default:"-" }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">آتلیه</div>
+                    <div class="fw-semibold">{{ customer.studio_name|default:"-" }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">گروه موسیقی</div>
+                    <div class="fw-semibold">{{ customer.music_band|default:"-" }}</div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- بخش توضیحات تکمیلی -->
+          <div class="col-12">
+            <div class="card shadow-none border">
+              <div class="card-header bg-body-tertiary border-bottom py-3">
+                <h6 class="mb-0 fw-semibold">
+                  <i class="fi fi-rr-document me-2"></i>
+                  یادداشت
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="small text-muted mb-1">توضیحات و یادداشت‌های مرتبط با مشتری</div>
+                <div class="fw-semibold" style="white-space: pre-wrap;">{{ customer.customer_note|default:"-" }}</div>
+              </div>
+            </div>
+          </div>
         </div>
+      </div>
+
+      <div class="modal-footer border-top">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
+      </div>
     </div>
+  </div>
 </div>

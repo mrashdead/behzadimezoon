@@ -19,14 +19,13 @@ def normalize_digits(value):
 
 def parse_reservation_date(value):
     """
-    خروجی همیشه date میلادی است.
+    Parse date input and return as Gregorian date.
 
-    ورودی‌های قابل قبول:
-    1405/03/24
-    ۱۴۰۵/۰۳/۲۴
-    1405/3/24
-    1405-03-24
-    2026-06-14
+    Input formats accepted:
+    - Jalali: 1405/03/24, ۱۴۰۵/۰۳/۲۴, 1405/3/24, 1405-03-24
+    - Gregorian: 2026-06-14
+
+    Returns: Gregorian date object
     """
 
     if not value:
@@ -35,7 +34,7 @@ def parse_reservation_date(value):
     value = normalize_digits(value)
     value = value.strip()
 
-    # یکدست‌سازی جداکننده‌ها
+    # Normalize separators to forward slash
     normalized = value.replace("-", "/")
 
     parts = normalized.split("/")
@@ -46,18 +45,19 @@ def parse_reservation_date(value):
             month = int(parts[1])
             day = int(parts[2])
 
-            # اگر سال در بازه شمسی بود
+            # Jalali years: 1300-1600 range
             if 1300 <= year <= 1600:
-                return jdatetime.date(year, month, day).togregorian()
+                j_date = jdatetime.date(year, month, day)
+                return j_date.togregorian()
 
-            # اگر سال میلادی بود
+            # Gregorian years: 1900-2200 range
             if 1900 <= year <= 2200:
                 return date(year, month, day)
 
-        except Exception:
+        except (ValueError, OverflowError):
             return None
 
-    # fallback فقط برای تاریخ‌های استاندارد میلادی
+    # Fallback for standard Gregorian format (YYYY-MM-DD)
     parsed = parse_date(value)
     if parsed:
         return parsed

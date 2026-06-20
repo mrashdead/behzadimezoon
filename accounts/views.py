@@ -6,7 +6,7 @@ from django.shortcuts import redirect
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import TemplateView, ListView, UpdateView
-from .forms import ProfileUpdateForm, AdminUserUpdateForm
+from .forms import ProfileUpdateForm, SettingsForm, AdminUserUpdateForm
 from .models import User
 
 class LoginPageView(LoginView):
@@ -40,8 +40,8 @@ class ProfileView(LoginRequiredMixin, TemplateView):
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context["form"] = kwargs.get("form", self.get_form())
+        context["page_title"] = "نمایه کاربری"
 
-        # فقط برای ادمین‌ها، لیست فروشنده‌ها/کاربران نمایش داده شود
         if self.request.user.is_staff or self.request.user.is_superuser:
             context["managed_users"] = User.objects.exclude(pk=self.request.user.pk).order_by("username")[:10]
 
@@ -65,6 +65,7 @@ class AdminRequiredMixin(UserPassesTestMixin):
     def handle_no_permission(self):
         messages.error(self.request, "شما دسترسی لازم برای این بخش را ندارید.")
         return redirect("accounts:profile")
+
 class UserListView(LoginRequiredMixin, AdminRequiredMixin, ListView):
     model = User
     template_name = "accounts/user_list.html"
@@ -90,10 +91,25 @@ class SettingsView(LoginRequiredMixin, TemplateView):
     login_url = reverse_lazy('accounts:login')
     redirect_field_name = 'next'
 
+    def get_form(self):
+        return SettingsForm(instance=self.request.user)
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['page_title'] = 'تنظیمات حساب'
+        context['form'] = kwargs.get('form', self.get_form())
         return context
+
+    def post(self, request, *args, **kwargs):
+        form = SettingsForm(request.POST, instance=request.user)
+
+        if form.is_valid():
+            form.save()
+            messages.success(request, 'تنظیمات حساب با موفقیت بروزرسانی شد.')
+            return redirect('accounts:settings')
+
+        messages.error(request, 'لطفاً خطاهای فرم را بررسی کنید.')
+        return self.render_to_response(self.get_context_data(form=form))
 
 
 class LogoutView(LoginRequiredMixin, View):

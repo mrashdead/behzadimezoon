@@ -131,6 +131,40 @@ function initPersianDatepickers() {
   });
 }
 
+// Normalize form data before submission (strip money formatting, normalize digits)
+function normalizeFormDataForSubmission(form) {
+  const formData = new FormData(form);
+  const normalized = new FormData();
+
+  for (let [key, value] of formData.entries()) {
+    const field = form.querySelector(`[name="${key}"]`);
+
+    if (field && field.classList.contains('money-input')) {
+      // Remove commas and normalize Persian/Arabic digits
+      let cleanValue = value.toString().replace(/,/g, '');
+      cleanValue = normalizeDigits(cleanValue);
+      normalized.append(key, cleanValue);
+    } else {
+      normalized.append(key, value);
+    }
+  }
+
+  return normalized;
+}
+
+// Normalize Persian/Arabic digits to ASCII
+function normalizeDigits(value) {
+  if (!value) return value;
+  const persianArabicDigits = /[۰-۹٠-٩]/g;
+  const map = {
+    '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4',
+    '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9',
+    '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4',
+    '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9',
+  };
+  return value.toString().replace(persianArabicDigits, (d) => map[d]);
+}
+
 // Setup AJAX form submission for modals
 function setupModalForms() {
   document.querySelectorAll('.modal form').forEach(form => {
@@ -139,7 +173,7 @@ function setupModalForms() {
       if (!this.classList.contains('no-ajax')) {
         e.preventDefault();
 
-        const formData = new FormData(this);
+        const formData = normalizeFormDataForSubmission(this);
         const url = this.getAttribute('action');
         const modal = this.closest('.modal');
         const modalInstance = bootstrap.Modal.getInstance(modal);
@@ -236,6 +270,24 @@ function initUIHelpers() {
   formatNumberDisplays();
   initPersianDatepickers();
   setupModalForms();
+  setupFormMoneyNormalization();
+}
+
+// Setup money normalization for all form submissions (both AJAX and traditional)
+function setupFormMoneyNormalization() {
+  document.addEventListener('submit', function(e) {
+    const form = e.target;
+    if (!form || !form.tagName || form.tagName.toLowerCase() !== 'form') return;
+
+    // Normalize all money inputs before submission
+    form.querySelectorAll('.money-input').forEach(input => {
+      if (input.value) {
+        let cleanValue = input.value.toString().replace(/,/g, '');
+        cleanValue = normalizeDigits(cleanValue);
+        input.value = cleanValue;
+      }
+    });
+  }, true); // Use capture phase to run before form's own handlers
 }
 
 // Run on document ready
@@ -252,6 +304,8 @@ document.addEventListener('shown.bs.modal', function() {
 window.UIHelpers = {
   formatNumber,
   parseFormattedNumber,
+  normalizeDigits,
+  normalizeFormDataForSubmission,
   initMoneyInputs,
   formatNumberDisplays,
   initPersianDatepickers,
