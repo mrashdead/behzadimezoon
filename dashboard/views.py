@@ -1,5 +1,6 @@
 #dashboard/views.py
 from django.views.generic import TemplateView
+from django.db.models import Sum
 from customers.models import Customer
 from products.models import Dress
 from reservations.models import Reservation
@@ -16,6 +17,11 @@ class DashboardView(TemplateView):
         context['active_reservations_count'] = Reservation.objects.filter(
             status__in=['DRAFT', 'CONFIRMED', 'DELIVERED']
         ).count()
+
+        total_income = Reservation.objects.filter(
+            status='DELIVERED'
+        ).aggregate(total=Sum('final_price'))['total'] or 0
+        context['total_income'] = total_income
 
         context['page_title'] = 'داشبورد'
         return context

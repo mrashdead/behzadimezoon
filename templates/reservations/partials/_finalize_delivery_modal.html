@@ -1,16 +1,16 @@
+{% load humanize %}
+
 <div class="modal fade" id="finalizeDeliveryModal{{ reservation.id }}" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow">
       <form method="post" action="{% url 'reservations:finalize_delivery' reservation.pk %}" class="h-100 d-flex flex-column">
         {% csrf_token %}
-        <div class="modal-header">
-          <h5 class="modal-title">تایید تحویل لباس</h5>
-          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
-        </div>
+        {% include 'partials/_modal_header.html' with title='تایید تحویل لباس' %}
+
         <div class="modal-body">
-          <div class="mb-4">
-            <h6 class="text-muted mb-3">مشتری: <strong>{{ reservation.customer }}</strong></h6>
-            <h6 class="text-muted mb-3">لباس: <strong>{{ reservation.dress }}</strong></h6>
+          <div class="mb-4 pb-3 border-bottom">
+            <h6 class="text-muted mb-2">مشتری: <strong>{{ reservation.customer }}</strong></h6>
+            <h6 class="text-muted mb-0">لباس: <strong>{{ reservation.dress }}</strong></h6>
           </div>
 
           <div class="card shadow-none border mb-3">
@@ -20,7 +20,7 @@
                   <span class="text-muted">هزینه اجاره:</span>
                 </div>
                 <div class="col-6 text-end">
-                  <strong>{{ reservation.rent_price }}</strong>
+                  <strong>{{ reservation.rent_price|intcomma }} تومان</strong>
                 </div>
               </div>
               {% if reservation.discount_amount > 0 %}
@@ -29,17 +29,17 @@
                   <span class="text-muted">تخفیف:</span>
                 </div>
                 <div class="col-6 text-end">
-                  <strong>-{{ reservation.discount_amount }}</strong>
+                  <strong class="text-danger">-{{ reservation.discount_amount|intcomma }} تومان</strong>
                 </div>
               </div>
               {% endif %}
-              <hr>
+              <hr class="my-2">
               <div class="row mb-2">
                 <div class="col-6">
                   <span class="text-muted">قیمت نهایی:</span>
                 </div>
                 <div class="col-6 text-end">
-                  <strong>{{ reservation.final_price }}</strong>
+                  <strong class="text-success">{{ reservation.final_price|intcomma }} تومان</strong>
                 </div>
               </div>
               <div class="row mb-2">
@@ -47,17 +47,17 @@
                   <span class="text-muted">بیعانه دریافت شده:</span>
                 </div>
                 <div class="col-6 text-end">
-                  <strong>{{ reservation.deposit_amount }}</strong>
+                  <strong>{{ reservation.deposit_amount|intcomma }} تومان</strong>
                 </div>
               </div>
-              <hr>
+              <hr class="my-2">
               <div class="row">
                 <div class="col-6">
                   <span class="text-dark"><strong>باقی مانده:</strong></span>
                 </div>
                 <div class="col-6 text-end">
                   <strong class="{% if reservation.remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}">
-                    {{ reservation.remaining_amount }}
+                    {{ reservation.remaining_amount|intcomma }} تومان
                   </strong>
                 </div>
               </div>
@@ -66,15 +66,18 @@
 
           {% if reservation.remaining_amount > 0 %}
           <div class="card shadow-none border mb-3">
-            <div class="card-header bg-body-tertiary">
-              <h6 class="mb-0">ثبت پرداخت باقی‌مانده</h6>
+            <div class="card-header bg-body-tertiary border-bottom py-3">
+              <h6 class="mb-0 fw-semibold">
+                <i class="fi fi-rr-credit-card me-2"></i>
+                ثبت پرداخت باقی‌مانده
+              </h6>
             </div>
             <div class="card-body">
               <div class="row g-3">
                 <div class="col-12">
                   <label class="form-label">مبلغ پرداخت باقی‌مانده</label>
                   <input type="number" name="remaining_payment_amount" class="form-control" value="{{ reservation.remaining_amount }}" required>
-                  <small class="form-text text-muted">مبلغ باید برابر با {{ reservation.remaining_amount }} تومان باشد</small>
+                  <small class="form-text text-muted">مبلغ باید برابر با {{ reservation.remaining_amount|intcomma }} تومان باشد</small>
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">روش پرداخت</label>
@@ -88,28 +91,28 @@
                 </div>
                 <div class="col-md-6">
                   <label class="form-label">کد رهگیری پرداخت</label>
-                  <input type="text" name="remaining_payment_tracking_code" class="form-control" maxlength="100" required placeholder="مثال: شماره چک، شناسه انتقال، کد POS">
+                  <input type="text" name="remaining_payment_tracking_code" class="form-control" maxlength="100" required placeholder="شماره چک، شناسه انتقال...">
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="alert alert-warning" role="alert">
+          <div class="alert alert-warning mb-0" role="alert">
             <i class="fi fi-rr-info me-2"></i>
-            <strong>توجه:</strong> قبل از تحویل، اطلاعات پرداخت باقی‌مانده را ثبت کنید.
-            <br>
-            <span class="small">باقی‌مانده: <strong>{{ reservation.remaining_amount }} تومان</strong></span>
+            <strong>توجه:</strong> قبل از تحویل، اطلاعات پرداخت باقی‌مانده را ثبت کنید. <br>
+            <span class="small">باقی‌مانده: <strong>{{ reservation.remaining_amount|intcomma }} تومان</strong></span>
           </div>
           {% else %}
-          <div class="alert alert-success" role="alert">
+          <div class="alert alert-success mb-0" role="alert">
             <i class="fi fi-rr-check-circle me-2"></i>
             مشتری تمام وجوه را پرداخت کرده است. می‌توانید لباس را تحویل دهید.
           </div>
           {% endif %}
         </div>
-        <div class="modal-footer">
-          <button type="button" class="btn btn-light" data-bs-dismiss="modal">انصراف</button>
-          <button type="submit" class="btn btn-success">
+
+        <div class="modal-footer border-top">
+          <button type="button" class="btn btn-light waves-effect" data-bs-dismiss="modal">انصراف</button>
+          <button type="submit" class="btn btn-success waves-effect waves-light">
             <i class="fi fi-rr-check me-1"></i>
             تایید تحویل
           </button>
@@ -118,4 +121,5 @@
     </div>
   </div>
 </div>
+
 

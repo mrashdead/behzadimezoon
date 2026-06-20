@@ -1,141 +1,51 @@
-{% load jalali_tags %} {% load jformat %}
+{% load jalali_tags %}
+{% load jformat %}
 
-<div
-  class="modal fade"
-  id="editCustomerModal{{ customer.id }}"
-  tabindex="-1"
-  aria-labelledby="editCustomerModalLabel{{ customer.id }}"
-  aria-hidden="true"
->
+<div class="modal fade" id="editCustomerModal{{ customer.id }}" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-scrollable">
     <div class="modal-content">
-      <form
-        method="post"
-        action="{% url 'customers:update' customer.id %}"
-        class="h-100 d-flex flex-column"
-      >
+      <form method="post" action="{% url 'customers:update' customer.id %}" class="h-100 d-flex flex-column no-ajax">
         {% csrf_token %}
 
-        <div class="modal-header">
-          <h5 class="modal-title" id="editCustomerModalLabel{{ customer.id }}">
-            ویرایش مشتری
-          </h5>
-          <button
-            type="button"
-            class="btn-close"
-            data-bs-dismiss="modal"
-            aria-label="بستن"
-          ></button>
-        </div>
+        {% include 'partials/_modal_header.html' with title='ویرایش مشتری' %}
 
         <div class="modal-body">
           <div class="row g-3">
+            <!-- بخش اطلاعات عروس -->
             <div class="col-12">
               <div class="card shadow-none border">
-                <div class="card-header bg-body-tertiary">
-                  <h6 class="mb-0">اطلاعات عروس</h6>
+                <div class="card-header bg-body-tertiary border-bottom py-3">
+                  <h6 class="mb-0 fw-semibold">
+                    <i class="fi fi-rr-user me-2"></i>
+                    اطلاعات عروس
+                  </h6>
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
                     <div class="col-md-6">
-                      <label
-                        for="id_bride_first_name_{{ customer.id }}"
-                        class="form-label"
-                        >نام عروس</label
-                      >
-                      <input
-                        type="text"
-                        name="bride_first_name"
-                        id="id_bride_first_name_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.bride_first_name|default:'' }}"
-                        required
-                      />
+                      <label for="id_bride_first_name_{{ customer.id }}" class="form-label">نام عروس</label>
+                      <input type="text" name="bride_first_name" id="id_bride_first_name_{{ customer.id }}" class="form-control" value="{{ customer.bride_first_name|default:'' }}" required />
                     </div>
-
                     <div class="col-md-6">
-                      <label
-                        for="id_bride_last_name_{{ customer.id }}"
-                        class="form-label"
-                        >نام خانوادگی عروس</label
-                      >
-                      <input
-                        type="text"
-                        name="bride_last_name"
-                        id="id_bride_last_name_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.bride_last_name|default:'' }}"
-                        required
-                      />
+                      <label for="id_bride_last_name_{{ customer.id }}" class="form-label">نام خانوادگی عروس</label>
+                      <input type="text" name="bride_last_name" id="id_bride_last_name_{{ customer.id }}" class="form-control" value="{{ customer.bride_last_name|default:'' }}" required />
                     </div>
-
                     <div class="col-md-6">
-                      <label
-                        for="id_bride_phone_{{ customer.id }}"
-                        class="form-label"
-                        >شماره تماس عروس</label
-                      >
-                      <input
-                        type="text"
-                        name="bride_phone"
-                        id="id_bride_phone_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.bride_phone|default:'' }}"
-                        required
-                      />
+                      <label for="id_bride_phone_{{ customer.id }}" class="form-label">شماره تماس عروس</label>
+                      <input type="text" name="bride_phone" id="id_bride_phone_{{ customer.id }}" class="form-control" value="{{ customer.bride_phone|default:'' }}" required />
                     </div>
-
                     <div class="col-md-6">
-                      <label
-                        for="id_ceremony_date_display_{{ customer.id }}"
-                        class="form-label"
-                        >تاریخ مراسم</label
-                      >
-                      <div class="input-group">
-                        <span class="input-group-text"
-                          ><i class="fi fi-br-calendar"></i
-                        ></span>
-                        <input
-                          type="text"
-                          id="id_ceremony_date_display_{{ customer.id }}"
-                          name="ceremony_date"
-                          class="form-control jalali-datepicker jalali-mask"
-                          maxlength="10"
-                          autocomplete="off"
-                        />
-                      </div>
+                      <label for="id_ceremony_date_{{ customer.id }}" class="form-label">تاریخ مراسم</label>
+                      <input type="text" id="id_ceremony_date_{{ customer.id }}" name="ceremony_date" class="form-control p-date-only" value="{{ customer.ceremony_date|jformat:'%Y/%m/%d'|default:'' }}" required />
                     </div>
-
                     <div class="col-md-6">
-                      <label
-                        for="id_how_to_know_{{ customer.id }}"
-                        class="form-label"
-                        >نحوه آشنایی</label
-                      >
-                      <input
-                        type="text"
-                        name="how_to_know"
-                        id="id_how_to_know_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.how_to_know|default:'' }}"
-                      />
+                      <label for="id_how_to_know_{{ customer.id }}" class="form-label">نحوه آشنایی</label>
+                      <input type="text" name="how_to_know" id="id_how_to_know_{{ customer.id }}" class="form-control" value="{{ customer.how_to_know|default:'' }}" />
                     </div>
-
-                    <div class="col-md-6 d-flex align-items-center">
-                      <div class="form-check mt-md-4 pt-md-2">
-                        <input
-                          type="checkbox"
-                          name="allow_contact"
-                          id="id_allow_contact_{{ customer.id }}"
-                          class="form-check-input"
-                          {%
-                          if
-                          customer.allow_contact
-                          %}checked{%
-                          endif
-                          %}
-                        />
-                        <label class="form-check-label" for="id_allow_contact_{{ customer.id }}">اجازه تماس تبلیغاتی</label>
+                    <div class="col-md-6 d-flex align-items-end">
+                      <div class="form-check w-100 mt-md-2">
+                        <input type="checkbox" name="allow_contact" id="id_allow_contact_{{ customer.id }}" class="form-check-input" {% if customer.allow_contact %}checked{% endif %} />
+                        <label class="form-check-label" for="id_allow_contact_{{ customer.id }}">اجازه ارتباط با مشتری</label>
                       </div>
                     </div>
                   </div>
@@ -143,244 +53,107 @@
               </div>
             </div>
 
+            <!-- بخش اطلاعات داماد -->
             <div class="col-12">
               <div class="card shadow-none border">
-                <div class="card-header bg-body-tertiary">
-                  <h6 class="mb-0">اطلاعات داماد</h6>
+                <div class="card-header bg-body-tertiary border-bottom py-3">
+                  <h6 class="mb-0 fw-semibold">
+                    <i class="fi fi-rr-user me-2"></i>
+                    اطلاعات داماد
+                  </h6>
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
                     <div class="col-md-6">
-                      <label
-                        for="id_groom_first_name_{{ customer.id }}"
-                        class="form-label"
-                        >نام داماد</label
-                      >
-                      <input
-                        type="text"
-                        name="groom_first_name"
-                        id="id_groom_first_name_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.groom_first_name|default:'' }}"
-                      />
+                      <label for="id_groom_first_name_{{ customer.id }}" class="form-label">نام داماد</label>
+                      <input type="text" name="groom_first_name" id="id_groom_first_name_{{ customer.id }}" class="form-control" value="{{ customer.groom_first_name|default:'' }}" />
                     </div>
-
                     <div class="col-md-6">
-                      <label
-                        for="id_groom_last_name_{{ customer.id }}"
-                        class="form-label"
-                        >نام خانوادگی داماد</label
-                      >
-                      <input
-                        type="text"
-                        name="groom_last_name"
-                        id="id_groom_last_name_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.groom_last_name|default:'' }}"
-                      />
+                      <label for="id_groom_last_name_{{ customer.id }}" class="form-label">نام خانوادگی داماد</label>
+                      <input type="text" name="groom_last_name" id="id_groom_last_name_{{ customer.id }}" class="form-control" value="{{ customer.groom_last_name|default:'' }}" />
                     </div>
-
                     <div class="col-md-6">
-                      <label
-                        for="id_groom_phone_{{ customer.id }}"
-                        class="form-label"
-                        >شماره تماس داماد</label
-                      >
-                      <input
-                        type="text"
-                        name="groom_phone"
-                        id="id_groom_phone_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.groom_phone|default:'' }}"
-                      />
+                      <label for="id_groom_phone_{{ customer.id }}" class="form-label">شماره تماس داماد</label>
+                      <input type="text" name="groom_phone" id="id_groom_phone_{{ customer.id }}" class="form-control" value="{{ customer.groom_phone|default:'' }}" />
                     </div>
-
                     <div class="col-md-6">
-                      <label
-                        for="id_preferred_consultant_{{ customer.id }}"
-                        class="form-label"
-                        >مشاور ترجیحی</label
-                      >
-                      <input
-                        type="text"
-                        name="preferred_consultant"
-                        id="id_preferred_consultant_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.preferred_consultant|default:'' }}"
-                      />
+                      <label for="id_preferred_consultant_{{ customer.id }}" class="form-label">مشاور ترجیحی</label>
+                      <input type="text" name="preferred_consultant" id="id_preferred_consultant_{{ customer.id }}" class="form-control" value="{{ customer.preferred_consultant|default:'' }}" />
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
+            <!-- بخش خدمات و مراسم -->
             <div class="col-12">
               <div class="card shadow-none border">
-                <div class="card-header bg-body-tertiary">
-                  <h6 class="mb-0">خدمات و مراسم</h6>
+                <div class="card-header bg-body-tertiary border-bottom py-3">
+                  <h6 class="mb-0 fw-semibold">
+                    <i class="fi fi-rr-list-check me-2"></i>
+                    خدمات و مراسم
+                  </h6>
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
                     <div class="col-md-6">
-                      <label
-                        for="id_requested_services_{{ customer.id }}"
-                        class="form-label"
-                        >خدمات مورد نظر</label
-                      >
-                      <input
-                        type="text"
-                        name="requested_services"
-                        id="id_requested_services_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.requested_services|default:'' }}"
-                      />
+                      <label for="id_requested_services_{{ customer.id }}" class="form-label">خدمات مورد نظر</label>
+                      <input type="text" name="requested_services" id="id_requested_services_{{ customer.id }}" class="form-control" value="{{ customer.requested_services|default:'' }}" />
                     </div>
-
                     <div class="col-md-6">
-                      <label
-                        for="id_estimated_budget_{{ customer.id }}"
-                        class="form-label"
-                        >بودجه تقریبی</label
-                      >
-                      <input
-                        type="text"
-                        name="estimated_budget"
-                        id="id_estimated_budget_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.estimated_budget|default:'' }}"
-                      />
+                      <label for="id_estimated_budget_{{ customer.id }}" class="form-label">بودجه تقریبی</label>
+                      <input type="text" name="estimated_budget" id="id_estimated_budget_{{ customer.id }}" class="form-control money-input" value="{{ customer.estimated_budget|default:'' }}" placeholder="0 تومان" />
                     </div>
-
                     <div class="col-md-6">
-                      <label
-                        for="id_additional_services_{{ customer.id }}"
-                        class="form-label"
-                        >خدمات جانبی</label
-                      >
-                      <input
-                        type="text"
-                        name="additional_services"
-                        id="id_additional_services_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.additional_services|default:'' }}"
-                      />
+                      <label for="id_additional_services_{{ customer.id }}" class="form-label">خدمات جانبی</label>
+                      <input type="text" name="additional_services" id="id_additional_services_{{ customer.id }}" class="form-control" value="{{ customer.additional_services|default:'' }}" />
                     </div>
-
                     <div class="col-md-6">
-                      <label
-                        for="id_guest_count_{{ customer.id }}"
-                        class="form-label"
-                        >تعداد مهمان</label
-                      >
-                      <input
-                        type="number"
-                        name="guest_count"
-                        id="id_guest_count_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.guest_count|default:'' }}"
-                      />
+                      <label for="id_guest_count_{{ customer.id }}" class="form-label">تعداد مهمان</label>
+                      <input type="number" name="guest_count" id="id_guest_count_{{ customer.id }}" class="form-control" value="{{ customer.guest_count|default:'' }}" />
                     </div>
-
                     <div class="col-md-6">
-                      <label
-                        for="id_ceremony_decoration_{{ customer.id }}"
-                        class="form-label"
-                        >تشریفات</label
-                      >
-                      <input
-                        type="text"
-                        name="ceremony_decoration"
-                        id="id_ceremony_decoration_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.ceremony_decoration|default:'' }}"
-                      />
+                      <label for="id_ceremony_decoration_{{ customer.id }}" class="form-label">تشریفات</label>
+                      <input type="text" name="ceremony_decoration" id="id_ceremony_decoration_{{ customer.id }}" class="form-control" value="{{ customer.ceremony_decoration|default:'' }}" />
                     </div>
-
                     <div class="col-md-6">
-                      <label
-                        for="id_beauty_salon_{{ customer.id }}"
-                        class="form-label"
-                        >سالن زیبایی</label
-                      >
-                      <input
-                        type="text"
-                        name="beauty_salon"
-                        id="id_beauty_salon_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.beauty_salon|default:'' }}"
-                      />
+                      <label for="id_beauty_salon_{{ customer.id }}" class="form-label">سالن زیبایی</label>
+                      <input type="text" name="beauty_salon" id="id_beauty_salon_{{ customer.id }}" class="form-control" value="{{ customer.beauty_salon|default:'' }}" />
                     </div>
-
                     <div class="col-md-6">
-                      <label
-                        for="id_studio_name_{{ customer.id }}"
-                        class="form-label"
-                        >آتلیه</label
-                      >
-                      <input
-                        type="text"
-                        name="studio_name"
-                        id="id_studio_name_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.studio_name|default:'' }}"
-                      />
+                      <label for="id_studio_name_{{ customer.id }}" class="form-label">آتلیه</label>
+                      <input type="text" name="studio_name" id="id_studio_name_{{ customer.id }}" class="form-control" value="{{ customer.studio_name|default:'' }}" />
                     </div>
-
                     <div class="col-md-6">
-                      <label
-                        for="id_music_band_{{ customer.id }}"
-                        class="form-label"
-                        >گروه موسیقی</label
-                      >
-                      <input
-                        type="text"
-                        name="music_band"
-                        id="id_music_band_{{ customer.id }}"
-                        class="form-control"
-                        value="{{ customer.music_band|default:'' }}"
-                      />
+                      <label for="id_music_band_{{ customer.id }}" class="form-label">گروه موسیقی</label>
+                      <input type="text" name="music_band" id="id_music_band_{{ customer.id }}" class="form-control" value="{{ customer.music_band|default:'' }}" />
                     </div>
                   </div>
                 </div>
               </div>
             </div>
 
+            <!-- بخش توضیحات تکمیلی -->
             <div class="col-12">
               <div class="card shadow-none border">
-                <div class="card-header bg-body-tertiary">
-                  <h6 class="mb-0">توضیحات تکمیلی</h6>
+                <div class="card-header bg-body-tertiary border-bottom py-3">
+                  <h6 class="mb-0 fw-semibold">
+                    <i class="fi fi-rr-document me-2"></i>
+                    توضیحات تکمیلی
+                  </h6>
                 </div>
                 <div class="card-body">
-                  <label
-                    for="id_customer_note_{{ customer.id }}"
-                    class="form-label"
-                    >یادداشت مشتری</label
-                  >
-                  <textarea
-                    name="customer_note"
-                    id="id_customer_note_{{ customer.id }}"
-                    class="form-control"
-                    rows="4"
-                  >
-{{ customer.customer_note|default:'' }}</textarea
-                  >
+                  <label for="id_customer_note_{{ customer.id }}" class="form-label">یادداشت مشتری</label>
+                  <textarea name="customer_note" id="id_customer_note_{{ customer.id }}" class="form-control" rows="4" placeholder="توضیحات و یادداشت‌های مرتبط با مشتری...">{{ customer.customer_note|default:'' }}</textarea>
                 </div>
               </div>
             </div>
           </div>
         </div>
 
-        <div class="modal-footer justify-content-end gap-2">
-          <button
-            type="button"
-            class="btn btn-outline-secondary"
-            data-bs-dismiss="modal"
-          >
-            انصراف
-          </button>
-          <button type="submit" class="btn btn-primary">ذخیره تغییرات</button>
-        </div>
+        {% include 'partials/_modal_footer.html' with cancel_text='انصراف' submit_text='ذخیره تغییرات' %}
       </form>
     </div>
   </div>
 </div>
+

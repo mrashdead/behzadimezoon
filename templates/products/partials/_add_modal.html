@@ -1,54 +1,28 @@
-<div
-  class="modal fade"
-  id="createDressModal"
-  tabindex="-1"
-  aria-labelledby="createDressModalLabel"
-  aria-hidden="true"
->
+<div class="modal fade" id="createDressModal" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content border-0 shadow">
-      <form method="post" action="{% url 'products:add' %}">
+      <form method="post" action="{% url 'products:add' %}" class="no-ajax">
         {% csrf_token %}
 
-        <div class="modal-header">
-          <h5 class="modal-title" id="createDressModalLabel">افزودن محصول جدید</h5>
-          <button type="button" class="btn-close m-0" data-bs-dismiss="modal" aria-label="بستن"></button>
-        </div>
+        {% include 'partials/_modal_header.html' with title='افزودن محصول جدید' %}
 
         <div class="modal-body">
           <div class="row g-3">
             <div class="col-md-6">
               <label for="id_code" class="form-label">کد لباس</label>
-              <input
-                type="text"
-                name="code"
-                id="id_code"
-                class="form-control"
-                placeholder="مثلاً M1405-01"
-                required
-              >
+              <input type="text" name="code" id="id_code" class="form-control" placeholder="مثلاً M1405-01" required />
             </div>
 
             <div class="col-md-6">
-              <label for="id_daily_rent_price" class="form-label">قیمت اجاره روزانه</label>
-              <input
-                type="number"
-                name="daily_rent_price"
-                id="id_daily_rent_price"
-                class="form-control"
-                min="0"
-                placeholder="مثلاً 18000000"
-                required
-              >
+              <label for="id_daily_rent_price" class="form-label">قیمت اجاره روزانه (تومان)</label>
+              <input type="text" name="daily_rent_price" id="id_daily_rent_price" class="form-control money-input" placeholder="0 تومان" required />
             </div>
           </div>
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-light" data-bs-dismiss="modal">انصراف</button>
-          <button type="submit" class="btn btn-primary">ثبت محصول</button>
-        </div>
+        {% include 'partials/_modal_footer.html' with cancel_text='انصراف' submit_text='ثبت محصول' %}
       </form>
     </div>
   </div>
 </div>
+

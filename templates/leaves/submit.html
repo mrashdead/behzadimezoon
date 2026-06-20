@@ -1,84 +1,148 @@
 {% extends 'base.html' %}
 {% load static %}
+
+{% block title %}درخواست مرخصی{% endblock %}
+
 {% block content %}
-<div class="card">
-  <div class="card-header">
-    <h5 class="card-title mb-0">درخواست مرخصی</h5>
+<div class="container-fluid">
+  <div class="row mb-4">
+    <div class="col-12">
+      <h1 class="h3 mb-1">درخواست مرخصی</h1>
+      <p class="text-muted mb-0">ثبت درخواست مرخصی برای تایید مدیر</p>
+    </div>
   </div>
-  <div class="card-body">
-    <form method="post" novalidate>
-      {% csrf_token %}
-      <div class="mb-3">
-        <label class="form-label">نوع مرخصی</label>
-        {{ form.leave_type }}
-      </div>
-      <div class="mb-3">
-        <label class="form-label">دسته‌بندی</label>
-        {{ form.category }}
-      </div>
 
-      <div class="mb-3">
-        <label class="form-label">تاریخ شروع (شمسی)</label>
-        {{ form.start_date_j }}
-      </div>
+  <div class="card border-0 shadow-sm">
+    <div class="card-body">
+      <form method="post" novalidate>
+        {% csrf_token %}
 
-      <div class="mb-3">
-        <label class="form-label">تاریخ پایان (شمسی، برای مرخصی روزانه)</label>
-        {{ form.end_date_j }}
-      </div>
+        <div class="row g-4">
+          <!-- بخش نوع مرخصی -->
+          <div class="col-12">
+            <div class="card shadow-none border">
+              <div class="card-header bg-body-tertiary border-bottom py-3">
+                <h6 class="mb-0 fw-semibold">
+                  <i class="fi fi-rr-calendar-check me-2"></i>
+                  مشخصات مرخصی
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">نوع مرخصی</label>
+                    {{ form.leave_type }}
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">دسته‌بندی</label>
+                    {{ form.category }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      <div class="mb-3 time-fields">
-        <label class="form-label">از ساعت (برای مرخصی ساعتی)</label>
-        {{ form.from_time }}
-      </div>
+          <!-- بخش تاریخ‌ها -->
+          <div class="col-12">
+            <div class="card shadow-none border">
+              <div class="card-header bg-body-tertiary border-bottom py-3">
+                <h6 class="mb-0 fw-semibold">
+                  <i class="fi fi-rr-calendar-today me-2"></i>
+                  بازه زمانی
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">تاریخ شروع</label>
+                    {{ form.start_date_j }}
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">تاریخ پایان</label>
+                    {{ form.end_date_j }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      <div class="mb-3 time-fields">
-        <label class="form-label">تا ساعت (برای مرخصی ساعتی)</label>
-        {{ form.to_time }}
-      </div>
+          <!-- بخش ساعت‌ها -->
+          <div class="col-12">
+            <div class="card shadow-none border time-section" style="display: none;">
+              <div class="card-header bg-body-tertiary border-bottom py-3">
+                <h6 class="mb-0 fw-semibold">
+                  <i class="fi fi-rr-clock me-2"></i>
+                  ساعات مرخصی
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">از ساعت</label>
+                    {{ form.from_time }}
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">تا ساعت</label>
+                    {{ form.to_time }}
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
 
-      <div class="mb-3">
-        <label class="form-label">توضیحات (اختیاری)</label>
-        {{ form.message }}
-      </div>
+          <!-- بخش توضیحات -->
+          <div class="col-12">
+            <div class="card shadow-none border">
+              <div class="card-header bg-body-tertiary border-bottom py-3">
+                <h6 class="mb-0 fw-semibold">
+                  <i class="fi fi-rr-document me-2"></i>
+                  توضیحات اضافی
+                </h6>
+              </div>
+              <div class="card-body">
+                <label class="form-label">توضیحات (اختیاری)</label>
+                {{ form.message }}
+              </div>
+            </div>
+          </div>
 
-      <button class="btn btn-primary" type="submit">ارسال درخواست</button>
-    </form>
+          <!-- دکمه ارسال -->
+          <div class="col-12">
+            <div class="d-flex gap-2 justify-content-end">
+              <a href="{% url 'dashboard:index' %}" class="btn btn-light waves-effect">انصراف</a>
+              <button class="btn btn-primary waves-effect waves-light" type="submit">
+                <i class="fi fi-rr-paper-plane me-1"></i>
+                ارسال درخواست
+              </button>
+            </div>
+          </div>
+        </div>
+      </form>
+    </div>
   </div>
 </div>
 
-<!-- Persian datepicker: include CDN for persian-datepicker (requires jQuery) -->
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/css/persian-datepicker.min.css">
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
 <script>
-  function toggleLeaveTimeFields() {
-    const type = document.querySelector('select[name="leave_type"]').value;
-    document.querySelectorAll('.time-fields').forEach(function (element) {
-      if (type === 'HOURLY') {
-        element.style.display = '';
+  function toggleLeaveTimeSection() {
+    const leaveType = document.querySelector('select[name="leave_type"]');
+    const timeSection = document.querySelector('.time-section');
+
+    if (leaveType && timeSection) {
+      if (leaveType.value === 'HOURLY') {
+        timeSection.style.display = '';
       } else {
-        element.style.display = 'none';
-        const input = element.querySelector('input');
-        if (input) {
-          input.value = '';
-        }
+        timeSection.style.display = 'none';
       }
-    });
+    }
   }
 
-  $(function(){
-    $('.jalali-date').persianDatepicker({
-      format: 'YYYY/MM/DD',
-      initialValueType: 'gregorian',
-      autoClose: true,
-    });
-    const leaveType = document.querySelector('select[name="leave_type"]');
-    if (leaveType) {
-      leaveType.addEventListener('change', toggleLeaveTimeFields);
-      toggleLeaveTimeFields();
+  document.addEventListener('DOMContentLoaded', function() {
+    toggleLeaveTimeSection();
+    const leaveTypeSelect = document.querySelector('select[name="leave_type"]');
+    if (leaveTypeSelect) {
+      leaveTypeSelect.addEventListener('change', toggleLeaveTimeSection);
     }
   });
 </script>
-
 {% endblock %}
+

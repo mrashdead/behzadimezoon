@@ -1,0 +1,33 @@
+<!-- Form Field Component for Modals -->
+<!-- Usage: {% include 'partials/_form_field.html' with label='نام' field_name='name' field_type='text' placeholder='نام را وارد کنید' value=object.name %} -->
+
+<div class="mb-3">
+  {% if field_type == 'select' %}
+    <label class="form-label" for="{{ field_name }}">{{ label }}</label>
+    <select class="form-select" name="{{ field_name }}" id="{{ field_name }}" {% if required %}required{% endif %}>
+      {% if options %}
+        {% for key, text in options %}
+          <option value="{{ key }}" {% if value == key %}selected{% endif %}>{{ text }}</option>
+        {% endfor %}
+      {% endif %}
+    </select>
+  {% elif field_type == 'textarea' %}
+    <label class="form-label" for="{{ field_name }}">{{ label }}</label>
+    <textarea class="form-control" name="{{ field_name }}" id="{{ field_name }}" rows="3" placeholder="{{ placeholder }}" {% if required %}required{% endif %}>{{ value|default:'' }}</textarea>
+  {% elif field_type == 'date' %}
+    <label class="form-label" for="{{ field_name }}">{{ label }}</label>
+    <input type="text" class="form-control p-date-only" name="{{ field_name }}" id="{{ field_name }}" placeholder="{{ placeholder|default:'انتخاب تاریخ' }}" value="{{ value|default:'' }}" {% if required %}required{% endif %} />
+  {% elif field_type == 'datetime' %}
+    <label class="form-label" for="{{ field_name }}">{{ label }}</label>
+    <input type="text" class="form-control p-date-time" name="{{ field_name }}" id="{{ field_name }}" placeholder="{{ placeholder|default:'انتخاب تاریخ و زمان' }}" value="{{ value|default:'' }}" {% if required %}required{% endif %} />
+  {% elif field_type == 'money' %}
+    <label class="form-label" for="{{ field_name }}">{{ label }}</label>
+    <div class="input-group">
+      <input type="number" class="form-control money-input" name="{{ field_name }}" id="{{ field_name }}" placeholder="{{ placeholder }}" value="{{ value|default:'' }}" {% if required %}required{% endif %} />
+      <span class="input-group-text">تومان</span>
+    </div>
+  {% else %}
+    <label class="form-label" for="{{ field_name }}">{{ label }}</label>
+    <input type="{% if field_type %}{{ field_type }}{% else %}text{% endif %}" class="form-control" name="{{ field_name }}" id="{{ field_name }}" placeholder="{{ placeholder }}" value="{{ value|default:'' }}" {% if required %}required{% endif %} />
+  {% endif %}
+</div>

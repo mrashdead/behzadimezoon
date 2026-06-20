@@ -4,80 +4,79 @@
 <div class="modal fade" id="detailCustomerModal{{ customer.id }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-lg modal-dialog-scrollable">
         <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title">جزئیات مشتری</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
-            </div>
+            {% include 'partials/_modal_header.html' with title='جزئیات مشتری' %}
+
             <div class="modal-body">
-    <div class="row g-3">
+                <div class="row g-3">
+                    <div class="col-md-6">
+                        <div class="card shadow-none border h-100">
+                            <div class="card-body">
+                                <div class="small text-muted mb-1">نام عروس</div>
+                                <div class="fw-semibold text-body">{{ customer.bride_first_name|default:"-" }}</div>
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">نام عروس</div>
-                    <div class="fw-semibold text-body">{{ customer.bride_first_name|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-none border h-100">
+                            <div class="card-body">
+                                <div class="small text-muted mb-1">نام خانوادگی عروس</div>
+                                <div class="fw-semibold text-body">{{ customer.bride_last_name|default:"-" }}</div>
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">نام خانوادگی عروس</div>
-                    <div class="fw-semibold text-body">{{ customer.bride_last_name|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-none border h-100">
+                            <div class="card-body">
+                                <div class="small text-muted mb-1">شماره تماس عروس</div>
+                                <div class="fw-semibold text-body">{{ customer.bride_phone|default:"-" }}</div>
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">شماره تماس عروس</div>
-                    <div class="fw-semibold text-body">{{ customer.bride_phone|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-none border h-100">
+                            <div class="card-body">
+                                <div class="small text-muted mb-1">تاریخ مراسم</div>
+                                <div class="fw-semibold text-body">{{ customer.ceremony_date|jformat:"%Y/%m/%d"|default:"-" }}</div>
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">تاریخ مراسم</div>
-                    <div class="fw-semibold text-body">{{ customer.ceremony_date|jformat:"%Y/%m/%d"|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
+                    <div class="col-md-6">
+                        <div class="card shadow-none border h-100">
+                            <div class="card-body">
+                                <div class="small text-muted mb-1">نحوه آشنایی</div>
+                                <div class="fw-semibold text-body">{{ customer.how_to_know|default:"-" }}</div>
+                            </div>
+                        </div>
+                    </div>
 
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">نحوه آشنایی</div>
-                    <div class="fw-semibold text-body">{{ customer.how_to_know|default:"-" }}</div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">اجازه ارتباط</div>
-                    <div class="fw-semibold">
-                        {% if customer.allow_contact %}
-                            <span class="badge bg-success-subtle text-success border border-success-subtle">بله</span>
-                        {% else %}
-                            <span class="badge bg-secondary-subtle text-secondary border border-secondary-subtle">خیر</span>
-                        {% endif %}
+                    <div class="col-md-6">
+                        <div class="card shadow-none border h-100">
+                            <div class="card-body">
+                                <div class="small text-muted mb-1">اجازه ارتباط</div>
+                                <div class="fw-semibold">
+                                    {% if customer.allow_contact %}
+                                        <span class="badge bg-success-subtle text-success">بله</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary-subtle text-secondary">خیر</span>
+                                    {% endif %}
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
-        </div>
 
-        <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-                <div class="card-body">
-                    <div class="small text-muted mb-1">نام داماد</div>
-                    <div class="fw-semibold text-body">{{ customer.groom_first_name|default:"-" }}</div>
-                </div>
+            <div class="modal-footer border-top">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button>
             </div>
+        </div>
+    </div>
+</div>
+
         </div>
 
         <div class="col-md-6">

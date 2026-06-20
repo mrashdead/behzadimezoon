@@ -1,56 +1,28 @@
-<div
-  class="modal fade"
-  id="editDressModal{{ dress.id }}"
-  tabindex="-1"
-  aria-labelledby="editDressModalLabel{{ dress.id }}"
-  aria-hidden="true"
->
+<div class="modal fade" id="editDressModal{{ dress.id }}" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content border-0 shadow">
-      <form method="post" action="{% url 'products:edit' dress.pk %}">
+      <form method="post" action="{% url 'products:edit' dress.pk %}" class="no-ajax">
         {% csrf_token %}
 
-        <div class="modal-header">
-          <h5 class="modal-title" id="editDressModalLabel{{ dress.id }}">
-            ویرایش محصول
-          </h5>
-          <button type="button" class="btn-close m-0" data-bs-dismiss="modal" aria-label="بستن"></button>
-        </div>
+        {% include 'partials/_modal_header.html' with title='ویرایش محصول' %}
 
         <div class="modal-body">
           <div class="row g-3">
             <div class="col-md-6">
               <label for="edit_code_{{ dress.id }}" class="form-label">کد لباس</label>
-              <input
-                type="text"
-                name="code"
-                id="edit_code_{{ dress.id }}"
-                class="form-control"
-                value="{{ dress.code }}"
-                required
-              >
+              <input type="text" name="code" id="edit_code_{{ dress.id }}" class="form-control" value="{{ dress.code }}" required />
             </div>
 
             <div class="col-md-6">
-              <label for="edit_price_{{ dress.id }}" class="form-label">قیمت اجاره روزانه</label>
-              <input
-                type="number"
-                name="daily_rent_price"
-                id="edit_price_{{ dress.id }}"
-                class="form-control"
-                min="0"
-                value="{{ dress.daily_rent_price }}"
-                required
-              >
+              <label for="edit_price_{{ dress.id }}" class="form-label">قیمت اجاره روزانه (تومان)</label>
+              <input type="text" name="daily_rent_price" id="edit_price_{{ dress.id }}" class="form-control money-input" value="{{ dress.daily_rent_price }}" required />
             </div>
           </div>
         </div>
 
-        <div class="modal-footer">
-          <button type="button" class="btn btn-light" data-bs-dismiss="modal">انصراف</button>
-          <button type="submit" class="btn btn-warning">ذخیره تغییرات</button>
-        </div>
+        {% include 'partials/_modal_footer.html' with cancel_text='انصراف' submit_text='ذخیره تغییرات' %}
       </form>
     </div>
   </div>
 </div>
+

@@ -1,4 +1,6 @@
 {% extends "base.html" %}
+{% load humanize %}
+{% load jformat %}
 
 {% block title %}داشبورد | سیستم مدیریت مزون بهزادی{% endblock %}
 
@@ -7,45 +9,58 @@
 {% endblock %}
 
 {% block content %}
-    <div class="row">
-                {% include 'partials/_card_stat.html' with title='تعداد مشتریان' value=customers_count icon='fi fi-rr-users' color='success' %}
-                {% include 'partials/_card_stat.html' with title='تعداد محصولات' value=dresses_count icon='fi fi-rr-dress' color='info' %}
-                {% include 'partials/_card_stat.html' with title='رزروهای فعال' value=active_reservations_count icon='fi fi-rr-calendar' color='warning' %}
-                {% include 'partials/_card_stat.html' with title='درآمد کل' value=total_income|default:"0" icon='fi fi-rr-coins' color='primary' %}
+    <div class="row g-3 mb-4">
+        {% include 'partials/_stat_card.html' with icon='fi-rr-users' label='تعداد مشتریان' value=customers_count badge_type='success' badge_text='نفر' %}
+        {% include 'partials/_stat_card.html' with icon='fi-rr-dress' label='تعداد محصولات' value=dresses_count badge_type='info' badge_text='لباس' %}
+        {% include 'partials/_stat_card.html' with icon='fi-rr-calendar' label='رزروهای فعال' value=active_reservations_count badge_type='warning' badge_text='رزرو' %}
+        {% include 'partials/_stat_card.html' with icon='fi-rr-coins' label='درآمد کل' value=total_income badge_type='primary' badge_text='تومان' %}
     </div>
-        <div class="row mt-3">
-            <div class="col-lg-12">
-                <div class="card">
-                    <div class="card-header d-flex align-items-center justify-content-between border-0 pb-0">
-                        <h6 class="card-title mb-0">معاملات اخیر</h6>
-                    </div>
-                    <div class="card-body px-1 pt-2 pb-2">
-                        <table class="table table-sm display table-row-rounded" id="dt_RecentTransactions">
+
+    <div class="row mt-3">
+        <div class="col-lg-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header d-flex align-items-center justify-content-between border-0 pb-0">
+                    <h6 class="card-title mb-0">
+                        <i class="fi fi-rr-list me-2"></i>
+                        معاملات اخیر
+                    </h6>
+                </div>
+                <div class="card-body px-1 pt-2 pb-2">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-row-rounded align-middle mb-0">
                             <thead class="table-light">
                                 <tr>
                                     <th class="minw-150px">نام</th>
-                                    <th class="minw-150px">تاریخ</th>
+                                    <th class="minw-120px">تاریخ</th>
                                     <th class="minw-200px">توضیحات</th>
-                                    <th>دسته بندی</th>
-                                    <th>مقدار</th>
-                                    <th>وضعیت</th>
+                                    <th class="minw-100px">دسته بندی</th>
+                                    <th class="minw-130px text-end">مقدار</th>
+                                    <th class="minw-100px">وضعیت</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr>
                                     <td>
-                                        <div class="d-flex align-items-center">
-                                            <div class="avatar avatar-xxs rounded-circle me-2">
-                                                <img alt="" src="#"/>
+                                        <div class="d-flex align-items-center gap-2">
+                                            <div class="avatar avatar-sm rounded-circle bg-light">
+                                                <i class="fi fi-rr-user text-muted"></i>
                                             </div>
-                                            نسترن سلطانی
+                                            <span>نسترن سلطانی</span>
                                         </div>
                                     </td>
-                                    <td>۲۸ شهریور ۱۴۰۴</td>
+                                    <td>
+                                        <span class="fw-medium">۲۸/۰۶/۱۴۰۵</span>
+                                    </td>
                                     <td>کیف پول</td>
-                                    <td>درآمد</td>
-                                    <td class="text-success fw-bold">+1,200,000 تومان</td>
-                                    <td><span class="badge badge-lg bg-success-subtle text-success">تکمیل شد</span></td>
+                                    <td>
+                                        <span class="badge bg-success-subtle text-success">درآمد</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <span class="fw-semibold text-success">۱,۲۰۰,۰۰۰ تومان</span>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-success-subtle text-success">تکمیل شد</span>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -53,8 +68,10 @@
                 </div>
             </div>
         </div>
+    </div>
 {% endblock %}
 
 {% block extra_js %}
 
 {% endblock %}
+

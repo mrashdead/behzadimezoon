@@ -1,0 +1,13 @@
+{# Modal Footer Component #}
+{# Usage: {% include 'partials/_modal_footer.html' with cancel_text='انصراف' submit_text='ذخیره' %} #}
+
+<div class="modal-footer border-top">
+  <button type="button" class="btn btn-light waves-effect" data-bs-dismiss="modal">
+    {{ cancel_text|default:'انصراف' }}
+  </button>
+  <button type="submit" class="btn btn-primary waves-effect waves-light">
+    <i class="fi fi-rr-check me-1"></i>
+    {{ submit_text|default:'ذخیره' }}
+  </button>
+</div>
+

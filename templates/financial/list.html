@@ -1,97 +1,106 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load jformat %}
 
 {% block breadcrumb %}
-<li class="breadcrumb-item active" aria-current="page">مالی</li>
+<li class="breadcrumb-item active" aria-current="page">صفحه مالی</li>
 {% endblock %}
 
 {% block content %}
-<div class="row g-3">
-    <div class="col-lg-3 col-sm-6">
-        <div class="card p-3">
-            <div class="d-flex align-items-start justify-content-between">
-                <div>
-                    <p class="text-muted mb-1">تعداد رزروها</p>
-                    <h4 class="mb-0">{{ totals.total_reservations }}</h4>
-                </div>
-                <span class="badge bg-primary-subtle text-primary">کل</span>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-3 col-sm-6">
-        <div class="card p-3">
-            <div class="d-flex align-items-start justify-content-between">
-                <div>
-                    <p class="text-muted mb-1">درآمد نهایی</p>
-                    <h4 class="mb-0">{{ totals.total_revenue|intcomma }}</h4>
-                </div>
-                <span class="badge bg-success-subtle text-success">ریال</span>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-3 col-sm-6">
-        <div class="card p-3">
-            <div class="d-flex align-items-start justify-content-between">
-                <div>
-                    <p class="text-muted mb-1">بیعانه جمع</p>
-                    <h4 class="mb-0">{{ totals.total_deposit|intcomma }}</h4>
-                </div>
-                <span class="badge bg-info-subtle text-info">ریال</span>
-            </div>
-        </div>
-    </div>
-    <div class="col-lg-3 col-sm-6">
-        <div class="card p-3">
-            <div class="d-flex align-items-start justify-content-between">
-                <div>
-                    <p class="text-muted mb-1">باقی مانده</p>
-                    <h4 class="mb-0">{{ totals.total_remaining|intcomma }}</h4>
-                </div>
-                <span class="badge bg-danger-subtle text-danger">ریال</span>
-            </div>
-        </div>
-    </div>
+
+<!-- بخش آمار کل -->
+<div class="row g-3 mb-4">
+  {% include 'partials/_stat_card.html' with icon='fi-rr-chart-histogram' label='تعداد رزروها' value=totals.total_reservations badge_type='primary' badge_text='کل' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-coins' label='درآمد نهایی' value=totals.total_revenue badge_type='success' badge_text='تومان' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-bank' label='بیعانه جمع' value=totals.total_deposit badge_type='info' badge_text='تومان' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-calendar' label='باقی مانده' value=totals.total_remaining badge_type='danger' badge_text='تومان' %}
 </div>
 
-<div class="card mt-4">
-    <div class="card-header d-flex justify-content-between align-items-center">
-        <h5 class="card-title mb-0">آخرین رزروها</h5>
-    </div>
-    <div class="card-body">
-        {% if recent_reservations %}
-        <div class="table-responsive">
-            <table class="table align-middle mb-0">
-                <thead>
-                    <tr>
-                        <th>مشتری</th>
-                        <th>لباس</th>
-                        <th>تاریخ شروع</th>
-                        <th>مدت</th>
-                        <th>مبلغ نهایی</th>
-                        <th>بیعانه</th>
-                        <th>باقی مانده</th>
-                        <th>وضعیت</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for item in recent_reservations %}
-                    <tr>
-                        <td>{{ item.customer }}</td>
-                        <td>{{ item.dress }}</td>
-                        <td>{{ item.start_date }}</td>
-                        <td>{{ item.rental_days }} روز</td>
-                        <td>{{ item.final_price|intcomma }}</td>
-                        <td>{{ item.deposit_amount|intcomma }}</td>
-                        <td>{{ item.remaining_amount|intcomma }}</td>
-                        <td>{{ item.get_status_display }}</td>
-                    </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-        {% else %}
-        <div class="alert alert-light">هیچ رزروی برای نمایش وجود ندارد.</div>
-        {% endif %}
-    </div>
+<!-- جدول آخرین رزروها -->
+<div class="card border-0 shadow-sm">
+  <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between border-0 pb-0">
+    <h6 class="card-title mb-0">
+      <i class="fi fi-rr-list me-2"></i>
+      آخرین رزروها
+    </h6>
+  </div>
+  <div class="card-body px-1 pt-2 pb-2">
+    {% if recent_reservations %}
+      <div class="table-responsive">
+        <table class="table table-sm table-row-rounded align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="minw-150px">مشتری</th>
+              <th class="minw-150px">لباس</th>
+              <th class="minw-120px">تاریخ شروع</th>
+              <th class="minw-100px">مدت</th>
+              <th class="minw-130px text-end">مبلغ نهایی</th>
+              <th class="minw-130px text-end">بیعانه</th>
+              <th class="minw-130px text-end">باقی مانده</th>
+              <th class="minw-120px">وضعیت</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in recent_reservations %}
+              <tr>
+                <td>
+                  <div class="d-flex align-items-center gap-2">
+                    <span>{{ item.customer }}</span>
+                  </div>
+                </td>
+                <td>{{ item.dress }}</td>
+                <td>
+                  <span class="fw-medium">
+                    {% if item.start_date %}
+                      {{ item.start_date|jformat:"%Y/%m/%d" }}
+                    {% endif %}
+                  </span>
+                </td>
+                <td>{{ item.rental_days }} روز</td>
+                <td class="text-end">
+                  <span class="fw-semibold text-success">
+                    {{ item.final_price|intcomma }} تومان
+                  </span>
+                </td>
+                <td class="text-end">
+                  <span class="fw-semibold text-info">
+                    {{ item.deposit_amount|intcomma }} تومان
+                  </span>
+                </td>
+                <td class="text-end">
+                  <span class="fw-semibold {% if item.remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}">
+                    {{ item.remaining_amount|intcomma }} تومان
+                  </span>
+                </td>
+                <td>
+                  {% if item.status == 'CONFIRMED' %}
+                    <span class="badge bg-info-subtle text-info">قطعی</span>
+                  {% elif item.status == 'DELIVERED' %}
+                    <span class="badge bg-success-subtle text-success">تحویل شده</span>
+                  {% elif item.status == 'RETURNED' %}
+                    <span class="badge bg-warning-subtle text-warning">بازگشت شده</span>
+                  {% elif item.status == 'LAUNDRY' %}
+                    <span class="badge bg-secondary-subtle text-secondary">خشکشویی</span>
+                  {% elif item.status == 'READY' %}
+                    <span class="badge bg-success-subtle text-success">آماده</span>
+                  {% elif item.status == 'CANCELLED' %}
+                    <span class="badge bg-danger-subtle text-danger">لغو شده</span>
+                  {% elif item.status == 'DRAFT' %}
+                    <span class="badge bg-light-subtle text-dark">پیش‌نویس</span>
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-light text-center py-4" role="alert">
+        <i class="fi fi-rr-inbox me-2"></i>
+        هیچ رزروی برای نمایش وجود ندارد.
+      </div>
+    {% endif %}
+  </div>
 </div>
+
 {% endblock %}

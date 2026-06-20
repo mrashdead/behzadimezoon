@@ -1,44 +1,37 @@
-<div
-  class="modal fade"
-  id="deleteDressModal{{ dress.id }}"
-  tabindex="-1"
-  aria-labelledby="deleteDressModalLabel{{ dress.id }}"
-  aria-hidden="true"
->
+<div class="modal fade" id="deleteDressModal{{ dress.id }}" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content border-0 shadow">
-      <div class="modal-header">
-        <h5 class="modal-title" id="deleteDressModalLabel{{ dress.id }}">
-          حذف محصول
-        </h5>
-        <button
-          type="button"
-          class="btn-close m-0"
-          data-bs-dismiss="modal"
-          aria-label="بستن"
-        ></button>
-      </div>
+      <form method="post" action="{% url 'products:delete' dress.pk %}">
+        {% csrf_token %}
 
-      <div class="modal-body">
-        <p class="mb-2">آیا از حذف این محصول مطمئن هستید؟</p>
-        <div class="p-3 rounded bg-light">
-          <div class="small text-muted mb-1">کد لباس</div>
-          <div class="fw-semibold">{{ dress.code }}</div>
+        {% include 'partials/_modal_header.html' with title='حذف محصول' %}
+
+        <div class="modal-body">
+          <div class="d-flex align-items-start gap-3">
+            <div class="avatar rounded-circle bg-danger-subtle text-danger flex-shrink-0" style="width: 48px; height: 48px; display: flex; align-items: center; justify-content: center;">
+              <i class="fi fi-rr-trash"></i>
+            </div>
+            <div class="flex-grow-1">
+              <h6 class="mb-2 text-danger">آیا از حذف این محصول مطمئن هستید؟</h6>
+              <p class="mb-2">
+                محصول: <strong>{{ dress.code }}</strong>
+              </p>
+              <p class="mb-0 text-muted small">
+                این مورد به‌صورت دائمی حذف می‌شود و قابل بازیابی نخواهد بود.
+              </p>
+            </div>
+          </div>
         </div>
-      </div>
 
-      <div class="modal-footer">
-        <button type="button" class="btn btn-light" data-bs-dismiss="modal">
-          انصراف
-        </button>
-
-        <form method="post" action="{% url 'products:delete' dress.pk %}">
-          {% csrf_token %}
-          <button type="submit" class="btn btn-danger">
-            بله، حذف شود
+        <div class="modal-footer border-top">
+          <button type="button" class="btn btn-light waves-effect" data-bs-dismiss="modal">انصراف</button>
+          <button type="submit" class="btn btn-danger waves-effect waves-light">
+            <i class="fi fi-rr-trash me-1"></i>
+            حذف محصول
           </button>
-        </form>
-      </div>
+        </div>
+      </form>
     </div>
   </div>
 </div>
+
