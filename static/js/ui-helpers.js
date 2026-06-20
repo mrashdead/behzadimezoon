@@ -168,23 +168,30 @@ function normalizeDigits(value) {
 // Setup AJAX form submission for modals
 function setupModalForms() {
   document.querySelectorAll('.modal form').forEach(form => {
-    form.addEventListener('submit', function(e) {
-      // Only intercept if not explicitly disabled
-      if (!this.classList.contains('no-ajax')) {
-        e.preventDefault();
+    if (form.dataset.uiHelpersSubmitBound === '1') {
+      return;
+    }
+    form.dataset.uiHelpersSubmitBound = '1';
 
-        const formData = normalizeFormDataForSubmission(this);
-        const url = this.getAttribute('action');
-        const modal = this.closest('.modal');
-        const modalInstance = bootstrap.Modal.getInstance(modal);
+    form.addEventListener('submit', function (e) {
+      if (form.classList.contains('no-ajax')) {
+        return;
+      }
 
-        fetch(url, {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-          },
-        })
+      e.preventDefault();
+
+      const formData = normalizeFormDataForSubmission(form);
+      const url = form.getAttribute('action');
+      const modal = form.closest('.modal');
+      const modalInstance = bootstrap.Modal.getInstance(modal);
+
+      fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+        },
+      })
         .then(response => response.json())
         .then(data => {
           if (data.success) {
@@ -213,7 +220,6 @@ function setupModalForms() {
           console.error('Error:', error);
           showNotification('خطایی در فرم به وجود آمد', 'error');
         });
-      }
     });
   });
 }

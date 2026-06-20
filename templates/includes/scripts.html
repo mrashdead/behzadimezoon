@@ -221,34 +221,58 @@ document.addEventListener('DOMContentLoaded', function () {
     })
   }
 
-  step2Form.addEventListener("submit", function (e) {
-    e.preventDefault()
-    const formData = new FormData(step2Form)
-    fetch("/reservations/create/", {
-      method: "POST",
-      headers: {
-        "X-CSRFToken": getCookie("csrftoken"),
-        "X-Requested-With": "XMLHttpRequest"
-      },
-      body: formData
+  // Ensure we only bind the reservation create submit handler once per form instance
+  if (!step2Form.dataset.reservationHandlerBound) {
+    step2Form.dataset.reservationHandlerBound = "1"
+
+    step2Form.addEventListener("submit", function (e) {
+      e.preventDefault()
+
+      // Prevent double submissions
+      if (step2Form.dataset.isSubmitting === "1") return
+      step2Form.dataset.isSubmitting = "1"
+
+      const submitBtn = document.getElementById("createReservationButton")
+      if (submitBtn) {
+        submitBtn.disabled = true
+        submitBtn.classList.add('disabled')
+      }
+
+      const formData = new FormData(step2Form)
+
+      fetch("/reservations/create/", {
+        method: "POST",
+        headers: {
+          "X-CSRFToken": getCookie("csrftoken"),
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        body: formData
+      })
+        .then(res => res.json())
+        .then(data => {
+          if (data.success) {
+            location.reload()
+            return
+          }
+          let message = data.message || ""
+          if (data.errors) {
+            message = Object.values(data.errors).flat().join("\n")
+          }
+          alert(message || "خطا در ثبت رزرو")
+        })
+        .catch(error => {
+          console.error("Reservation create error:", error)
+          alert("خطا در ثبت رزرو")
+        })
+        .finally(() => {
+          step2Form.dataset.isSubmitting = "0"
+          if (submitBtn) {
+            submitBtn.disabled = false
+            submitBtn.classList.remove('disabled')
+          }
+        })
     })
-      .then(res => res.json())
-      .then(data => {
-        if (data.success) {
-          location.reload()
-          return
-        }
-        let message = data.message || ""
-        if (data.errors) {
-          message = Object.values(data.errors).flat().join("\n")
-        }
-        alert(message || "خطا در ثبت رزرو")
-      })
-      .catch(error => {
-        console.error("Reservation create error:", error)
-        alert("خطا در ثبت رزرو")
-      })
-  })
+  }
 
   checkAvailability()
 })

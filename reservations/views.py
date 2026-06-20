@@ -1,5 +1,6 @@
 # reservations/views.py
 from datetime import date
+from datetime import timedelta
 from django.db import transaction
 from django.http import JsonResponse, HttpResponseForbidden
 from django.views.decorators.http import require_POST
@@ -240,6 +241,25 @@ def reservation_create(request):
             reservation.rent_price = dress.daily_rent_price
             reservation.status = ReservationStatus.CONFIRMED
             reservation.created_by = request.user
+            # Minimal duplicate-submit protection: if an identical reservation
+            # (same customer, dress, start/end dates) was created by the same
+            # user in the very recent past, treat the request as idempotent.
+            recent_threshold = timezone.now() - timedelta(seconds=5)
+            already = Reservation.objects.filter(
+                customer=customer,
+                dress=dress,
+                start_date=start_date,
+                end_date=end_date,
+                created_by=request.user,
+                created_at__gte=recent_threshold
+            ).exists()
+
+            if already:
+                # Return success to client to avoid duplicate UI actions.
+                if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                    return JsonResponse({"success": True, "message": "رزرو قبلا ثبت شد."})
+                return redirect("reservations:list")
+
             reservation.save()
 
     except Dress.DoesNotExist:
