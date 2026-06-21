@@ -19,7 +19,8 @@ from reservations.forms import (
     ReservationStepOneForm,
     ReservationStepTwoForm,
     ReservationEditForm,
-    RemainingPaymentForm
+    RemainingPaymentForm,
+    DamageReturnForm
 )
 from .services.availability_service import ReservationAvailabilityService
 from .services.change_status import ReservationStatusService
@@ -73,6 +74,7 @@ def reservation_list(request):
         "can_edit_reservation": can_edit_reservation(request.user),
         "can_delete_reservation": can_delete_reservation(request.user),
         "can_change_reservation_status": can_change_reservation_status(request.user),
+        "damage_return_form": DamageReturnForm(),
     }
 
     return render(
@@ -311,7 +313,6 @@ def reservation_mark_delivered(request, pk):
 
 
 @login_required
-@require_POST
 def reservation_mark_returned(request, pk):
 
     if not can_change_reservation_status(request.user):
@@ -322,6 +323,47 @@ def reservation_mark_returned(request, pk):
 
     reservation = get_object_or_404(Reservation, pk=pk)
 
+    # GET request: Show the damage form inside the modal
+    if request.method == "GET":
+        form = DamageReturnForm()
+        return render(
+            request,
+            "reservations/partials/_damage_return_modal.html",
+            {
+                "form": form,
+                "reservation": reservation
+            }
+        )
+
+    # POST request: Process the damage form and change status
+    form = DamageReturnForm(request.POST)
+
+    if not form.is_valid():
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({
+                "success": False,
+                "errors": form.errors
+            }, status=400)
+
+        return render(
+            request,
+            "reservations/partials/_damage_return_modal.html",
+            {
+                "form": form,
+                "reservation": reservation,
+                "errors": form.errors
+            }
+        )
+
+    # Save damage information
+    item_damaged = form.cleaned_data.get("item_damaged")
+    damage_amount = form.cleaned_data.get("damage_amount")
+    damage_notes = form.cleaned_data.get("damage_notes")
+
+    reservation.item_damaged = item_damaged
+    reservation.damage_amount = damage_amount if item_damaged and damage_amount and damage_amount > 0 else None
+    reservation.damage_notes = damage_notes or ""
+
     try:
         ReservationStatusService.change_status(
             reservation,
@@ -329,14 +371,24 @@ def reservation_mark_returned(request, pk):
             request.user
         )
     except ValueError:
-        return JsonResponse({
-            "success": False,
-            "message": "این تغییر وضعیت مجاز نیست."
-        }, status=400)
+        error_msg = "این تغییر وضعیت مجاز نیست."
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({
+                "success": False,
+                "message": error_msg
+            }, status=400)
 
+        messages.error(request, error_msg)
+        return redirect("reservations:list")
+
+    success_msg = "بازگشت لباس با موفقیت ثبت شد."
     if request.headers.get("x-requested-with") == "XMLHttpRequest":
-        return JsonResponse({"success": True})
+        return JsonResponse({
+            "success": True,
+            "message": success_msg
+        })
 
+    messages.success(request, success_msg)
     return redirect("reservations:list")
 
 

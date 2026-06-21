@@ -108,6 +108,73 @@ class ReservationStatusTransitionTests(TestCase):
         reservation.refresh_from_db()
         self.assertEqual(reservation.status, ReservationStatus.READY)
 
+    def test_laundry_does_not_block_availability(self):
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.LAUNDRY,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=50000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        from reservations.services.availability_service import ReservationAvailabilityService
+
+        is_available, end_date = ReservationAvailabilityService.is_dress_available(
+            dress=self.dress,
+            start_date=reservation.start_date,
+            rental_days=reservation.rental_days,
+        )
+
+        self.assertTrue(is_available)
+        self.assertEqual(end_date, reservation.end_date)
+
+    def test_returned_does_not_block_availability(self):
+        Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.RETURNED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=50000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        from reservations.services.availability_service import ReservationAvailabilityService
+
+        is_available, _ = ReservationAvailabilityService.is_dress_available(
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+        )
+
+        self.assertTrue(is_available)
+
+    def test_get_blocking_statuses_excludes_returned(self):
+        from reservations.services.availability_service import ReservationAvailabilityService
+
+        self.assertEqual(
+            ReservationAvailabilityService.get_blocking_statuses(),
+            [ReservationStatus.CONFIRMED, ReservationStatus.DELIVERED]
+        )
+
     def test_super_admin_can_mark_delivered_and_returned(self):
         reservation = Reservation.objects.create(
             customer=self.customer,
@@ -140,6 +207,101 @@ class ReservationStatusTransitionTests(TestCase):
         self.assertEqual(response.status_code, 302)
         reservation.refresh_from_db()
         self.assertEqual(reservation.status, ReservationStatus.RETURNED)
+
+    def test_damage_modal_renders_damage_fields(self):
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.DELIVERED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        response = self.client.get(reverse('reservations:list'))
+        self.assertEqual(response.status_code, 200)
+        content = response.content.decode('utf-8')
+        self.assertIn('name="item_damaged"', content)
+        self.assertIn('name="damage_amount"', content)
+        self.assertIn('name="damage_notes"', content)
+
+    def test_mark_returned_records_damage_information(self):
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.DELIVERED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=100000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        returned_url = reverse('reservations:returned', args=[reservation.pk])
+
+        post_data = {
+            'item_damaged': 'true',
+            'damage_amount': '15000',
+            'damage_notes': 'پارگی کوچک در آستین',
+        }
+
+        response = self.client.post(returned_url, post_data)
+        self.assertEqual(response.status_code, 302)
+
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, ReservationStatus.RETURNED)
+        self.assertTrue(reservation.item_damaged)
+        self.assertEqual(reservation.damage_amount, 15000)
+        self.assertEqual(reservation.damage_notes, 'پارگی کوچک در آستین')
+
+    def test_mark_returned_without_damage_records_clean_return(self):
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.DELIVERED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=100000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        returned_url = reverse('reservations:returned', args=[reservation.pk])
+
+        response = self.client.post(returned_url)
+        self.assertEqual(response.status_code, 302)
+
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, ReservationStatus.RETURNED)
+        self.assertFalse(reservation.item_damaged)
+        self.assertIsNone(reservation.damage_amount)
+        self.assertEqual(reservation.damage_notes, '')
 
     def test_cannot_cancel_if_already_cancelled_or_returned(self):
         reservation = Reservation.objects.create(

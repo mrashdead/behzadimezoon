@@ -23,6 +23,9 @@ class ReservationStatusService:
         if new_status == ReservationStatus.DELIVERED:
             PaymentGuardService.verify_payment_for_delivery(reservation)
 
+        if new_status == ReservationStatus.RETURNED:
+            reservation.returned_at = timezone.localdate()
+
         if new_status == ReservationStatus.CANCELLED:
             reservation.cancelled_at = timezone.now()
 

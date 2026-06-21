@@ -223,6 +223,26 @@ class Reservation(models.Model):
     )
 
     # -----------------------
+    # اطلاعات خسارت و آسیب
+    # -----------------------
+
+    item_damaged = models.BooleanField(
+        default=False,
+        verbose_name="آیا لباس آسیب‌دیده است؟"
+    )
+
+    damage_amount = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="مبلغ خسارت"
+    )
+
+    damage_notes = models.TextField(
+        blank=True,
+        verbose_name="توضیحات خسارت"
+    )
+
+    # -----------------------
     # متدهای محاسباتی
     # -----------------------
 

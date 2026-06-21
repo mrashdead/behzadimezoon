@@ -27,8 +27,11 @@ class DashboardView(TemplateView):
             ]
         ).count()
 
+        # Only count income from delivered (completed) reservations, excluding cancelled
         total_income = user_reservations.filter(
             status=ReservationStatus.DELIVERED
+        ).exclude(
+            status=ReservationStatus.CANCELLED
         ).aggregate(total=Sum('final_price'))['total'] or 0
         context['total_income'] = total_income
 

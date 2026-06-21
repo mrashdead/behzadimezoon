@@ -73,16 +73,15 @@
                   </button>
                   {% endif %}
                   {% if can_change_reservation_status and 'RETURNED' in reservation.allowed_transitions %}
-                  <form method="post" action="{% url 'reservations:returned' reservation.pk %}" class="d-inline me-1">
-                    {% csrf_token %}
-                    <button
-                      type="submit"
-                      class="btn btn-subtle-info btn-sm btn-shadow btn-icon waves-effect"
-                      title="بازگشت از مشتری"
-                    >
-                      <i class="fi fi-rr-rotate-left"></i>
-                    </button>
-                  </form>
+                  <button
+                    type="button"
+                    class="btn btn-subtle-info btn-sm btn-shadow btn-icon waves-effect me-1"
+                    data-bs-toggle="modal"
+                    data-bs-target="#damageReturnModal{{ reservation.id }}"
+                    title="بازگشت از مشتری"
+                  >
+                    <i class="fi fi-rr-rotate-left"></i>
+                  </button>
                   {% endif %}
                   {% if can_change_reservation_status and 'LAUNDRY' in reservation.allowed_transitions %}
                   <form method="post" action="{% url 'reservations:laundry' reservation.pk %}" class="d-inline me-1">
@@ -108,7 +107,7 @@
                     </button>
                   </form>
                   {% endif %}
-                  {% if can_edit_reservation and reservation.status not in 'DELIVERED,RETURNED,LAUNDRY,READY,CANCELLED' %}
+                  {% if can_edit_reservation and reservation.status != 'DELIVERED' and reservation.status != 'RETURNED' and reservation.status != 'LAUNDRY' and reservation.status != 'READY' and reservation.status != 'CANCELLED' %}
                   <button
                     type="button"
                     class="btn btn-subtle-primary btn-sm btn-shadow btn-icon waves-effect me-1"
@@ -158,13 +157,10 @@
                     {% endif %}
                     {% if can_change_reservation_status and 'RETURNED' in reservation.allowed_transitions %}
                     <li>
-                      <form method="post" action="{% url 'reservations:returned' reservation.pk %}" class="m-0">
-                        {% csrf_token %}
-                        <button type="submit" class="dropdown-item py-2 d-flex align-items-center gap-2">
-                          <i class="fi fi-rr-rotate-left text-info"></i>
-                          <span>بازگشت از مشتری</span>
-                        </button>
-                      </form>
+                      <button type="button" class="dropdown-item py-2 d-flex align-items-center gap-2" data-bs-toggle="modal" data-bs-target="#damageReturnModal{{ reservation.id }}">
+                        <i class="fi fi-rr-rotate-left text-info"></i>
+                        <span>بازگشت از مشتری</span>
+                      </button>
                     </li>
                     {% endif %}
                     {% if can_change_reservation_status and 'LAUNDRY' in reservation.allowed_transitions %}
@@ -189,7 +185,7 @@
                       </form>
                     </li>
                     {% endif %}
-                    {% if can_edit_reservation and reservation.status not in 'DELIVERED,RETURNED,LAUNDRY,READY,CANCELLED' %}
+                    {% if can_edit_reservation and reservation.status != 'DELIVERED' and reservation.status != 'RETURNED' and reservation.status != 'LAUNDRY' and reservation.status != 'READY' and reservation.status != 'CANCELLED' %}
                     <li>
                       <button class="dropdown-item py-2 d-flex align-items-center gap-2" type="button" data-bs-toggle="modal" data-bs-target="#editReservationModal{{ reservation.id }}">
                         <i class="fi fi-rr-edit text-primary"></i>
@@ -233,6 +229,10 @@
 
 {% if can_change_reservation_status %}
 {% include 'reservations/partials/_finalize_delivery_modal.html' %}
+{% endif %}
+
+{% if can_change_reservation_status and 'RETURNED' in reservation.allowed_transitions %}
+{% include 'reservations/partials/_damage_return_modal.html' with form=damage_return_form %}
 {% endif %}
 
 {% if can_delete_reservation %}

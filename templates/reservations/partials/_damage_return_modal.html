@@ -1,0 +1,100 @@
+<div class="modal fade" id="damageReturnModal{{ reservation.id }}" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content border-0 shadow">
+      <form method="post" action="{% url 'reservations:returned' reservation.pk %}" class="h-100 d-flex flex-column">
+        {% csrf_token %}
+        {% include 'partials/_modal_header.html' with title='ثبت بازگشت لباس از مشتری' %}
+
+        <div class="modal-body">
+          <div class="mb-4 pb-3 border-bottom">
+            <h6 class="text-muted mb-2">مشتری: <strong>{{ reservation.customer }}</strong></h6>
+            <h6 class="text-muted mb-0">لباس: <strong>{{ reservation.dress }}</strong></h6>
+          </div>
+
+          {% if form.non_field_errors %}
+          <div class="alert alert-danger mb-3" role="alert">
+            {% for error in form.non_field_errors %}
+              <div>{{ error }}</div>
+            {% endfor %}
+          </div>
+          {% endif %}
+
+          <div class="form-check form-switch mb-3">
+            {{ form.item_damaged }}
+            <label class="form-check-label" for="id_item_damaged">{{ form.item_damaged.label }}</label>
+            {% if form.item_damaged.errors %}
+            <div class="invalid-feedback d-block">
+              {% for error in form.item_damaged.errors %}{{ error }}{% endfor %}
+            </div>
+            {% endif %}
+          </div>
+
+          <div class="damage-details d-none">
+            <div class="mb-3">
+              <label class="form-label" for="id_damage_amount">{{ form.damage_amount.label }}</label>
+              {{ form.damage_amount }}
+              {% if form.damage_amount.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.damage_amount.errors %}{{ error }}{% endfor %}
+              </div>
+              {% endif %}
+            </div>
+
+            <div class="mb-3">
+              <label class="form-label" for="id_damage_notes">{{ form.damage_notes.label }}</label>
+              {{ form.damage_notes }}
+              {% if form.damage_notes.errors %}
+              <div class="invalid-feedback d-block">
+                {% for error in form.damage_notes.errors %}{{ error }}{% endfor %}
+              </div>
+              {% endif %}
+            </div>
+          </div>
+
+          <script>
+            (function () {
+              const modalId = 'damageReturnModal{{ reservation.id }}';
+              const modal = document.getElementById(modalId);
+              if (!modal) {
+                return;
+              }
+
+              const checkbox = modal.querySelector('#id_item_damaged');
+              const details = modal.querySelector('.damage-details');
+              if (!checkbox || !details) {
+                return;
+              }
+
+              const updateVisibility = function () {
+                if (checkbox.checked) {
+                  details.classList.remove('d-none');
+                } else {
+                  details.classList.add('d-none');
+                }
+              };
+
+              checkbox.addEventListener('change', updateVisibility);
+              updateVisibility();
+
+              modal.addEventListener('shown.bs.modal', function () {
+                updateVisibility();
+              });
+            })();
+          </script>
+
+          <div class="alert alert-info mb-0" role="alert">
+            در صورت نداشتن آسیب، فقط دکمه تایید را بزنید.
+          </div>
+        </div>
+
+        <div class="modal-footer border-top">
+          <button type="button" class="btn btn-light waves-effect" data-bs-dismiss="modal">انصراف</button>
+          <button type="submit" class="btn btn-success waves-effect waves-light">
+            <i class="fi fi-rr-check me-1"></i>
+            ثبت بازگشت
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

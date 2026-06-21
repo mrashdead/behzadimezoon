@@ -13,7 +13,12 @@
   {% include 'partials/_stat_card.html' with icon='fi-rr-chart-histogram' label='تعداد رزروها' value=totals.total_reservations badge_type='primary' badge_text='کل' %}
   {% include 'partials/_stat_card.html' with icon='fi-rr-coins' label='درآمد نهایی' value=totals.total_revenue badge_type='success' badge_text='تومان' %}
   {% include 'partials/_stat_card.html' with icon='fi-rr-bank' label='بیعانه جمع' value=totals.total_deposit badge_type='info' badge_text='تومان' %}
-  {% include 'partials/_stat_card.html' with icon='fi-rr-calendar' label='باقی مانده' value=totals.total_remaining badge_type='danger' badge_text='تومان' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-ban' label='باقی مانده' value=totals.total_remaining badge_type='danger' badge_text='تومان' %}
+</div>
+
+<div class="row g-3 mb-4">
+  {% include 'partials/_stat_card.html' with icon='fi fi-rr-close-circle' label='رزروهای لغو شده' value=cancelled_totals.total_cancelled_reservations badge_type='danger' badge_text='عدد' %}
+  {% include 'partials/_stat_card.html' with icon='fi fi-rr-wallet' label='مبالغ دریافت شده از لغو شده‌ها' value=cancelled_totals.cancelled_received_amount badge_type='warning' badge_text='تومان' %}
 </div>
 
 <!-- جدول آخرین رزروها -->

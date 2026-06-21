@@ -293,3 +293,60 @@ class RemainingPaymentForm(forms.Form):
             raise ValidationError(
                 f"مبلغ پرداخت باید برابر با باقی‌مانده ({remaining_amount} تومان) باشد."
             )
+
+
+class DamageReturnForm(forms.Form):
+    """
+    فرم ثبت آسیب و خسارت هنگام بازگشت لباس از مشتری
+    """
+
+    item_damaged = forms.BooleanField(
+        required=False,
+        label="آیا لباس آسیب‌دیده است؟",
+        widget=forms.CheckboxInput(attrs={"class": "form-check-input"})
+    )
+
+    damage_amount = forms.IntegerField(
+        min_value=0,
+        required=False,
+        label="مبلغ خسارت (تومان)",
+        widget=forms.NumberInput(
+            attrs={
+                "class": "form-control",
+                "min": "0",
+                "placeholder": "اگر آسیب وجود دارد، مبلغ را وارد کنید"
+            }
+        )
+    )
+
+    damage_notes = forms.CharField(
+        widget=forms.Textarea(
+            attrs={"rows": 3, "class": "form-control", "placeholder": "اختیاری"}
+        ),
+        required=False,
+        label="توضیحات خسارت"
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        item_damaged = cleaned_data.get("item_damaged")
+        damage_amount = cleaned_data.get("damage_amount")
+        damage_notes = cleaned_data.get("damage_notes")
+
+        # اگر خسارت وجود دارد، باید مبلغ خسارت وارد شود
+        if item_damaged:
+            if damage_amount is None or damage_amount <= 0:
+                raise ValidationError(
+                    "اگر لباس آسیب‌دیده است، باید مبلغ خسارت را وارد کنید."
+                )
+
+        # اگر مبلغ خسارت وارد شده، باید خسارت علامت‌گذاری شود
+        if damage_amount and damage_amount > 0:
+            if not item_damaged:
+                raise ValidationError(
+                    "اگر مبلغ خسارت را وارد کردید، باید آسیب لباس را علامت‌گذاری کنید."
+                )
+
+        return cleaned_data
+

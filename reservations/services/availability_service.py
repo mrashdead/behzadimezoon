@@ -21,12 +21,14 @@ class ReservationAvailabilityService:
     def get_blocking_statuses():
         """
         وضعیت‌هایی که باعث قفل بودن لباس می‌شوند
+
+        نکته: LAUNDRY (ارسال شده به خشکشویی) یک حالت موقتی است و لباس در این حالت
+        می‌تواند دوباره اجاره شود. فقط وضعیت‌های فعال رزرو یا تحویل فیزیکی به مشتری
+        باعث قفل شدن لباس می‌شوند.
         """
         return [
             ReservationStatus.CONFIRMED,
             ReservationStatus.DELIVERED,
-            ReservationStatus.RETURNED,
-            ReservationStatus.LAUNDRY,
         ]
 
 
