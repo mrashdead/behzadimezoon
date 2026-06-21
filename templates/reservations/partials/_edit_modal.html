@@ -8,18 +8,19 @@
 
         {% include 'partials/_modal_header.html' with title='ویرایش اطلاعات رزرو' %}
 
-        <div class="modal-body flex-grow-1 overflow-auto">
+        <div class="modal-body flex-grow-1 overflow-auto py-3">
+          <div class="alert alert-danger d-none js-form-error-summary" role="alert"></div>
           <div class="row g-3">
             <div class="col-12">
               <div class="card shadow-none border mb-3">
                 <div class="card-header bg-body-tertiary border-bottom py-3">
-                  <h6 class="mb-0 fw-semibold">اطلاعات لباس و رزرو</h6>
+                  <h6 class="mb-0 fw-semibold">ویرایش رزرو</h6>
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
-                    <div class="col-md-6">
-                      <label class="form-label">لباس</label>
-                      <select name="dress" class="form-control" required>
+                    <div class="col-12 col-md-6">
+                      <label for="id_dress_{{ reservation.id }}" class="form-label">لباس</label>
+                      <select id="id_dress_{{ reservation.id }}" name="dress" class="form-select" required>
                         <option value="">انتخاب کنید</option>
                         {% for dress in dresses %}
                           <option value="{{ dress.id }}" {% if reservation.dress.id == dress.id %}selected{% endif %}>{{ dress }}</option>
@@ -27,106 +28,52 @@
                       </select>
                       <div class="invalid-feedback">لطفا یک لباس معتبر انتخاب کنید.</div>
                     </div>
-                    <div class="col-md-6">
-                      <label class="form-label">تاریخ شروع اجاره</label>
-                      <input type="text" name="start_date" class="form-control jalali-datepicker" value="{{ reservation.start_date|jformat:'%Y/%m/%d' }}" required autocomplete="off">
+                    <div class="col-12 col-md-6">
+                      <label for="id_start_date_{{ reservation.id }}" class="form-label">تاریخ شروع اجاره</label>
+                      <input
+                        type="text"
+                        id="id_start_date_{{ reservation.id }}"
+                        name="start_date"
+                        class="form-control p-date-only"
+                        value="{{ reservation.start_date|jformat:'%Y/%m/%d' }}"
+                        required
+                        autocomplete="off"
+                      />
                       <div class="invalid-feedback">لطفا تاریخ شروع را وارد کنید.</div>
                     </div>
-                    <div class="col-md-6">
-                      <label class="form-label">مدت اجاره (روز)</label>
-                      <input type="number" name="rental_days" class="form-control" min="1" value="{{ reservation.rental_days }}" required>
+                    <div class="col-12 col-md-6">
+                      <label for="id_rental_days_{{ reservation.id }}" class="form-label">مدت اجاره (روز)</label>
+                      <input
+                        type="number"
+                        id="id_rental_days_{{ reservation.id }}"
+                        name="rental_days"
+                        class="form-control"
+                        min="1"
+                        value="{{ reservation.rental_days }}"
+                        required
+                      />
                       <div class="invalid-feedback">لطفا مدت اجاره را وارد کنید.</div>
                     </div>
-                    <div class="col-md-6">
-                      <label class="form-label">تاریخ مراسم</label>
-                      <input type="text" class="form-control" value="{{ reservation.event_date|jformat:'%Y/%m/%d'|default:'-' }}" readonly>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-12">
-              <div class="card shadow-none border mb-3">
-                <div class="card-header bg-body-tertiary border-bottom py-3">
-                  <h6 class="mb-0 fw-semibold">اطلاعات مالی</h6>
-                </div>
-                <div class="card-body">
-                  <div class="row g-3">
-                    <div class="col-md-6">
-                      <div class="mb-3">
-                        <label class="form-label">هزینه اجاره</label>
-                        <div class="form-control bg-light" style="pointer-events: none;">{{ reservation.rent_price|intcomma|default:'-' }}</div>
+                    <div class="col-12 col-md-6">
+                      <label for="id_discount_type_{{ reservation.id }}" class="form-label">نوع تخفیف</label>
+                        <select id="id_discount_type_{{ reservation.id }}" name="discount_type" class="form-select">
+                          <option value="NONE" {% if reservation.discount_type == 'NONE' %}selected{% endif %}>بدون تخفیف</option>
+                          <option value="AMOUNT" {% if reservation.discount_type == 'AMOUNT' %}selected{% endif %}>مبلغ ثابت</option>
+                          <option value="PERCENT" {% if reservation.discount_type == 'PERCENT' %}selected{% endif %}>درصد</option>
+                        </select>
                       </div>
-                    </div>
-                    <div class="col-md-6">
-                      <div class="mb-3">
-                        <label class="form-label">بیعانه (ثابت)</label>
-                        <div class="form-control bg-light" style="pointer-events: none;">{{ reservation.deposit_amount|intcomma|default:'-' }}</div>
+                      <div class="col-12 col-md-6 mt-3">
+                        <label for="id_discount_value_{{ reservation.id }}" class="form-label">مقدار تخفیف</label>
+                        <input
+                          type="number"
+                          id="id_discount_value_{{ reservation.id }}"
+                          name="discount_value"
+                          class="form-control"
+                          min="0"
+                          value="{{ reservation.discount_value }}"
+                        />
+                        <div class="invalid-feedback">مقدار تخفیف باید عددی برابر یا بزرگتر از صفر باشد.</div>
                       </div>
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">تخفیف</label>
-                      <input type="number" name="discount_amount" class="form-control" min="0" value="{{ reservation.discount_amount }}">
-                    </div>
-                    <div class="col-md-6">
-                      <div class="mb-3">
-                        <label class="form-label">باقی مانده</label>
-                        <div class="form-control bg-light" style="pointer-events: none;">{{ reservation.remaining_amount|intcomma|default:'-' }}</div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-
-            <div class="col-12">
-              <div class="card shadow-none border">
-                <div class="card-header bg-body-tertiary border-bottom py-3">
-                  <h6 class="mb-0 fw-semibold">اطلاعات پرداخت و ضمانت</h6>
-                </div>
-                <div class="card-body">
-                  <div class="row g-3">
-                    <div class="col-md-6">
-                      <label class="form-label">روش پرداخت</label>
-                      <select name="payment_method" class="form-control" required>
-                        <option value="">انتخاب کنید</option>
-                        <option value="CASH" {% if reservation.payment_method == 'CASH' %}selected{% endif %}>نقدی</option>
-                        <option value="CARD" {% if reservation.payment_method == 'CARD' %}selected{% endif %}>کارت به کارت</option>
-                        <option value="TRANSFER" {% if reservation.payment_method == 'TRANSFER' %}selected{% endif %}>انتقال بانکی</option>
-                        <option value="POS" {% if reservation.payment_method == 'POS' %}selected{% endif %}>کارتخوان</option>
-                      </select>
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">کد رهگیری پرداخت</label>
-                      <input type="text" name="payment_tracking_code" class="form-control" value="{{ reservation.payment_tracking_code }}" required>
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">نوع ضمانت اول</label>
-                      <select name="guarantee1_type" class="form-control" required>
-                        <option value="CHECK" {% if reservation.guarantee1_type == 'CHECK' %}selected{% endif %}>چک</option>
-                        <option value="CASH" {% if reservation.guarantee1_type == 'CASH' %}selected{% endif %}>پول</option>
-                        <option value="GOLD" {% if reservation.guarantee1_type == 'GOLD' %}selected{% endif %}>طلا</option>
-                        <option value="PROMISSORY" {% if reservation.guarantee1_type == 'PROMISSORY' %}selected{% endif %}>سفته</option>
-                      </select>
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">کد رهگیری ضمانت اول</label>
-                      <input type="text" name="guarantee1_tracking_code" class="form-control" value="{{ reservation.guarantee1_tracking_code }}" required>
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">نوع ضمانت دوم</label>
-                      <select name="guarantee2_type" class="form-control">
-                        <option value="" {% if not reservation.guarantee2_type %}selected{% endif %}>ندارد</option>
-                        <option value="CHECK" {% if reservation.guarantee2_type == 'CHECK' %}selected{% endif %}>چک</option>
-                        <option value="CASH" {% if reservation.guarantee2_type == 'CASH' %}selected{% endif %}>پول</option>
-                        <option value="GOLD" {% if reservation.guarantee2_type == 'GOLD' %}selected{% endif %}>طلا</option>
-                        <option value="PROMISSORY" {% if reservation.guarantee2_type == 'PROMISSORY' %}selected{% endif %}>سفته</option>
-                      </select>
-                    </div>
-                    <div class="col-md-6">
-                      <label class="form-label">کد رهگیری ضمانت دوم</label>
-                      <input type="text" name="guarantee2_tracking_code" class="form-control" value="{{ reservation.guarantee2_tracking_code }}">
                     </div>
                   </div>
                 </div>

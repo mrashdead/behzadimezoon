@@ -66,6 +66,10 @@ def reservation_list(request):
         "dress"
     )
 
+    # Avoid selecting newly added DB columns until migrations are applied
+    # This prevents template rendering errors when the DB schema is not migrated yet.
+    reservations = reservations.defer('discount_type', 'discount_value', 'discount_amount', 'refunded_amount')
+
     context = {
         "reservations": reservations,
         "customers": Customer.objects.all(),

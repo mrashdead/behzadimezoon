@@ -178,6 +178,11 @@ function setupModalForms() {
         return;
       }
 
+      if (form.dataset.isSubmitting === '1') {
+        e.preventDefault();
+        return;
+      }
+
       if (form.classList.contains('needs-validation') && !form.checkValidity()) {
         e.preventDefault();
         form.classList.add('was-validated');
@@ -185,6 +190,13 @@ function setupModalForms() {
       }
 
       e.preventDefault();
+      clearFormErrors(form);
+      form.dataset.isSubmitting = '1';
+      const submitButtons = Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"]'));
+      submitButtons.forEach(button => {
+        button.disabled = true;
+        button.classList.add('disabled');
+      });
 
       const formData = normalizeFormDataForSubmission(form);
       const url = form.getAttribute('action');
@@ -201,58 +213,117 @@ function setupModalForms() {
         .then(response => response.json())
         .then(data => {
           if (data.success) {
-            // Close modal
             if (modalInstance) {
               modalInstance.hide();
             }
-            // Show success message
             if (data.message) {
               showNotification(data.message, 'success');
             }
-            // Reload page or table
             setTimeout(() => {
               location.reload();
             }, 500);
           } else {
-            // Show error messages
             if (data.errors) {
               showFormErrors(form, data.errors);
-            } else if (data.message) {
+            }
+            if (data.message) {
               showNotification(data.message, 'error');
+            } else if (!data.errors) {
+              showNotification('خطایی در ارسال فرم رخ داده است.', 'error');
             }
           }
         })
         .catch(error => {
           console.error('Error:', error);
           showNotification('خطایی در فرم به وجود آمد', 'error');
+        })
+        .finally(() => {
+          form.dataset.isSubmitting = '0';
+          const submitButtons = Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"]'));
+          submitButtons.forEach(button => {
+            button.disabled = false;
+            button.classList.remove('disabled');
+          });
         });
     });
   });
 }
 
-// Display form validation errors
-function showFormErrors(form, errors) {
-  // Clear previous errors
-  form.querySelectorAll('.invalid-feedback').forEach(el => {
+function clearFormErrors(form) {
+  form.querySelectorAll('.js-error-message').forEach(el => {
     el.remove();
   });
-  form.querySelectorAll('.form-control.is-invalid').forEach(el => {
-    el.classList.remove('is-invalid');
+  form.querySelectorAll('.is-invalid, .is-valid').forEach(el => {
+    el.classList.remove('is-invalid', 'is-valid');
   });
+  form.classList.remove('was-validated');
+  form.querySelectorAll('.alert.js-form-error-summary').forEach(el => {
+    el.classList.add('d-none');
+    el.textContent = '';
+  });
+}
 
-  // Show new errors
+function showFormErrorSummary(form, messages) {
+  let summary = form.querySelector('.alert.js-form-error-summary');
+  if (!summary) {
+    summary = document.createElement('div');
+    summary.className = 'alert alert-danger js-form-error-summary';
+    summary.setAttribute('role', 'alert');
+    form.insertBefore(summary, form.firstChild);
+  }
+  summary.textContent = messages.join(' ');
+  summary.classList.remove('d-none');
+}
+
+// Display form validation errors
+function showFormErrors(form, errors) {
+  clearFormErrors(form);
+
+  const generalErrors = [];
+  const conflictFieldNames = ['dress', 'start_date', 'rental_days'];
+  const generalErrorKeys = ['__all__', 'non_field_errors', 'nonFieldErrors'];
+  const conflictFieldSet = new Set();
+
   Object.keys(errors).forEach(fieldName => {
-    const errorMessages = errors[fieldName];
+    const errorMessages = errors[fieldName] || [];
     const field = form.querySelector(`[name="${fieldName}"]`);
 
     if (field) {
+      field.classList.remove('is-valid');
       field.classList.add('is-invalid');
       const errorDiv = document.createElement('div');
-      errorDiv.className = 'invalid-feedback d-block';
+      errorDiv.className = 'invalid-feedback d-block js-error-message';
       errorDiv.textContent = errorMessages.join(', ');
       field.parentNode.insertBefore(errorDiv, field.nextSibling);
+    } else {
+      generalErrors.push(...errorMessages);
+      if (generalErrorKeys.includes(fieldName)) {
+        conflictFieldNames.forEach(name => conflictFieldSet.add(name));
+      }
     }
   });
+
+  if (conflictFieldSet.size) {
+    conflictFieldSet.forEach(name => {
+      const field = form.querySelector(`[name="${name}"]`);
+      if (field) {
+        field.classList.remove('is-valid');
+        field.classList.add('is-invalid');
+        if (!field.parentNode.querySelector('.js-error-message')) {
+          const conflictDiv = document.createElement('div');
+          conflictDiv.className = 'invalid-feedback d-block js-error-message';
+          conflictDiv.textContent = generalErrors.join(', ');
+          field.parentNode.insertBefore(conflictDiv, field.nextSibling);
+        }
+      }
+    });
+  }
+
+  if (generalErrors.length) {
+    showFormErrorSummary(form, generalErrors);
+  }
+
+  form.classList.add('was-validated');
 }
 
 // Show notification messages

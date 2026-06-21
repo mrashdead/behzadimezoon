@@ -83,13 +83,40 @@ class Reservation(models.Model):
         verbose_name="بیعانه"
     )
 
+    DISCOUNT_NONE = 'NONE'
+    DISCOUNT_AMOUNT = 'AMOUNT'
+    DISCOUNT_PERCENT = 'PERCENT'
+
+    DISCOUNT_TYPE_CHOICES = (
+        (DISCOUNT_NONE, 'بدون تخفیف'),
+        (DISCOUNT_AMOUNT, 'مبلغ ثابت'),
+        (DISCOUNT_PERCENT, 'درصد'),
+    )
+
+    discount_type = models.CharField(
+        max_length=10,
+        choices=DISCOUNT_TYPE_CHOICES,
+        default=DISCOUNT_NONE,
+        verbose_name="نوع تخفیف"
+    )
+
+    discount_value = models.PositiveIntegerField(
+        default=0,
+        verbose_name="مقدار تخفیف"
+    )
+
     discount_amount = models.PositiveIntegerField(
         default=0,
-        verbose_name="تخفیف"
+        verbose_name="مبلغ تخفیف"
     )
 
     final_price = models.PositiveIntegerField(
         verbose_name="مبلغ نهایی"
+    )
+
+    refunded_amount = models.PositiveIntegerField(
+        default=0,
+        verbose_name="مبلغ مرجوعی"
     )
 
     remaining_amount = models.PositiveIntegerField(
@@ -259,12 +286,24 @@ class Reservation(models.Model):
     def return_date(self):
         return self.end_date
 
+    def calculate_discount_amount(self):
+        if self.discount_type == self.DISCOUNT_AMOUNT:
+            return self.discount_value or 0
+
+        if self.discount_type == self.DISCOUNT_PERCENT:
+            percent = self.discount_value or 0
+            discount = (self.rent_price * percent) // 100
+            return min(discount, self.rent_price)
+
+        return 0
+
     def calculate_financials(self):
 
         if self.rent_price is None:
             self.rent_price = 0
 
-        self.final_price = self.rent_price - (self.discount_amount or 0)
+        self.discount_amount = self.calculate_discount_amount()
+        self.final_price = self.rent_price - self.discount_amount
         if self.final_price < 0:
             self.final_price = 0
 
@@ -274,6 +313,21 @@ class Reservation(models.Model):
             self.remaining_amount = self.final_price - (self.deposit_amount or 0)
             if self.remaining_amount < 0:
                 self.remaining_amount = 0
+
+    def total_received_amount(self):
+        return (self.deposit_amount or 0) + (self.remaining_payment_amount or 0)
+
+    @property
+    def gross_rent_price(self):
+        return self.rent_price or 0
+
+    @property
+    def net_cash_inflow(self):
+        return self.total_received_amount() - (self.refunded_amount or 0)
+
+    @property
+    def outstanding_balance(self):
+        return self.remaining_amount or 0
 
     def clean(self):
         if self.discount_amount is None:
@@ -300,9 +354,19 @@ class Reservation(models.Model):
 
     def save(self, *args, **kwargs):
 
-        # قیمت لباس
-        if self.dress:
-            self.rent_price = self.dress.daily_rent_price
+        # قیمت پایه رزرو را در زمان ثبت یا تغییر رشته/مدت ثبت می‌کنیم.
+        if self.dress and self.rental_days:
+            if self._state.adding or self.rent_price is None or self.rent_price == 0:
+                self.rent_price = self.dress.daily_rent_price * self.rental_days
+            elif self.pk:
+                original = Reservation.objects.filter(pk=self.pk).values(
+                    'dress_id', 'rental_days'
+                ).first()
+                if original and (
+                    original['dress_id'] != self.dress_id or
+                    original['rental_days'] != self.rental_days
+                ):
+                    self.rent_price = self.dress.daily_rent_price * self.rental_days
 
         # تاریخ مراسم از مشتری
         if self.customer and not self.event_date:

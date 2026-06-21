@@ -78,10 +78,16 @@ class ReservationStepOneForm(forms.Form):
 
 class ReservationStepTwoForm(forms.ModelForm):
 
-    discount_amount = forms.IntegerField(
+    discount_type = forms.ChoiceField(
+        choices=Reservation.DISCOUNT_TYPE_CHOICES,
+        required=False,
+        label="نوع تخفیف"
+    )
+
+    discount_value = forms.IntegerField(
         min_value=0,
         required=False,
-        label="تخفیف"
+        label="مقدار تخفیف"
     )
 
     def __init__(self, *args, **kwargs):
@@ -99,7 +105,8 @@ class ReservationStepTwoForm(forms.ModelForm):
             "guarantee2_type",
             "guarantee2_tracking_code",
             "deposit_amount",
-            "discount_amount",
+            "discount_type",
+            "discount_value",
         ]
 
         labels = {
@@ -110,7 +117,8 @@ class ReservationStepTwoForm(forms.ModelForm):
             "guarantee2_type": "نوع ضمانت دوم",
             "guarantee2_tracking_code": "کد رهگیری ضمانت دوم",
             "deposit_amount": "بیعانه",
-            "discount_amount": "تخفیف",
+            "discount_type": "نوع تخفیف",
+            "discount_value": "مقدار تخفیف",
         }
 
     def clean(self):
@@ -118,34 +126,55 @@ class ReservationStepTwoForm(forms.ModelForm):
         cleaned_data = super().clean()
 
         deposit = cleaned_data.get("deposit_amount") or 0
-        discount = cleaned_data.get("discount_amount") or 0
+        discount_type = cleaned_data.get("discount_type") or Reservation.DISCOUNT_NONE
+        discount_value = cleaned_data.get("discount_value") or 0
 
         if deposit < 0:
             raise ValidationError("بیعانه نمی‌تواند منفی باشد.")
 
-        if discount < 0:
-            raise ValidationError("تخفیف نمی‌تواند منفی باشد.")
+        if discount_value < 0:
+            raise ValidationError("مقدار تخفیف نمی‌تواند منفی باشد.")
+
+        if discount_type == Reservation.DISCOUNT_NONE and discount_value > 0:
+            raise ValidationError("اگر نوع تخفیف انتخاب نشده، مقدار تخفیف باید صفر باشد.")
+
+        if discount_type == Reservation.DISCOUNT_PERCENT and discount_value > 100:
+            raise ValidationError("درصد تخفیف نمی‌تواند بیشتر از ۱۰۰٪ باشد.")
 
         if self.rent_price is None:
             raise ValidationError("اطلاعات هزینه اجاره کامل نیست.")
 
-        final_price = self.rent_price - discount
+        if discount_type == Reservation.DISCOUNT_AMOUNT:
+            discount_amount = discount_value
+        elif discount_type == Reservation.DISCOUNT_PERCENT:
+            discount_amount = (self.rent_price * discount_value) // 100
+        else:
+            discount_amount = 0
+
+        final_price = self.rent_price - discount_amount
         if final_price < 0:
             final_price = 0
 
         if deposit > final_price:
             raise ValidationError("بیعانه نمی‌تواند بیشتر از هزینه نهایی اجاره باشد.")
 
-        cleaned_data["discount_amount"] = discount
+        cleaned_data["discount_type"] = discount_type
+        cleaned_data["discount_value"] = discount_value
         return cleaned_data
 
 
 class ReservationEditForm(forms.ModelForm):
 
-    discount_amount = forms.IntegerField(
+    discount_type = forms.ChoiceField(
+        choices=Reservation.DISCOUNT_TYPE_CHOICES,
+        required=False,
+        label="نوع تخفیف"
+    )
+
+    discount_value = forms.IntegerField(
         min_value=0,
         required=False,
-        label="تخفیف"
+        label="مقدار تخفیف"
     )
 
     dress = forms.ModelChoiceField(
@@ -172,23 +201,13 @@ class ReservationEditForm(forms.ModelForm):
             "dress",
             "start_date",
             "rental_days",
-            "payment_method",
-            "payment_tracking_code",
-            "guarantee1_type",
-            "guarantee1_tracking_code",
-            "guarantee2_type",
-            "guarantee2_tracking_code",
-            "discount_amount",
+            "discount_type",
+            "discount_value",
         ]
 
         labels = {
-            "payment_method": "روش پرداخت",
-            "payment_tracking_code": "کد رهگیری پرداخت",
-            "guarantee1_type": "نوع ضمانت اول",
-            "guarantee1_tracking_code": "کد رهگیری ضمانت اول",
-            "guarantee2_type": "نوع ضمانت دوم",
-            "guarantee2_tracking_code": "کد رهگیری ضمانت دوم",
-            "discount_amount": "تخفیف",
+            "discount_type": "نوع تخفیف",
+            "discount_value": "مقدار تخفیف",
         }
 
     def __init__(self, *args, **kwargs):
@@ -217,14 +236,21 @@ class ReservationEditForm(forms.ModelForm):
         dress = cleaned_data.get("dress")
         start_date = cleaned_data.get("start_date")
         rental_days = cleaned_data.get("rental_days")
-        discount = cleaned_data.get("discount_amount")
+        discount_type = cleaned_data.get("discount_type") or Reservation.DISCOUNT_NONE
+        discount_value = cleaned_data.get("discount_value") or 0
 
-        if discount is None:
-            discount = 0
-            cleaned_data["discount_amount"] = 0
+        if discount_type == Reservation.DISCOUNT_NONE and discount_value > 0:
+            raise ValidationError({
+                "discount_value": "اگر نوع تخفیف انتخاب نشده، مقدار باید صفر باشد."
+            })
 
-        if discount < 0:
-            raise ValidationError("تخفیف نمی‌تواند منفی باشد.")
+        if discount_value < 0:
+            raise ValidationError({"discount_value": "مقدار تخفیف نمی‌تواند منفی باشد."})
+
+        if discount_type == Reservation.DISCOUNT_PERCENT and discount_value > 100:
+            raise ValidationError({
+                "discount_value": "درصد تخفیف نمی‌تواند بیشتر از ۱۰۰٪ باشد."
+            })
 
         if not dress or not start_date or not rental_days:
             return cleaned_data
@@ -240,6 +266,25 @@ class ReservationEditForm(forms.ModelForm):
             raise ValidationError("این لباس در این بازه زمانی رزرو شده است.")
 
         cleaned_data["end_date"] = end_date
+
+        deposit_amount = self.instance.deposit_amount or 0
+        rent_price = dress.daily_rent_price
+
+        if discount_type == Reservation.DISCOUNT_AMOUNT:
+            discount_amount = discount_value
+        elif discount_type == Reservation.DISCOUNT_PERCENT:
+            discount_amount = (rent_price * discount_value) // 100
+        else:
+            discount_amount = 0
+
+        final_price = rent_price - discount_amount
+        if final_price < 0:
+            final_price = 0
+
+        if deposit_amount > final_price:
+            raise ValidationError({
+                "discount_value": "تخفیف فعلی به گونه‌ای است که بیعانه ثبت‌شده بیش از قیمت نهایی می‌شود."
+            })
 
         return cleaned_data
 

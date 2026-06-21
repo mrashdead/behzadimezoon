@@ -567,6 +567,12 @@ $(document).ready(function () {
     timePicker: { enabled: false },
     format: "YYYY/MM/DD",
     autoClose: true,
+    initialValueType: "persian",
+    calendar: {
+      persian: {
+        locale: "fa",
+      },
+    },
   });
 
   // ۳. فقط ماه و سال

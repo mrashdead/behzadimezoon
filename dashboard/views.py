@@ -35,13 +35,14 @@ class DashboardView(TemplateView):
         ).aggregate(total=Sum('final_price'))['total'] or 0
         context['total_income'] = total_income
 
+        # Defer newly added DB columns until migrations have been applied
         context['recent_reservations'] = user_reservations.select_related(
             'customer', 'dress'
-        ).order_by('-created_at')[:3]
+        ).defer('discount_type', 'discount_value', 'discount_amount', 'refunded_amount').order_by('-created_at')[:3]
 
         context['active_reservations'] = user_reservations.select_related(
             'customer', 'dress'
-        ).filter(
+        ).defer('discount_type', 'discount_value', 'discount_amount', 'refunded_amount').filter(
             status__in=[
                 ReservationStatus.DRAFT,
                 ReservationStatus.CONFIRMED,

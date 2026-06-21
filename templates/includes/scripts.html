@@ -59,6 +59,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   const depositInput = step2Form.querySelector("input[name='deposit_amount']")
   const discountInput = step2Form.querySelector("input[name='discount_amount']")
+  const discountTypeSelect = step2Form.querySelector("select[name='discount_type']")
+  const discountValueInput = step2Form.querySelector("input[name='discount_value']")
 
   let rentPrice = 0
 
@@ -96,9 +98,22 @@ document.addEventListener('DOMContentLoaded', function () {
   }
 
   function calculateRemaining() {
-    if (!depositInput || !discountInput) return
+    if (!depositInput) return
     const deposit = parseFloat(depositInput.value || 0)
-    const discount = parseFloat(discountInput.value || 0)
+
+    let discount = 0
+    if (discountTypeSelect && discountValueInput) {
+      const dtype = discountTypeSelect.value || 'NONE'
+      const dval = parseFloat(discountValueInput.value || 0)
+      if (dtype === 'AMOUNT') {
+        discount = dval
+      } else if (dtype === 'PERCENT') {
+        discount = Math.floor((rentPrice * (dval || 0)) / 100)
+      }
+    } else if (discountInput) {
+      discount = parseFloat(discountInput.value || 0)
+    }
+
     let remaining = rentPrice - deposit - discount
     if (remaining < 0) remaining = 0
     if (remainingAmountField) {
@@ -187,6 +202,8 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (depositInput) depositInput.addEventListener("input", calculateRemaining)
   if (discountInput) discountInput.addEventListener("input", calculateRemaining)
+  if (discountTypeSelect) discountTypeSelect.addEventListener('change', calculateRemaining)
+  if (discountValueInput) discountValueInput.addEventListener('input', calculateRemaining)
 
   nextBtn.addEventListener("click", function () {
     saveReservationStepOne().then(data => {
