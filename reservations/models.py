@@ -394,7 +394,7 @@ class Reservation(models.Model):
                     original['dress_id'] != self.dress_id or
                     original['rental_days'] != self.rental_days
                 ):
-                    self.rent_price = self.dress.daily_rent_price * self.rental_days
+                    self.rent_price = self.dress.daily_rent_price
 
         # تاریخ مراسم از مشتری
         if self.customer and not self.event_date:
