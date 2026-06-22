@@ -385,7 +385,7 @@ class Reservation(models.Model):
         # قیمت پایه رزرو را در زمان ثبت یا تغییر رشته/مدت ثبت می‌کنیم.
         if self.dress and self.rental_days:
             if self._state.adding or self.rent_price is None or self.rent_price == 0:
-                self.rent_price = self.dress.daily_rent_price * self.rental_days
+                self.rent_price = self.dress.daily_rent_price 
             elif self.pk:
                 original = Reservation.objects.filter(pk=self.pk).values(
                     'dress_id', 'rental_days'
