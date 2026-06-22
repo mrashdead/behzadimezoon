@@ -10,6 +10,7 @@ class ReservationStatusService:
 
     @staticmethod
     def change_status(reservation, new_status, user):
+        old_status = reservation.status
 
         if not ReservationStateMachine.can_transition(
             reservation.status,
@@ -32,5 +33,19 @@ class ReservationStatusService:
         reservation.status = new_status
         reservation.updated_by = user
         reservation.save()
+
+        # Create a status log entry for auditability.
+        try:
+            from reservations.models import ReservationStatusLog
+
+            ReservationStatusLog.objects.create(
+                reservation=reservation,
+                old_status=old_status,
+                new_status=new_status,
+                changed_by=user
+            )
+        except Exception:
+            # Logging must not break status change flow; swallow errors.
+            pass
 
         return reservation

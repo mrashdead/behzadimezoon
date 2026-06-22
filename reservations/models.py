@@ -202,6 +202,27 @@ class Reservation(models.Model):
         verbose_name="وضعیت رزرو"
     )
 
+    # Payment status is separate from reservation status and is important
+    # for financial auditing and queries.
+    PAYMENT_UNPAID = 'UNPAID'
+    PAYMENT_PARTIAL = 'PARTIAL'
+    PAYMENT_PAID = 'PAID'
+    PAYMENT_REFUNDED = 'REFUNDED'
+
+    PAYMENT_STATUS_CHOICES = (
+        (PAYMENT_UNPAID, 'پرداخت نشده'),
+        (PAYMENT_PARTIAL, 'پرداخت جزئی'),
+        (PAYMENT_PAID, 'پرداخت شده'),
+        (PAYMENT_REFUNDED, 'پرداخت برگشتی'),
+    )
+
+    payment_status = models.CharField(
+        max_length=20,
+        choices=PAYMENT_STATUS_CHOICES,
+        default=PAYMENT_UNPAID,
+        verbose_name="وضعیت پرداخت"
+    )
+
     # -----------------------
     # اطلاعات مدیریتی
     # -----------------------
@@ -230,6 +251,13 @@ class Reservation(models.Model):
     updated_at = jmodels.jDateTimeField(
         auto_now=True,
         verbose_name="آخرین ویرایش"
+    )
+
+    # Soft-delete flag (non-destructive)
+    is_deleted = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name="حذف نرم"
     )
 
     cancelled_at = jmodels.jDateTimeField(
@@ -389,3 +417,58 @@ class Reservation(models.Model):
         verbose_name = "رزرو"
         verbose_name_plural = "رزروها"
         ordering = ["-id"]
+        indexes = [
+            models.Index(fields=["status"]),
+            models.Index(fields=["payment_status"]),
+            models.Index(fields=["start_date"]),
+            models.Index(fields=["event_date"]),
+            models.Index(fields=["created_at"]),
+            models.Index(fields=["is_deleted"]),
+        ]
+
+
+# Soft-delete aware queryset/manager
+class ReservationQuerySet(models.QuerySet):
+    def delete(self):
+        return self.update(is_deleted=True)
+
+    def hard_delete(self):
+        return super().delete()
+
+    def alive(self):
+        return self.filter(is_deleted=False)
+
+
+class ReservationManager(models.Manager):
+    def get_queryset(self):
+        return ReservationQuerySet(self.model, using=self._db).filter(is_deleted=False)
+
+
+# attach manager to model dynamically to avoid migration churn when not applied
+Reservation.add_to_class('objects', ReservationManager())
+Reservation.add_to_class('all_objects', models.Manager())
+
+
+class ReservationStatusLog(models.Model):
+    reservation = models.ForeignKey(
+        Reservation,
+        on_delete=models.CASCADE,
+        related_name='status_logs'
+    )
+    old_status = models.CharField(max_length=20)
+    new_status = models.CharField(max_length=20)
+    changed_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        null=True,
+        blank=True
+    )
+    changed_at = jmodels.jDateTimeField(auto_now_add=True)
+    note = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ['-changed_at']
+        indexes = [models.Index(fields=['changed_at']), models.Index(fields=['reservation'])]
+
+    def __str__(self):
+        return f"{self.reservation_id}: {self.old_status} -> {self.new_status} at {self.changed_at}"
