@@ -42,13 +42,21 @@
                                 {{ dress.code }}
                             </td>
 
-                            <td data-label="قیمت اجاره روزانه">
-                                {{ dress.daily_rent_price|intcomma|default:"-" }} تومان
-                            </td>
+                                                        <td data-label="قیمت اجاره روزانه">
+                                                                {% if dress.daily_rent_price is not None %}
+                                                                    <span class="number-display" data-value="{{ dress.daily_rent_price }}">{{ dress.daily_rent_price|intcomma }}</span> تومان
+                                                                {% else %}
+                                                                    -
+                                                                {% endif %}
+                                                        </td>
 
                             <td data-label="وضعیت">
                                 {% if dress.is_currently_rented %}
                                 <span class="badge bg-danger">
+                                    {{ dress.availability_label }}
+                                </span>
+                                {% elif dress.is_reserved %}
+                                <span class="badge bg-warning text-dark">
                                     {{ dress.availability_label }}
                                 </span>
                                 {% else %}

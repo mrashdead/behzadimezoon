@@ -161,20 +161,7 @@
 
 {% include "includes/scripts.html" %}
 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        const togglePassword = document.getElementById('togglePassword');
-        const passwordInput = document.getElementById('id_password');
-
-        if (togglePassword && passwordInput) {
-            togglePassword.addEventListener('click', function () {
-                const isPassword = passwordInput.getAttribute('type') === 'password';
-                passwordInput.setAttribute('type', isPassword ? 'text' : 'password');
-                togglePassword.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
-            });
-        }
-    });
-</script>
+{# Password toggle handled by static/assets/js/main.js to avoid duplicate handlers #}
 
 </body>
 </html>

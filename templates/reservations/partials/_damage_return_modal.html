@@ -32,7 +32,8 @@
           <div class="damage-details d-none">
             <div class="mb-3">
               <label class="form-label" for="id_damage_amount">{{ form.damage_amount.label }}</label>
-              {{ form.damage_amount }}
+              {# render as text input with money-input class to enable comma formatting in UI #}
+              <input type="text" name="damage_amount" id="id_damage_amount" class="form-control money-input" placeholder="0">
               {% if form.damage_amount.errors %}
               <div class="invalid-feedback d-block">
                 {% for error in form.damage_amount.errors %}{{ error }}{% endfor %}

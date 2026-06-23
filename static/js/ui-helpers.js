@@ -165,6 +165,10 @@ function normalizeDigits(value) {
   return value.toString().replace(persianArabicDigits, (d) => map[d]);
 }
 
+// Backwards-compatible alias used by inline scripts
+window.UIHelpers = window.UIHelpers || {};
+window.UIHelpers.normalizeDigits = normalizeDigits;
+
 // Setup AJAX form submission for modals
 function setupModalForms() {
   document.querySelectorAll('.modal form').forEach(form => {

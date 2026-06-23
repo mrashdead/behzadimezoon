@@ -383,18 +383,17 @@ class Reservation(models.Model):
     def save(self, *args, **kwargs):
 
         # قیمت پایه رزرو را در زمان ثبت یا تغییر رشته/مدت ثبت می‌کنیم.
-        if self.dress and self.rental_days:
+        # Set rent_price to the base product price (do not multiply by rental days)
+        if self.dress:
             if self._state.adding or self.rent_price is None or self.rent_price == 0:
-                self.rent_price = self.dress.daily_rent_price * self.rental_days
+                self.rent_price = self.dress.daily_rent_price
             elif self.pk:
                 original = Reservation.objects.filter(pk=self.pk).values(
                     'dress_id', 'rental_days'
                 ).first()
-                if original and (
-                    original['dress_id'] != self.dress_id or
-                    original['rental_days'] != self.rental_days
-                ):
-                    self.rent_price = self.dress.daily_rent_price * self.rental_days
+                if original and original['dress_id'] != self.dress_id:
+                    # If the selected dress changed, update to the new dress base price
+                    self.rent_price = self.dress.daily_rent_price
 
         # تاریخ مراسم از مشتری
         if self.customer and not self.event_date:

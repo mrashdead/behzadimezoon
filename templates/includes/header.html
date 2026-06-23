@@ -84,13 +84,23 @@
             </div>
             <small class="text-body d-block lh-sm">
               <i class="fi fi-rr-angle-down text-3xs me-1"></i>
-              {% if request.user.is_authenticated %}کاربر سیستم{% endif %}
+              {% if request.user.is_authenticated %}
+                {% if request.user.is_superuser or request.user.role == "SUPER_ADMIN" %}
+                  سوپرادمین
+                {% elif request.user.role == "MANAGER" %}
+                  مدیر داخلی
+                {% elif request.user.role == "SELLER" %}
+                  فروشنده
+                {% else %}
+                  کاربر سیستم
+                {% endif %}
+              {% endif %}
             </small>
           </div>
           <div class="avatar avatar-sm rounded-circle avatar-status-success">
             <img
               alt=""
-              src="{% static 'assets/images/avatar/avatar1.webp' %}"
+              src="{% static 'assets/images/avatar/user.webp' %}"
             />
           </div>
         </a>

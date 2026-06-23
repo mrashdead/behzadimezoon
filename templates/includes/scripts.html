@@ -99,19 +99,32 @@ document.addEventListener('DOMContentLoaded', function () {
 
   function calculateRemaining() {
     if (!depositInput) return
-    const deposit = parseFloat(depositInput.value || 0)
+
+    // Helper: read numeric value from a possibly-formatted input (commas, Persian digits)
+    const readNumber = (field) => {
+      if (!field) return 0
+      let v = field.value || ''
+      if (window.UIHelpers && typeof window.UIHelpers.normalizeDigits === 'function') {
+        v = window.UIHelpers.normalizeDigits(v)
+      }
+      v = v.toString().replace(/,/g, '')
+      const n = parseFloat(v)
+      return Number.isNaN(n) ? 0 : n
+    }
+
+    const deposit = readNumber(depositInput)
 
     let discount = 0
     if (discountTypeSelect && discountValueInput) {
       const dtype = discountTypeSelect.value || 'NONE'
-      const dval = parseFloat(discountValueInput.value || 0)
+      const dval = readNumber(discountValueInput)
       if (dtype === 'AMOUNT') {
         discount = dval
       } else if (dtype === 'PERCENT') {
         discount = Math.floor((rentPrice * (dval || 0)) / 100)
       }
     } else if (discountInput) {
-      discount = parseFloat(discountInput.value || 0)
+      discount = readNumber(discountInput)
     }
 
     let remaining = rentPrice - deposit - discount

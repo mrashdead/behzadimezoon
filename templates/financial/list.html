@@ -13,12 +13,13 @@
   {% include 'partials/_stat_card.html' with icon='fi-rr-chart-histogram' label='تعداد رزروها' value=totals.total_reservations badge_type='primary' badge_text='کل' %}
   {% include 'partials/_stat_card.html' with icon='fi-rr-coins' label='درآمد نهایی' value=totals.total_revenue badge_type='success' badge_text='تومان' %}
   {% include 'partials/_stat_card.html' with icon='fi-rr-bank' label='بیعانه جمع' value=totals.total_deposit badge_type='info' badge_text='تومان' %}
-  {% include 'partials/_stat_card.html' with icon='fi-rr-ban' label='باقی مانده' value=totals.total_remaining badge_type='danger' badge_text='تومان' %}
+  {% include 'partials/_stat_card.html' with icon='fi-br-money-transfer-coin-arrow' label='باقی مانده' value=totals.total_remaining badge_type='danger' badge_text='تومان' %}
 </div>
 
 <div class="row g-3 mb-4">
-  {% include 'partials/_stat_card.html' with icon='fi fi-rr-close-circle' label='رزروهای لغو شده' value=cancelled_totals.total_cancelled_reservations badge_type='danger' badge_text='عدد' %}
-  {% include 'partials/_stat_card.html' with icon='fi fi-rr-wallet' label='مبالغ دریافت شده از لغو شده‌ها' value=cancelled_totals.cancelled_received_amount badge_type='warning' badge_text='تومان' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-ban' label='رزروهای لغو شده' value=cancelled_totals.total_cancelled_reservations badge_type='danger' badge_text='عدد' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-wallet' label='مبالغ دریافت شده از لغو شده‌ها' value=cancelled_totals.cancelled_received_amount badge_type='warning' badge_text='تومان' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-money-bills' label='خسارت‌های دریافت شده (کل)' value=totals.total_damage_received badge_type='warning' badge_text='تومان' %}
 </div>
 
 <!-- جدول آخرین رزروها -->
@@ -42,6 +43,7 @@
               <th class="minw-130px text-end">مبلغ نهایی</th>
               <th class="minw-130px text-end">بیعانه</th>
               <th class="minw-130px text-end">باقی مانده</th>
+              <th class="minw-130px text-end">خسارت</th>
               <th class="minw-120px">وضعیت</th>
             </tr>
           </thead>
@@ -51,6 +53,9 @@
                 <td>
                   <div class="d-flex align-items-center gap-2">
                     <span>{{ item.customer }}</span>
+                    {% if item.item_damaged %}
+                      <span class="badge bg-danger-subtle text-danger ms-2">خسارت</span>
+                    {% endif %}
                   </div>
                 </td>
                 <td>{{ item.dress }}</td>
@@ -63,19 +68,28 @@
                 </td>
                 <td>{{ item.rental_days }} روز</td>
                 <td class="text-end">
-                  <span class="fw-semibold text-success">
+                  <span class="fw-semibold text-success number-display" data-value="{{ item.final_price|default:0 }}">
                     {{ item.final_price|intcomma }} تومان
                   </span>
                 </td>
                 <td class="text-end">
-                  <span class="fw-semibold text-info">
+                  <span class="fw-semibold text-info number-display" data-value="{{ item.deposit_amount|default:0 }}">
                     {{ item.deposit_amount|intcomma }} تومان
                   </span>
                 </td>
                 <td class="text-end">
-                  <span class="fw-semibold {% if item.remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}">
+                  <span class="fw-semibold number-display {% if item.remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}" data-value="{{ item.remaining_amount|default:0 }}">
                     {{ item.remaining_amount|intcomma }} تومان
                   </span>
+                </td>
+                <td class="text-end">
+                  {% if item.item_damaged and item.damage_amount %}
+                    <span class="fw-semibold text-danger number-display" data-value="{{ item.damage_amount|default:0 }}">{{ item.damage_amount|intcomma }} تومان</span>
+                  {% elif item.item_damaged %}
+                    <span class="text-danger">ثبت شده</span>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
                 </td>
                 <td>
                   {% if item.status == 'CONFIRMED' %}

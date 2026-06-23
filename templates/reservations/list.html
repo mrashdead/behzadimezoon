@@ -49,7 +49,25 @@
               <td data-label="لباس">{{ reservation.dress }}</td>
               <td data-label="شروع اجاره">{{ reservation.start_date|jformat:"%Y/%m/%d" }}</td>
               <td data-label="پایان اجاره">{{ reservation.end_date|jformat:"%Y/%m/%d" }}</td>
-              <td data-label="وضعیت">{{ reservation.get_status_display }}</td>
+              <td data-label="وضعیت">
+                {% if reservation.status == 'CONFIRMED' %}
+                  <span class="badge bg-info-subtle text-info">{{ reservation.get_status_display }}</span>
+                {% elif reservation.status == 'DELIVERED' %}
+                  <span class="badge bg-success-subtle text-success">{{ reservation.get_status_display }}</span>
+                {% elif reservation.status == 'RETURNED' %}
+                  <span class="badge bg-warning-subtle text-warning">{{ reservation.get_status_display }}</span>
+                {% elif reservation.status == 'LAUNDRY' %}
+                  <span class="badge bg-secondary-subtle text-secondary">{{ reservation.get_status_display }}</span>
+                {% elif reservation.status == 'READY' %}
+                  <span class="badge bg-success-subtle text-success">{{ reservation.get_status_display }}</span>
+                {% elif reservation.status == 'CANCELLED' %}
+                  <span class="badge bg-danger-subtle text-danger">{{ reservation.get_status_display }}</span>
+                {% elif reservation.status == 'DRAFT' %}
+                  <span class="badge bg-light-subtle text-dark">{{ reservation.get_status_display }}</span>
+                {% else %}
+                  <span class="badge bg-light-subtle text-dark">{{ reservation.get_status_display }}</span>
+                {% endif %}
+              </td>
               <td data-label="عملیات" class="text-end">
                 <div class="d-none d-md-flex justify-content-end gap-2 flex-wrap table-actions">
                   <button

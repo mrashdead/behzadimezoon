@@ -11,7 +11,7 @@
 {% block content %}
     <div class="row g-3 mb-4">
         {% include 'partials/_stat_card.html' with icon='fi-rr-users' label='تعداد مشتریان' value=customers_count badge_type='success' badge_text='نفر' %}
-        {% include 'partials/_stat_card.html' with icon='fi-rr-dress' label='تعداد محصولات' value=dresses_count badge_type='info' badge_text='لباس' %}
+        {% include 'partials/_stat_card.html' with icon='fi-rr-person-dress' label='تعداد محصولات' value=dresses_count badge_type='info' badge_text='لباس' %}
         {% include 'partials/_stat_card.html' with icon='fi-rr-calendar' label='رزروهای فعال' value=active_reservations_count badge_type='warning' badge_text='رزرو' %}
         {% include 'partials/_stat_card.html' with icon='fi-rr-coins' label='درآمد کل' value=total_income badge_type='primary' badge_text='تومان' %}
     </div>

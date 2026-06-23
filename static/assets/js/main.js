@@ -48,6 +48,11 @@ const passwordToggle = () => {
       const isPassword = input.type === "password";
       input.type = isPassword ? "text" : "password";
       btn.classList.toggle("active", isPassword);
+      try {
+        btn.setAttribute('aria-pressed', isPassword ? 'true' : 'false');
+      } catch (e) {
+        // ignore if attribute can't be set
+      }
     });
   });
 };

@@ -27,6 +27,7 @@ class FinancialListView(TemplateView):
                 total_revenue=Sum('final_price'),
                 total_deposit=Sum('deposit_amount'),
                 total_remaining=Sum('remaining_amount'),
+                total_damage_received=Sum('damage_amount'),
                 total_refunded=Sum('refunded_amount'),
                 total_remaining_paid=Sum('remaining_payment_amount'),
             )
@@ -43,6 +44,7 @@ class FinancialListView(TemplateView):
                 'total_revenue': 0,
                 'total_deposit': 0,
                 'total_remaining': 0,
+                'total_damage_received': 0,
                 'total_refunded': 0,
                 'total_remaining_paid': 0,
                 'total_cash_inflow': 0,
@@ -60,12 +62,14 @@ class FinancialListView(TemplateView):
             cancelled_totals = cancelled_reservations.aggregate(
                 total_cancelled_reservations=Count('id'),
                 cancelled_received_amount=Sum('deposit_amount'),
+                cancelled_damage_received=Sum('damage_amount'),
                 cancelled_refunded_amount=Sum('refunded_amount'),
             )
         except ProgrammingError:
             cancelled_totals = {
                 'total_cancelled_reservations': 0,
                 'cancelled_received_amount': 0,
+                'cancelled_damage_received': 0,
                 'cancelled_refunded_amount': 0,
             }
 
@@ -77,6 +81,7 @@ class FinancialListView(TemplateView):
             'total_discounts': active_totals.get('total_discounts') or 0,
             'total_deposit': active_totals.get('total_deposit') or 0,
             'total_remaining': active_totals.get('total_remaining') or 0,
+            'total_damage_received': active_totals.get('total_damage_received') or 0,
             'total_cash_inflow': active_totals.get('total_cash_inflow') or 0,
             'total_refunded': active_totals.get('total_refunded') or 0,
         }
@@ -85,6 +90,7 @@ class FinancialListView(TemplateView):
         context['cancelled_totals'] = {
             'total_cancelled_reservations': cancelled_totals.get('total_cancelled_reservations') or 0,
             'cancelled_received_amount': cancelled_totals.get('cancelled_received_amount') or 0,
+            'cancelled_damage_received': cancelled_totals.get('cancelled_damage_received') or 0,
         }
 
         context['recent_reservations'] = (
