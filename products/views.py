@@ -61,6 +61,16 @@ class DressListView(ListView):
         context['can_manage_product'] = can_edit_product or can_delete_product
         return context
 
+    def render_to_response(self, context, **response_kwargs):
+        if self.request.GET.get('ajax') == '1' or self.request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return self.response_class(
+                request=self.request,
+                template='products/partials/_list_results.html',
+                context=context,
+                **response_kwargs
+            )
+        return super().render_to_response(context, **response_kwargs)
+
 class DressCreateView(ProductCreatePermissionMixin, CreateView):
     model = Dress
     form_class = DressForm

@@ -48,6 +48,16 @@ class CustomerListView(LoginRequiredMixin, ListView):
         context["search_query"] = self.request.GET.get('search', '')
         return context
 
+    def render_to_response(self, context, **response_kwargs):
+        if self.request.GET.get('ajax') == '1' or self.request.headers.get('x-requested-with') == 'XMLHttpRequest':
+            return self.response_class(
+                request=self.request,
+                template='customers/partials/_list_results.html',
+                context=context,
+                **response_kwargs
+            )
+        return super().render_to_response(context, **response_kwargs)
+
     def can_create_customer(self, user):
         if user.is_superuser:
             return True

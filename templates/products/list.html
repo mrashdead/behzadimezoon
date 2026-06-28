@@ -26,18 +26,22 @@
     <div class="card-body">
         <!-- Search Section -->
         <div class="mb-3 pb-3 border-bottom">
-            <form method="GET" class="row align-items-center" id="searchForm">
+            <form method="GET" action="{% url 'products:list' %}" class="row align-items-center" id="searchForm" data-live-search-form data-live-search-target="#productListContent">
                 <div class="col-md-9">
                     <div class="row align-items-center">
                         <label class="col-sm-3 text-sm-end col-form-label">جستجو</label>
-                        <div class="col-sm-9">
+                        <div class="col-sm-9 position-relative">
                             <input
                                 type="text"
                                 name="search"
                                 class="form-control"
                                 placeholder="کد لباس را جستجو کنید..."
                                 value="{{ search_query }}"
+                                autocomplete="off"
                             />
+                            <button type="button" class="btn btn-icon btn-sm btn-outline-secondary live-search-clear position-absolute end-0 top-50 translate-middle-y me-2 d-none">
+                                <i class="fi fi-rr-delete"></i>
+                            </button>
                         </div>
                     </div>
                 </div>
@@ -53,154 +57,13 @@
                     </a>
                     {% endif %}
                 </div>
+                <div class="col-12 mt-2">
+                    <small class="text-muted live-search-status">{% if search_query %}نتایج جستجو برای: <strong>{{ search_query }}</strong>{% endif %}</small>
+                </div>
             </form>
-            {% if search_query %}
-            <div class="mt-2">
-                <small class="text-muted">
-                    نتایج جستجو برای: <strong>{{ search_query }}</strong>
-                </small>
-            </div>
-            {% endif %}
         </div>
 
-        <div class="table-responsive customer-table-wrap">
-            <table class="table table-sm table-row-rounded data-row-checkbox align-middle mb-0 customer-mobile-table" id="dt_DressList">
-                <thead class="table-light">
-                    <tr>
-                        <th>کد لباس</th>
-                        <th>قیمت اجاره روزانه</th>
-                        <th>وضعیت</th>
-                        <th>تاریخ ثبت</th>
-                        <th class="text-end">عملیات</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {% for dress in dresses %}
-                        <tr>
-                            <td data-label="کد لباس">
-                                {{ dress.code }}
-                            </td>
-
-                                                        <td data-label="قیمت اجاره روزانه">
-                                                                {% if dress.daily_rent_price is not None %}
-                                                                    <span class="number-display" data-value="{{ dress.daily_rent_price }}">{{ dress.daily_rent_price|intcomma }}</span> تومان
-                                                                {% else %}
-                                                                    -
-                                                                {% endif %}
-                                                        </td>
-
-                            <td data-label="وضعیت">
-                                {% if dress.is_currently_rented %}
-                                <span class="badge bg-danger">
-                                    {{ dress.availability_label }}
-                                </span>
-                                {% elif dress.is_reserved %}
-                                <span class="badge bg-warning text-dark">
-                                    {{ dress.availability_label }}
-                                </span>
-                                {% else %}
-                                <span class="badge bg-success">
-                                    {{ dress.availability_label }}
-                                </span>
-                                {% endif %}
-                            </td>
-
-                            <td data-label="تاریخ ثبت">
-                                {{ dress.created_at|jformat:"%Y/%m/%d"|default:"-" }}
-                            </td>
-
-                            <td data-label="عملیات" class="text-end">
-                                <!-- دسکتاپ -->
-                                <div class="d-none d-md-flex justify-content-end gap-2 flex-wrap table-actions">
-                                    {% if can_edit_product %}
-                                    <button
-                                        class="btn btn-subtle-primary btn-sm btn-shadow btn-icon waves-effect me-1"
-                                        type="button"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#editDressModal{{ dress.id }}"
-                                        title="ویرایش"
-                                    >
-                                        <i class="fi fi-rr-edit"></i>
-                                    </button>
-                                    {% endif %}
-
-                                    {% if can_delete_product %}
-                                    <button
-                                        class="btn btn-subtle-danger btn-sm btn-shadow btn-icon waves-effect me-1"
-                                        type="button"
-                                        data-bs-toggle="modal"
-                                        data-bs-target="#deleteDressModal{{ dress.id }}"
-                                        title="حذف"
-                                    >
-                                        <i class="fi fi-rr-trash"></i>
-                                    </button>
-                                    {% endif %}
-                                </div>
-
-                                <!-- موبایل -->
-                                <div class="dropdown d-md-none text-end">
-                                    <button
-                                        class="btn btn-subtle-secondary btn-sm btn-icon waves-effect"
-                                        type="button"
-                                        data-bs-toggle="dropdown"
-                                        aria-expanded="false"
-                                    >
-                                        <i class="fi fi-rr-menu-dots-vertical" style="vertical-align: middle;"></i>
-                                    </button>
-
-                                    <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg" style="border-radius: 12px; min-width: 180px;">
-                                        {% if can_edit_product %}
-                                        <li>
-                                            <button
-                                                class="dropdown-item py-2 d-flex align-items-center gap-2"
-                                                type="button"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#editDressModal{{ dress.id }}"
-                                            >
-                                                <i class="fi fi-rr-edit text-primary"></i>
-                                                <span>ویرایش محصول</span>
-                                            </button>
-                                        </li>
-                                        {% endif %}
-
-                                        {% if can_delete_product %}
-                                        <li><hr class="dropdown-divider opacity-50"></li>
-
-                                        <li>
-                                            <button
-                                                class="dropdown-item py-2 d-flex align-items-center gap-2 text-danger"
-                                                type="button"
-                                                data-bs-toggle="modal"
-                                                data-bs-target="#deleteDressModal{{ dress.id }}"
-                                            >
-                                                <i class="fi fi-rr-trash"></i>
-                                                <span>حذف محصول</span>
-                                            </button>
-                                        </li>
-                                        {% endif %}
-                                    </ul>
-                                </div>
-                            </td>
-                        </tr>
-                    {% empty %}
-                        <tr>
-                            <td colspan="5" class="text-center py-4 text-muted">
-                                {% if search_query %}
-                                <i class="fi fi-rr-circle-exclamation me-2"></i>
-                                نتیجه‌ای برای جستجوی «{{ search_query }}» پیدا نشد.
-                                {% else %}
-                                هنوز هیچ محصولی ثبت نشده است.
-                                {% endif %}
-                            </td>
-                        </tr>
-                    {% endfor %}
-                </tbody>
-            </table>
-        </div>
-    </div>
-</div>
-            {% include 'partials/pagination.html' %}
-        </div>
+        {% include 'products/partials/_list_results.html' %}
     </div>
 </div>
 

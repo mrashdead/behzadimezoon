@@ -1,0 +1,82 @@
+<div id="customerListContent">
+  <div class="table-responsive">
+    <table class="table table-sm align-middle mb-0" id="dt_DressList">
+      <thead class="table-light">
+        <tr>
+          <th>نام عروس</th>
+          <th>شماره تماس</th>
+          <th>تاریخ مراسم</th>
+          <th>نحوه آشنایی</th>
+          <th class="text-center">عملیات</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for customer in customers %}
+        <tr>
+          <td>
+            <div class="fw-semibold">{{ customer.bride_first_name }} {{ customer.bride_last_name }}</div>
+          </td>
+          <td>
+            <span dir="ltr" class="font-monospace">{{ customer.bride_phone }}</span>
+          </td>
+          <td>{{ customer.ceremony_date|jformat:"%Y/%m/%d" }}</td>
+          <td class="text-muted">{{ customer.how_to_know }}</td>
+          <td>
+            <div class="d-flex justify-content-center align-items-center gap-1">
+              <button
+                class="btn btn-subtle-secondary btn-sm btn-icon"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#detailCustomerModal{{ customer.id }}"
+                title="مشاهده"
+              >
+                <i class="icon-eye"></i>
+              </button>
+
+              {% if can_edit_customer %}
+              <button
+                class="btn btn-subtle-primary btn-sm btn-icon"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#editCustomerModal{{ customer.id }}"
+                title="ویرایش"
+              >
+                <i class="fi fi-rr-edit"></i>
+              </button>
+              {% endif %}
+
+              {% if can_delete_customer %}
+              <button
+                class="btn btn-subtle-danger btn-sm btn-icon"
+                type="button"
+                data-bs-toggle="modal"
+                data-bs-target="#deleteCustomerModal{{ customer.id }}"
+                title="حذف"
+              >
+                <i class="fi fi-rr-delete-user"></i>
+              </button>
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% empty %}
+        <tr>
+          <td colspan="5" class="text-center py-4">
+            <div class="text-muted">
+              {% if search_query %}
+              <i class="fi fi-rr-circle-exclamation me-2"></i>
+              نتیجه‌ای برای جستجوی «{{ search_query }}» پیدا نشد.
+              {% else %}
+              <i class="fi fi-rr-circle-exclamation me-2"></i>
+              مشتری‌ای ثبت نشده است.
+              {% endif %}
+            </div>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
+  </div>
+
+  {% include 'partials/pagination.html' %}
+</div>

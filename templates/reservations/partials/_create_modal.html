@@ -20,7 +20,30 @@
                     <div class="row align-items-center mb-3">
                       <label class="col-sm-3 text-sm-end col-form-label">مشتری</label>
                       <div class="col-sm-9">
-                        <div id="customerSearchContainer" data-field-name="customer" data-required="true" class="search-container"></div>
+                        <div class="position-relative combobox-wrapper" data-combobox="customer">
+                          <div class="combobox-field">
+                            <input
+                              type="text"
+                              class="form-control combobox-input"
+                              placeholder="انتخاب مشتری..."
+                              autocomplete="off"
+                              data-combobox-input
+                            />
+                            <button type="button" class="combobox-clear d-none" data-combobox-clear aria-label="پاک کردن انتخاب">
+                              ×
+                            </button>
+                            <span class="combobox-icon" aria-hidden="true">
+                              <i class="fi fi-rr-angle-down"></i>
+                            </span>
+                          </div>
+                          <div class="combobox-menu d-none" data-combobox-list role="listbox"></div>
+                          <select name="customer" class="d-none" required data-combobox-select>
+                            <option value="">انتخاب مشتری</option>
+                            {% for customer in customers %}
+                            <option value="{{ customer.id }}">{{ customer.bride_first_name }} {{ customer.bride_last_name }} - {{ customer.bride_phone }}</option>
+                            {% endfor %}
+                          </select>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -29,7 +52,30 @@
                     <div class="row align-items-center mb-3">
                       <label class="col-sm-3 text-sm-end col-form-label">لباس</label>
                       <div class="col-sm-9">
-                        <div id="dressSearchContainer" data-field-name="dress" data-required="true" class="search-container"></div>
+                        <div class="position-relative combobox-wrapper" data-combobox="dress">
+                          <div class="combobox-field">
+                            <input
+                              type="text"
+                              class="form-control combobox-input"
+                              placeholder="انتخاب لباس..."
+                              autocomplete="off"
+                              data-combobox-input
+                            />
+                            <button type="button" class="combobox-clear d-none" data-combobox-clear aria-label="پاک کردن انتخاب">
+                              ×
+                            </button>
+                            <span class="combobox-icon" aria-hidden="true">
+                              <i class="fi fi-rr-angle-down"></i>
+                            </span>
+                          </div>
+                          <div class="combobox-menu d-none" data-combobox-list role="listbox"></div>
+                          <select name="dress" class="d-none" required data-combobox-select>
+                            <option value="">انتخاب لباس</option>
+                            {% for dress in dresses %}
+                            <option value="{{ dress.id }}">{{ dress.code }}</option>
+                            {% endfor %}
+                          </select>
+                        </div>
                       </div>
                     </div>
                   </div>
@@ -229,42 +275,3 @@
   </div>
 </div>
 
-<script>
-// Initialize searchable selects for customers and dresses
-document.addEventListener('DOMContentLoaded', function() {
-    // Prepare customer data
-    const customersData = [
-        {% for customer in customers %}
-        {
-            id: {{ customer.id }},
-            name: '{{ customer.bride_first_name }} {{ customer.bride_last_name }}'
-        }{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
-
-    // Prepare dresses data
-    const dressesData = [
-        {% for dress in dresses %}
-        {
-            id: {{ dress.id }},
-            name: '{{ dress.code }}'
-        }{% if not forloop.last %},{% endif %}
-        {% endfor %}
-    ];
-
-    // Initialize searchable selects (only if data exists)
-    if (customersData.length > 0 && typeof SearchableSelect !== 'undefined') {
-        new SearchableSelect('customerSearchContainer', customersData, {
-            searchPlaceholder: 'نام عروس، نام داماد یا شماره تماس را جستجو کنید...',
-            noResultsMessage: 'هیچ مشتری‌ای پیدا نشد.'
-        });
-    }
-
-    if (dressesData.length > 0 && typeof SearchableSelect !== 'undefined') {
-        new SearchableSelect('dressSearchContainer', dressesData, {
-            searchPlaceholder: 'کد لباس را جستجو کنید...',
-            noResultsMessage: 'هیچ لباسی پیدا نشد.'
-        });
-    }
-});
-</script>
