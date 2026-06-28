@@ -20,6 +20,24 @@ class CustomerListView(LoginRequiredMixin, ListView):
     context_object_name = "customers"
     paginate_by = 10
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        search_query = self.request.GET.get('search', '').strip()
+
+        if search_query:
+            # Use Q objects for searching across multiple fields
+            # Supports: bride first/last name, bride phone, groom first/last name
+            from django.db.models import Q
+            queryset = queryset.filter(
+                Q(bride_first_name__icontains=search_query) |
+                Q(bride_last_name__icontains=search_query) |
+                Q(bride_phone__icontains=search_query) |
+                Q(groom_first_name__icontains=search_query) |
+                Q(groom_last_name__icontains=search_query)
+            )
+
+        return queryset
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         user = self.request.user
@@ -27,6 +45,7 @@ class CustomerListView(LoginRequiredMixin, ListView):
         context["can_edit_customer"] = self.can_edit_customer(user)
         context["can_delete_customer"] = self.can_delete_customer(user)
         context["create_form"] = CustomerForm()
+        context["search_query"] = self.request.GET.get('search', '')
         return context
 
     def can_create_customer(self, user):

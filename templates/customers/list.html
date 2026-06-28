@@ -30,6 +30,45 @@
     </div>
 
     <div class="card-body">
+      <!-- Search Section -->
+      <div class="mb-3 pb-3 border-bottom">
+        <form method="GET" class="row align-items-center" id="searchForm">
+          <div class="col-md-9">
+            <div class="row align-items-center">
+              <label class="col-sm-3 text-sm-end col-form-label">جستجو</label>
+              <div class="col-sm-9">
+                <input
+                  type="text"
+                  name="search"
+                  class="form-control"
+                  placeholder="نام عروس، نام داماد، شماره تماس..."
+                  value="{{ search_query }}"
+                />
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3 d-flex gap-2 justify-content-end">
+            <button type="submit" class="btn btn-primary btn-sm">
+              <i class="fi fi-rr-search me-1"></i>
+              جستجو
+            </button>
+            {% if search_query %}
+            <a href="{% url 'customers:list' %}" class="btn btn-secondary btn-sm">
+              <i class="fi fi-rr-delete me-1"></i>
+              پاک کردن
+            </a>
+            {% endif %}
+          </div>
+        </form>
+        {% if search_query %}
+        <div class="mt-2">
+          <small class="text-muted">
+            نتایج جستجو برای: <strong>{{ search_query }}</strong>
+          </small>
+        </div>
+        {% endif %}
+      </div>
+
       <div class="table-responsive">
         <table class="table table-sm align-middle mb-0" id="dt_DressList">
           <thead class="table-light">
@@ -94,8 +133,13 @@
             <tr>
               <td colspan="5" class="text-center py-4">
                 <div class="text-muted">
+                  {% if search_query %}
+                  <i class="fi fi-rr-circle-exclamation me-2"></i>
+                  نتیجه‌ای برای جستجوی «{{ search_query }}» پیدا نشد.
+                  {% else %}
                   <i class="fi fi-rr-circle-exclamation me-2"></i>
                   مشتری‌ای ثبت نشده است.
+                  {% endif %}
                 </div>
               </td>
             </tr>

@@ -18,6 +18,7 @@
 <script src="{% static 'assets/libs/persian-datepicker/persian-datepicker.js' %}"></script>
 <script src="{% static 'assets/libs/persian-datepicker/persian-datepicker.min.js' %}"></script>
 <script src="{% static 'js/ui-helpers.js' %}"></script>
+<script src="{% static 'js/search-helpers.js' %}"></script>
 
 <script>
   $(document).ready(function () {
@@ -47,198 +48,207 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (!step1Form || !step2Form) return
 
-  const customerSelect = step1Form.querySelector("select[name='customer']")
-  const dressSelect = step1Form.querySelector("select[name='dress']")
-  const startDateInput = step1Form.querySelector("input[name='start_date']")
-  const rentalDaysInput = step1Form.querySelector("input[name='rental_days']")
+  // Wait for SearchableSelect to be initialized, then get the hidden selects
+  function initializeReservationForm() {
+    const customerSelect = step1Form.querySelector("select[name='customer']")
+    const dressSelect = step1Form.querySelector("select[name='dress']")
 
-  const eventDateField = document.getElementById("event_date")
-  const endDateField = document.getElementById("end_date")
-  const rentPriceField = document.getElementById("rent_price")
-  const remainingAmountField = document.getElementById("remaining_amount")
-
-  const depositInput = step2Form.querySelector("input[name='deposit_amount']")
-  const discountInput = step2Form.querySelector("input[name='discount_amount']")
-  const discountTypeSelect = step2Form.querySelector("select[name='discount_type']")
-  const discountValueInput = step2Form.querySelector("input[name='discount_value']")
-
-  let rentPrice = 0
-
-  function getCookie(name) {
-    let cookieValue = null
-    if (document.cookie && document.cookie !== "") {
-      const cookies = document.cookie.split(";")
-      for (let i = 0; i < cookies.length; i++) {
-        const cookie = cookies[i].trim()
-        if (cookie.substring(0, name.length + 1) === name + "=") {
-          cookieValue = decodeURIComponent(cookie.substring(name.length + 1))
-          break
-        }
-      }
-    }
-    return cookieValue
-  }
-
-  function formatCurrency(value) {
-    if (Number.isNaN(value) || value === null) return ""
-    return Number(Math.round(value)).toLocaleString("en-US")
-  }
-
-  function formatJalaliDate(value) {
-    if (!value) return ""
-    const parsed = new Date(value)
-    if (Number.isNaN(parsed.getTime())) {
-      return value
-    }
-    return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
-      year: "numeric",
-      month: "2-digit",
-      day: "2-digit"
-    }).format(parsed)
-  }
-
-  function calculateRemaining() {
-    if (!depositInput) return
-
-    // Helper: read numeric value from a possibly-formatted input (commas, Persian digits)
-    const readNumber = (field) => {
-      if (!field) return 0
-      let v = field.value || ''
-      if (window.UIHelpers && typeof window.UIHelpers.normalizeDigits === 'function') {
-        v = window.UIHelpers.normalizeDigits(v)
-      }
-      v = v.toString().replace(/,/g, '')
-      const n = parseFloat(v)
-      return Number.isNaN(n) ? 0 : n
-    }
-
-    const deposit = readNumber(depositInput)
-
-    let discount = 0
-    if (discountTypeSelect && discountValueInput) {
-      const dtype = discountTypeSelect.value || 'NONE'
-      const dval = readNumber(discountValueInput)
-      if (dtype === 'AMOUNT') {
-        discount = dval
-      } else if (dtype === 'PERCENT') {
-        discount = Math.floor((rentPrice * (dval || 0)) / 100)
-      }
-    } else if (discountInput) {
-      discount = readNumber(discountInput)
-    }
-
-    let remaining = rentPrice - deposit - discount
-    if (remaining < 0) remaining = 0
-    if (remainingAmountField) {
-      remainingAmountField.value = formatCurrency(remaining)
-    }
-  }
-
-  function checkAvailability() {
-    const dress = dressSelect.value
-    const customer = customerSelect.value
-    const start_date = startDateInput.value
-    const rental_days = rentalDaysInput.value
-
-    if (!dress || !customer || !start_date || !rental_days) {
-      nextBtn.disabled = true
+    // If selects haven't been created yet, wait and try again
+    if (!customerSelect || !dressSelect) {
+      setTimeout(initializeReservationForm, 100)
       return
     }
 
-    fetch("/reservations/check-availability/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "X-CSRFToken": getCookie("csrftoken"),
-        "X-Requested-With": "XMLHttpRequest"
-      },
-      body: new URLSearchParams({
-        customer_id: customer,
-        dress_id: dress,
-        start_date: start_date,
-        rental_days: rental_days
-      })
-    })
-      .then(response => response.json())
-      .then(data => {
-        if (!data.success) {
-          nextBtn.disabled = true
-          alert(data.message || "خطا در بررسی موجودی")
-          return
-        }
+    const startDateInput = step1Form.querySelector("input[name='start_date']")
+    const rentalDaysInput = step1Form.querySelector("input[name='rental_days']")
 
-        if (data.available) {
-          endDateField.value = formatJalaliDate(data.end_date) || ""
-          eventDateField.value = formatJalaliDate(data.event_date) || ""
+    const eventDateField = document.getElementById("event_date")
+    const endDateField = document.getElementById("end_date")
+    const rentPriceField = document.getElementById("rent_price")
+    const remainingAmountField = document.getElementById("remaining_amount")
 
-          rentPrice = parseFloat(data.rent_price) || 0
-          rentPriceField.value = formatCurrency(rentPrice)
-          if (remainingAmountField) {
-            remainingAmountField.value = formatCurrency(rentPrice)
+    const depositInput = step2Form.querySelector("input[name='deposit_amount']")
+    const discountInput = step2Form.querySelector("input[name='discount_amount']")
+    const discountTypeSelect = step2Form.querySelector("select[name='discount_type']")
+    const discountValueInput = step2Form.querySelector("input[name='discount_value']")
+
+    let rentPrice = 0
+
+    function getCookie(name) {
+      let cookieValue = null
+      if (document.cookie && document.cookie !== "") {
+        const cookies = document.cookie.split(";")
+        for (let i = 0; i < cookies.length; i++) {
+          const cookie = cookies[i].trim()
+          if (cookie.substring(0, name.length + 1) === name + "=") {
+            cookieValue = decodeURIComponent(cookie.substring(name.length + 1))
+            break
           }
-          nextBtn.disabled = false
-        } else {
-          nextBtn.disabled = true
-          alert(data.message || "این لباس در این بازه زمانی رزرو شده است.")
         }
-      })
-      .catch(error => {
-        console.error("Availability check error:", error)
-        nextBtn.disabled = true
-      })
-  }
-
-  function saveReservationStepOne() {
-    const formData = new URLSearchParams({
-      customer: customerSelect.value,
-      dress: dressSelect.value,
-      start_date: startDateInput.value,
-      rental_days: rentalDaysInput.value
-    })
-
-    return fetch("/reservations/step-one/", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/x-www-form-urlencoded",
-        "X-CSRFToken": getCookie("csrftoken"),
-        "X-Requested-With": "XMLHttpRequest"
-      },
-      body: formData
-    }).then(response => response.json())
-  }
-
-  customerSelect.addEventListener("change", checkAvailability)
-  dressSelect.addEventListener("change", checkAvailability)
-  startDateInput.addEventListener("change", checkAvailability)
-  startDateInput.addEventListener("input", checkAvailability)
-  rentalDaysInput.addEventListener("input", checkAvailability)
-
-  if (depositInput) depositInput.addEventListener("input", calculateRemaining)
-  if (discountInput) discountInput.addEventListener("input", calculateRemaining)
-  if (discountTypeSelect) discountTypeSelect.addEventListener('change', calculateRemaining)
-  if (discountValueInput) discountValueInput.addEventListener('input', calculateRemaining)
-
-  nextBtn.addEventListener("click", function () {
-    saveReservationStepOne().then(data => {
-      if (data.success) {
-        const bsStep1 = bootstrap.Modal.getInstance(createStep1ModalElement)
-        if (bsStep1) {
-          bsStep1.hide()
-        }
-        const bsStep2 = new bootstrap.Modal(createStep2ModalElement)
-        bsStep2.show()
-      } else {
-        let message = data.message || ""
-        if (data.errors) {
-          message = Object.values(data.errors).flat().join("\n")
-        }
-        alert(message || "مرحله اول به درستی ثبت نشد.")
       }
-    }).catch(error => {
-      console.error("Save step one error:", error)
-      alert("خطا در ذخیره اطلاعات مرحله اول.")
+      return cookieValue
+    }
+
+    function formatCurrency(value) {
+      if (Number.isNaN(value) || value === null) return ""
+      return Number(Math.round(value)).toLocaleString("en-US")
+    }
+
+    function formatJalaliDate(value) {
+      if (!value) return ""
+      const parsed = new Date(value)
+      if (Number.isNaN(parsed.getTime())) {
+        return value
+      }
+      return new Intl.DateTimeFormat("fa-IR-u-ca-persian", {
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit"
+      }).format(parsed)
+    }
+
+    function calculateRemaining() {
+      if (!depositInput) return
+
+      // Helper: read numeric value from a possibly-formatted input (commas, Persian digits)
+      const readNumber = (field) => {
+        if (!field) return 0
+        let v = field.value || ''
+        if (window.UIHelpers && typeof window.UIHelpers.normalizeDigits === 'function') {
+          v = window.UIHelpers.normalizeDigits(v)
+        }
+        v = v.toString().replace(/,/g, '')
+        const n = parseFloat(v)
+        return Number.isNaN(n) ? 0 : n
+      }
+
+      const deposit = readNumber(depositInput)
+
+      let discount = 0
+      if (discountTypeSelect && discountValueInput) {
+        const dtype = discountTypeSelect.value || 'NONE'
+        const dval = readNumber(discountValueInput)
+        if (dtype === 'AMOUNT') {
+          discount = dval
+        } else if (dtype === 'PERCENT') {
+          discount = Math.floor((rentPrice * (dval || 0)) / 100)
+        }
+      } else if (discountInput) {
+        discount = readNumber(discountInput)
+      }
+
+      let remaining = rentPrice - deposit - discount
+      if (remaining < 0) remaining = 0
+      if (remainingAmountField) {
+        remainingAmountField.value = formatCurrency(remaining)
+      }
+    }
+
+    function checkAvailability() {
+      const dress = dressSelect.value
+      const customer = customerSelect.value
+      const start_date = startDateInput.value
+      const rental_days = rentalDaysInput.value
+
+      if (!dress || !customer || !start_date || !rental_days) {
+        nextBtn.disabled = true
+        return
+      }
+
+      fetch("/reservations/check-availability/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-CSRFToken": getCookie("csrftoken"),
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        body: new URLSearchParams({
+          customer_id: customer,
+          dress_id: dress,
+          start_date: start_date,
+          rental_days: rental_days
+        })
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (!data.success) {
+            nextBtn.disabled = true
+            alert(data.message || "خطا در بررسی موجودی")
+            return
+          }
+
+          if (data.available) {
+            endDateField.value = formatJalaliDate(data.end_date) || ""
+            eventDateField.value = formatJalaliDate(data.event_date) || ""
+
+            rentPrice = parseFloat(data.rent_price) || 0
+            rentPriceField.value = formatCurrency(rentPrice)
+            if (remainingAmountField) {
+              remainingAmountField.value = formatCurrency(rentPrice)
+            }
+            nextBtn.disabled = false
+          } else {
+            nextBtn.disabled = true
+            alert(data.message || "این لباس در این بازه زمانی رزرو شده است.")
+          }
+        })
+        .catch(error => {
+          console.error("Availability check error:", error)
+          nextBtn.disabled = true
+        })
+    }
+
+    function saveReservationStepOne() {
+      const formData = new URLSearchParams({
+        customer: customerSelect.value,
+        dress: dressSelect.value,
+        start_date: startDateInput.value,
+        rental_days: rentalDaysInput.value
+      })
+
+      return fetch("/reservations/step-one/", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/x-www-form-urlencoded",
+          "X-CSRFToken": getCookie("csrftoken"),
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        body: formData
+      }).then(response => response.json())
+    }
+
+    customerSelect.addEventListener("change", checkAvailability)
+    dressSelect.addEventListener("change", checkAvailability)
+    startDateInput.addEventListener("change", checkAvailability)
+    startDateInput.addEventListener("input", checkAvailability)
+    rentalDaysInput.addEventListener("input", checkAvailability)
+
+    if (depositInput) depositInput.addEventListener("input", calculateRemaining)
+    if (discountInput) discountInput.addEventListener("input", calculateRemaining)
+    if (discountTypeSelect) discountTypeSelect.addEventListener('change', calculateRemaining)
+    if (discountValueInput) discountValueInput.addEventListener('input', calculateRemaining)
+
+    nextBtn.addEventListener("click", function () {
+      saveReservationStepOne().then(data => {
+        if (data.success) {
+          const bsStep1 = bootstrap.Modal.getInstance(createStep1ModalElement)
+          if (bsStep1) {
+            bsStep1.hide()
+          }
+          const bsStep2 = new bootstrap.Modal(createStep2ModalElement)
+          bsStep2.show()
+        } else {
+          let message = data.message || ""
+          if (data.errors) {
+            message = Object.values(data.errors).flat().join("\n")
+          }
+          alert(message || "مرحله اول به درستی ثبت نشد.")
+        }
+      }).catch(error => {
+        console.error("Save step one error:", error)
+        alert("خطا در ذخیره اطلاعات مرحله اول.")
+      })
     })
-  })
 
   if (backBtn) {
     backBtn.addEventListener("click", function () {
@@ -301,9 +311,13 @@ document.addEventListener('DOMContentLoaded', function () {
             submitBtn.classList.remove('disabled')
           }
         })
-    })
+      })
+    }
+
+    checkAvailability()
   }
 
-  checkAvailability()
+  // Initialize the form
+  initializeReservationForm()
 })
 </script>

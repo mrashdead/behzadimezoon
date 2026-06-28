@@ -32,10 +32,21 @@ class DressListView(ListView):
     context_object_name = 'dresses'
     paginate_by = 20
 
+    def get_queryset(self):
+        queryset = super().get_queryset()
+        search_query = self.request.GET.get('search', '').strip()
+
+        if search_query:
+            # Search by product code (primary search field)
+            queryset = queryset.filter(code__icontains=search_query)
+
+        return queryset
+
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['page_title'] = 'محصولات'
         context['form'] = DressForm()
+        context['search_query'] = self.request.GET.get('search', '')
         user = self.request.user
         can_create_product = user.is_authenticated and (
             user.is_superuser or getattr(user, 'role', None) in ['SUPER_ADMIN', 'MANAGER', 'SELLER']

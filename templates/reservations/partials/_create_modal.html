@@ -20,12 +20,7 @@
                     <div class="row align-items-center mb-3">
                       <label class="col-sm-3 text-sm-end col-form-label">مشتری</label>
                       <div class="col-sm-9">
-                        <select name="customer" class="form-control" required>
-                          <option value="">انتخاب مشتری</option>
-                          {% for customer in customers %}
-                          <option value="{{ customer.id }}">{{ customer }}</option>
-                          {% endfor %}
-                        </select>
+                        <div id="customerSearchContainer" data-field-name="customer" data-required="true" class="search-container"></div>
                       </div>
                     </div>
                   </div>
@@ -34,12 +29,7 @@
                     <div class="row align-items-center mb-3">
                       <label class="col-sm-3 text-sm-end col-form-label">لباس</label>
                       <div class="col-sm-9">
-                        <select name="dress" class="form-control" required>
-                          <option value="">انتخاب لباس</option>
-                          {% for dress in dresses %}
-                          <option value="{{ dress.id }}">{{ dress }}</option>
-                          {% endfor %}
-                        </select>
+                        <div id="dressSearchContainer" data-field-name="dress" data-required="true" class="search-container"></div>
                       </div>
                     </div>
                   </div>
@@ -239,3 +229,42 @@
   </div>
 </div>
 
+<script>
+// Initialize searchable selects for customers and dresses
+document.addEventListener('DOMContentLoaded', function() {
+    // Prepare customer data
+    const customersData = [
+        {% for customer in customers %}
+        {
+            id: {{ customer.id }},
+            name: '{{ customer.bride_first_name }} {{ customer.bride_last_name }}'
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    // Prepare dresses data
+    const dressesData = [
+        {% for dress in dresses %}
+        {
+            id: {{ dress.id }},
+            name: '{{ dress.code }}'
+        }{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+
+    // Initialize searchable selects (only if data exists)
+    if (customersData.length > 0 && typeof SearchableSelect !== 'undefined') {
+        new SearchableSelect('customerSearchContainer', customersData, {
+            searchPlaceholder: 'نام عروس، نام داماد یا شماره تماس را جستجو کنید...',
+            noResultsMessage: 'هیچ مشتری‌ای پیدا نشد.'
+        });
+    }
+
+    if (dressesData.length > 0 && typeof SearchableSelect !== 'undefined') {
+        new SearchableSelect('dressSearchContainer', dressesData, {
+            searchPlaceholder: 'کد لباس را جستجو کنید...',
+            noResultsMessage: 'هیچ لباسی پیدا نشد.'
+        });
+    }
+});
+</script>

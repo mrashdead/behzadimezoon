@@ -24,6 +24,45 @@
     </div>
     <div class="card border-0 shadow-sm customer-list-card">
     <div class="card-body">
+        <!-- Search Section -->
+        <div class="mb-3 pb-3 border-bottom">
+            <form method="GET" class="row align-items-center" id="searchForm">
+                <div class="col-md-9">
+                    <div class="row align-items-center">
+                        <label class="col-sm-3 text-sm-end col-form-label">جستجو</label>
+                        <div class="col-sm-9">
+                            <input
+                                type="text"
+                                name="search"
+                                class="form-control"
+                                placeholder="کد لباس را جستجو کنید..."
+                                value="{{ search_query }}"
+                            />
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3 d-flex gap-2 justify-content-end">
+                    <button type="submit" class="btn btn-primary btn-sm">
+                        <i class="fi fi-rr-search me-1"></i>
+                        جستجو
+                    </button>
+                    {% if search_query %}
+                    <a href="{% url 'products:list' %}" class="btn btn-secondary btn-sm">
+                        <i class="fi fi-rr-delete me-1"></i>
+                        پاک کردن
+                    </a>
+                    {% endif %}
+                </div>
+            </form>
+            {% if search_query %}
+            <div class="mt-2">
+                <small class="text-muted">
+                    نتایج جستجو برای: <strong>{{ search_query }}</strong>
+                </small>
+            </div>
+            {% endif %}
+        </div>
+
         <div class="table-responsive customer-table-wrap">
             <table class="table table-sm table-row-rounded data-row-checkbox align-middle mb-0 customer-mobile-table" id="dt_DressList">
                 <thead class="table-light">
@@ -146,7 +185,12 @@
                     {% empty %}
                         <tr>
                             <td colspan="5" class="text-center py-4 text-muted">
+                                {% if search_query %}
+                                <i class="fi fi-rr-circle-exclamation me-2"></i>
+                                نتیجه‌ای برای جستجوی «{{ search_query }}» پیدا نشد.
+                                {% else %}
                                 هنوز هیچ محصولی ثبت نشده است.
+                                {% endif %}
                             </td>
                         </tr>
                     {% endfor %}
