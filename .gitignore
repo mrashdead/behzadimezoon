@@ -12,10 +12,12 @@ env/
 # Django
 db.sqlite3
 db.sqlite3-journal
-
+data.json
+db.sqlite3.bak
 # Environment variables
 .env
 .env.*
+
 
 # IDE
 .vscode/
