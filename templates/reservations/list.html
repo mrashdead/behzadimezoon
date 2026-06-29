@@ -12,7 +12,7 @@
     <div>
       <h6 class="mb-0">لیست رزروها</h6>
     </div>
-    <div>
+    <div class="d-flex gap-2">
       {% if can_create_reservation %}
       <button
         type="button"
@@ -24,6 +24,10 @@
         رزرو جدید
       </button>
       {% endif %}
+      <a href="{% url 'reservations:archive' %}" class="btn btn-outline-secondary">
+        <i class="fi fi-rr-archive me-1"></i>
+        آرشیو رزروها
+      </a>
     </div>
   </div>
 
@@ -62,6 +66,8 @@
                   <span class="badge bg-success-subtle text-success">{{ reservation.get_status_display }}</span>
                 {% elif reservation.status == 'CANCELLED' %}
                   <span class="badge bg-danger-subtle text-danger">{{ reservation.get_status_display }}</span>
+                {% elif reservation.status == 'ARCHIVED' %}
+                  <span class="badge bg-secondary-subtle text-secondary">{{ reservation.get_status_display }}</span>
                 {% elif reservation.status == 'DRAFT' %}
                   <span class="badge bg-light-subtle text-dark">{{ reservation.get_status_display }}</span>
                 {% else %}
@@ -139,12 +145,22 @@
                   {% if can_delete_reservation and 'CANCELLED' in reservation.allowed_transitions %}
                   <button
                     type="button"
-                    class="btn btn-subtle-danger btn-sm btn-shadow btn-icon waves-effect me-1"
+                    class="btn btn-subtle-warning btn-sm btn-shadow btn-icon waves-effect me-1"
                     data-bs-toggle="modal"
                     data-bs-target="#deleteReservationModal{{ reservation.id }}"
                     title="لغو"
                   >
-                   <i class="fi fi-rr-cross-circle"></i>
+                   <i class="fi fi-rr-ban"></i>
+                  </button>
+                  {% elif can_delete_reservation and 'ARCHIVED' in reservation.allowed_transitions %}
+                  <button
+                    type="button"
+                    class="btn btn-subtle-danger btn-sm btn-shadow btn-icon waves-effect me-1"
+                    data-bs-toggle="modal"
+                    data-bs-target="#deleteReservationModal{{ reservation.id }}"
+                    title="آرشیو"
+                  >
+                   <i class="fi fi-rr-archive"></i>
                   </button>
                   {% endif %}
                 </div>
@@ -214,9 +230,17 @@
                     {% if can_delete_reservation and 'CANCELLED' in reservation.allowed_transitions %}
                     <li><hr class="dropdown-divider opacity-50"></li>
                     <li>
-                      <button class="dropdown-item py-2 d-flex align-items-center gap-2 text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteReservationModal{{ reservation.id }}">
-                        <i class="fi fi-rr-cross-circle"></i>
+                      <button class="dropdown-item py-2 d-flex align-items-center gap-2 text-warning" type="button" data-bs-toggle="modal" data-bs-target="#deleteReservationModal{{ reservation.id }}">
+                        <i class="fi fi-rr-ban"></i>
                         <span>لغو رزرو</span>
+                      </button>
+                    </li>
+                    {% elif can_delete_reservation and 'ARCHIVED' in reservation.allowed_transitions %}
+                    <li><hr class="dropdown-divider opacity-50"></li>
+                    <li>
+                      <button class="dropdown-item py-2 d-flex align-items-center gap-2 text-danger" type="button" data-bs-toggle="modal" data-bs-target="#deleteReservationModal{{ reservation.id }}">
+                        <i class="fi fi-rr-archive"></i>
+                        <span>آرشیو رزرو</span>
                       </button>
                     </li>
                     {% endif %}
@@ -253,7 +277,7 @@
 {% include 'reservations/partials/_damage_return_modal.html' with form=damage_return_form %}
 {% endif %}
 
-{% if can_delete_reservation %}
+{% if can_delete_reservation and 'CANCELLED' in reservation.allowed_transitions or can_delete_reservation and 'ARCHIVED' in reservation.allowed_transitions %}
 {% include 'reservations/partials/_delete_modal.html' %}
 {% endif %}
 

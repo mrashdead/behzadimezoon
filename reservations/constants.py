@@ -9,6 +9,7 @@ class ReservationStatus:
     LAUNDRY = "LAUNDRY"
     READY = "READY"
     CANCELLED = "CANCELLED"
+    ARCHIVED = "ARCHIVED"
 
     CHOICES = (
         (DRAFT, "پیش‌نویس"),
@@ -18,6 +19,7 @@ class ReservationStatus:
         (LAUNDRY, "ارسال شده به خشکشویی"),
         (READY, "آماده و آزاد"),
         (CANCELLED, "لغو شده"),
+        (ARCHIVED, "آرشیو شده"),
     )
 
 

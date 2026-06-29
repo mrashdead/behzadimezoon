@@ -8,7 +8,7 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.utils.dateparse import parse_date
 from django.utils import timezone
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, PermissionDenied
 from django.shortcuts import render, get_object_or_404, redirect
 import jdatetime
 from .utils import parse_reservation_date, get_reservations_for_user, date_to_iso
@@ -60,11 +60,11 @@ def user_owns_reservation(user, reservation):
 @login_required
 def reservation_list(request):
 
-    # Filter reservations based on user role
+    # Filter reservations based on user role and hide archived items from the active list.
     reservations = get_reservations_for_user(request.user).select_related(
         "customer",
         "dress"
-    )
+    ).exclude(status=ReservationStatus.ARCHIVED)
 
     # Avoid selecting newly added DB columns until migrations are applied
     # This prevents template rendering errors when the DB schema is not migrated yet.
@@ -84,6 +84,34 @@ def reservation_list(request):
     return render(
         request,
         "reservations/list.html",
+        context
+    )
+
+
+@login_required
+def reservation_archive_list(request):
+    reservations = get_reservations_for_user(request.user).select_related(
+        "customer",
+        "dress"
+    ).filter(status=ReservationStatus.ARCHIVED)
+
+    reservations = reservations.defer('discount_type', 'discount_value', 'discount_amount', 'refunded_amount')
+
+    context = {
+        "reservations": reservations,
+        "page_title": "آرشیو رزروها",
+        "archive_mode": True,
+        "can_create_reservation": can_create_reservation(request.user),
+        "can_edit_reservation": False,
+        "can_delete_reservation": False,
+        "can_change_reservation_status": False,
+        "can_restore_reservation": request.user.is_superuser,
+        "damage_return_form": DamageReturnForm(),
+    }
+
+    return render(
+        request,
+        "reservations/archive_list.html",
         context
     )
 
@@ -612,15 +640,62 @@ def reservation_edit(request, pk):
 
 @login_required
 @require_POST
-def reservation_delete(request, pk):
+def reservation_archive(request, pk):
 
     if not can_delete_reservation(request.user):
         return HttpResponseForbidden()
 
     reservation = get_object_or_404(Reservation, pk=pk)
 
-    # Sellers cannot delete (manager-only operation)
+    # Sellers cannot archive (manager-only operation)
     if request.user.role == "SELLER":
+        return HttpResponseForbidden()
+
+    try:
+        ReservationStatusService.change_status(
+            reservation,
+            ReservationStatus.ARCHIVED,
+            request.user
+        )
+    except ValueError as exc:
+        error_message = str(exc) or "این رزرو در وضعیت حاضر قابل آرشیو نیست."
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({
+                "success": False,
+                "message": error_message
+            }, status=400)
+
+        messages.error(request, error_message)
+        return redirect("reservations:list")
+
+    success_message = "رزرو با موفقیت آرشیو شد."
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JsonResponse({
+            "success": True,
+            "message": success_message
+        })
+
+    messages.success(request, success_message)
+    return redirect("reservations:list")
+
+
+@login_required
+@require_POST
+def reservation_cancel(request, pk):
+
+    if not can_delete_reservation(request.user):
+        return HttpResponseForbidden()
+
+    reservation = get_object_or_404(Reservation, pk=pk)
+
+    if reservation.status in [
+        ReservationStatus.DELIVERED,
+        ReservationStatus.RETURNED,
+        ReservationStatus.LAUNDRY,
+        ReservationStatus.READY,
+        ReservationStatus.CANCELLED,
+        ReservationStatus.ARCHIVED,
+    ]:
         return HttpResponseForbidden()
 
     try:
@@ -650,6 +725,38 @@ def reservation_delete(request, pk):
     messages.success(request, success_message)
     return redirect("reservations:list")
 
+
+@login_required
+@require_POST
+def reservation_restore(request, pk):
+
+    if not request.user.is_superuser:
+        return HttpResponseForbidden()
+
+    reservation = get_object_or_404(Reservation, pk=pk)
+
+    try:
+        ReservationStatusService.restore(reservation, request.user)
+    except (ValidationError, PermissionDenied) as exc:
+        error_message = str(exc) or "بازگردانی رزرو امکان‌پذیر نیست."
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({
+                "success": False,
+                "message": error_message
+            }, status=400)
+
+        messages.error(request, error_message)
+        return redirect("reservations:archive")
+
+    success_message = "رزرو با موفقیت بازگردانی شد."
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JsonResponse({
+            "success": True,
+            "message": success_message
+        })
+
+    messages.success(request, success_message)
+    return redirect("reservations:archive")
 
 
 @login_required

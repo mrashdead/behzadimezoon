@@ -10,7 +10,11 @@ from reservations.constants import ReservationStatus
 
 
 def create_user(username, role, password='password123'):
-    return User.objects.create_user(username=username, password=password, role=role)
+    extra_fields = {'role': role}
+    if role == 'SUPER_ADMIN':
+        extra_fields['is_superuser'] = True
+        extra_fields['is_staff'] = True
+    return User.objects.create_user(username=username, password=password, **extra_fields)
 
 
 class ReservationStatusTransitionTests(TestCase):
@@ -303,7 +307,7 @@ class ReservationStatusTransitionTests(TestCase):
         self.assertIsNone(reservation.damage_amount)
         self.assertEqual(reservation.damage_notes, '')
 
-    def test_cannot_cancel_if_already_cancelled_or_returned(self):
+    def test_manager_can_archive_returned_reservation(self):
         reservation = Reservation.objects.create(
             customer=self.customer,
             dress=self.dress,
@@ -323,13 +327,198 @@ class ReservationStatusTransitionTests(TestCase):
         )
 
         self.client.login(username='admin_user', password='password123')
-        delete_url = reverse('reservations:delete', args=[reservation.pk])
-        response = self.client.post(delete_url, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
-        self.assertEqual(response.status_code, 400)
+        archive_url = reverse('reservations:archive_action', args=[reservation.pk])
+        response = self.client.post(archive_url, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, {
-            "success": False,
-            "message": "انتقال وضعیت از بازگشت از مشتری به لغو شده مجاز نیست."
+            "success": True,
+            "message": "رزرو با موفقیت آرشیو شد."
         })
+
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, ReservationStatus.ARCHIVED)
+        self.assertIsNotNone(reservation.archived_at)
+        self.assertEqual(reservation.archived_by, self.admin)
+        self.assertEqual(reservation.previous_status, ReservationStatus.RETURNED)
+
+    def test_superuser_can_restore_archived_reservation(self):
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.ARCHIVED,
+            previous_status=ReservationStatus.CONFIRMED,
+            archived_at=jdatetime.datetime(1402, 1, 5, 12, 0, 0),
+            archived_by=self.admin,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=50000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.admin
+        )
+
+        self.client.login(username='admin_user', password='password123')
+        restore_url = reverse('reservations:restore', args=[reservation.pk])
+        response = self.client.post(restore_url, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, {
+            "success": True,
+            "message": "رزرو با موفقیت بازگردانی شد."
+        })
+
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, ReservationStatus.CONFIRMED)
+        self.assertIsNone(reservation.previous_status)
+        self.assertIsNone(reservation.archived_at)
+        self.assertIsNone(reservation.archived_by)
+
+    def test_non_superuser_cannot_restore_archived_reservation(self):
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.ARCHIVED,
+            previous_status=ReservationStatus.CONFIRMED,
+            archived_at=jdatetime.datetime(1402, 1, 5, 12, 0, 0),
+            archived_by=self.admin,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=50000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        restore_url = reverse('reservations:restore', args=[reservation.pk])
+        response = self.client.post(restore_url)
+        self.assertEqual(response.status_code, 403)
+
+    def test_restore_archived_record_without_previous_status_uses_status_logs(self):
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.ARCHIVED,
+            archived_at=jdatetime.datetime(1402, 1, 5, 12, 0, 0),
+            archived_by=self.admin,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=50000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.admin
+        )
+        reservation.status_logs.create(
+            old_status=ReservationStatus.CONFIRMED,
+            new_status=ReservationStatus.ARCHIVED,
+            changed_by=self.admin
+        )
+
+        self.client.login(username='admin_user', password='password123')
+        restore_url = reverse('reservations:restore', args=[reservation.pk])
+        response = self.client.post(restore_url, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, {
+            "success": True,
+            "message": "رزرو با موفقیت بازگردانی شد."
+        })
+
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, ReservationStatus.CONFIRMED)
+        self.assertIsNone(reservation.previous_status)
+        self.assertIsNone(reservation.archived_at)
+        self.assertIsNone(reservation.archived_by)
+
+    def test_restore_archived_reservation_with_final_previous_status_is_rejected(self):
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.ARCHIVED,
+            previous_status=ReservationStatus.RETURNED,
+            archived_at=jdatetime.datetime(1402, 1, 5, 12, 0, 0),
+            archived_by=self.admin,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=50000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.admin
+        )
+
+        self.client.login(username='admin_user', password='password123')
+        restore_url = reverse('reservations:restore', args=[reservation.pk])
+        response = self.client.post(restore_url, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("این رزرو قبلاً نهایی شده و امکان بازگردانی ندارد.", response.json().get("message", ""))
+
+    def test_restore_archived_reservation_when_dress_unavailable_is_rejected(self):
+        Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=50000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY999',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G9',
+            created_by=self.manager
+        )
+
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.ARCHIVED,
+            previous_status=ReservationStatus.CONFIRMED,
+            archived_at=jdatetime.datetime(1402, 1, 5, 12, 0, 0),
+            archived_by=self.admin,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=50000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY1000',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G10',
+            created_by=self.admin
+        )
+
+        self.client.login(username='admin_user', password='password123')
+        restore_url = reverse('reservations:restore', args=[reservation.pk])
+        response = self.client.post(restore_url, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("این محصول در بازه زمانی رزرو شده و امکان بازگردانی وجود ندارد.", response.json().get("message", ""))
 
     def test_duplicate_reservation_request_is_rejected(self):
         self.client.login(username='manager_user', password='password123')
@@ -420,7 +609,7 @@ class ReservationStatusTransitionTests(TestCase):
         )
 
         self.client.login(username='seller_user', password='password123')
-        delete_url = reverse('reservations:delete', args=[reservation.pk])
+        delete_url = reverse('reservations:archive_action', args=[reservation.pk])
         response = self.client.post(delete_url)
         self.assertEqual(response.status_code, 403)
 

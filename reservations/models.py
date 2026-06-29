@@ -202,6 +202,14 @@ class Reservation(models.Model):
         verbose_name="وضعیت رزرو"
     )
 
+    previous_status = models.CharField(
+        max_length=20,
+        choices=ReservationStatus.CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="وضعیت قبلی"
+    )
+
     # Payment status is separate from reservation status and is important
     # for financial auditing and queries.
     PAYMENT_UNPAID = 'UNPAID'
@@ -264,6 +272,21 @@ class Reservation(models.Model):
         null=True,
         blank=True,
         verbose_name="تاریخ لغو"
+    )
+
+    archived_at = jmodels.jDateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="تاریخ آرشیو"
+    )
+
+    archived_by = models.ForeignKey(
+        User,
+        null=True,
+        blank=True,
+        on_delete=models.PROTECT,
+        related_name="archived_reservations",
+        verbose_name="آرشیو کننده"
     )
 
     cancellation_fee = models.PositiveIntegerField(
@@ -356,6 +379,19 @@ class Reservation(models.Model):
     @property
     def outstanding_balance(self):
         return self.remaining_amount or 0
+
+    def has_financial_activity(self):
+        return any(
+            [
+                (self.deposit_amount or 0) > 0,
+                (self.remaining_payment_amount or 0) > 0,
+                (self.refunded_amount or 0) > 0,
+                (self.damage_amount or 0) > 0,
+            ]
+        )
+
+    def can_be_permanently_deleted(self):
+        return not self.has_financial_activity()
 
     def clean(self):
         if self.discount_amount is None:

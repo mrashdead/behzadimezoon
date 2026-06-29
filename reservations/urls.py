@@ -4,6 +4,7 @@ from django.urls import path
 
 from .views import (
     reservation_list,
+    reservation_archive_list,
     reservation_step_one,
     reservation_create,
     reservation_detail,
@@ -13,7 +14,9 @@ from .views import (
     reservation_mark_ready,
     reservation_finalize_delivery,
     reservation_edit,
-    reservation_delete,
+    reservation_archive,
+    reservation_cancel,
+    reservation_restore,
     check_availability,
 )
 
@@ -100,8 +103,23 @@ urlpatterns = [
 
     # cancel reservation
     path(
-        "<int:pk>/delete/",
-        reservation_delete,
-        name="delete"
+        "<int:pk>/archive/",
+        reservation_archive,
+        name="archive_action"
+    ),
+    path(
+        "<int:pk>/cancel/",
+        reservation_cancel,
+        name="cancel_action"
+    ),
+    path(
+        "<int:pk>/restore/",
+        reservation_restore,
+        name="restore"
+    ),
+    path(
+        "archive/",
+        reservation_archive_list,
+        name="archive"
     ),
 ]

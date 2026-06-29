@@ -19,12 +19,18 @@ class ReservationStateMachine:
         ],
         ReservationStatus.RETURNED: [
             ReservationStatus.LAUNDRY,
+            ReservationStatus.ARCHIVED,
         ],
         ReservationStatus.LAUNDRY: [
             ReservationStatus.READY,
         ],
-        ReservationStatus.READY: [],
-        ReservationStatus.CANCELLED: [],
+        ReservationStatus.READY: [
+            ReservationStatus.ARCHIVED,
+        ],
+        ReservationStatus.CANCELLED: [
+            ReservationStatus.ARCHIVED,
+        ],
+        ReservationStatus.ARCHIVED: [],
     }
 
     @classmethod

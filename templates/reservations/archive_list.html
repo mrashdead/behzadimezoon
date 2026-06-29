@@ -1,0 +1,93 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load jalali_tags %}
+{% load jformat %}
+
+{% block title %}
+آرشیو رزروها
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="app-page-head d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
+    <div>
+      <h6 class="mb-0">آرشیو رزروها</h6>
+      <p class="text-muted small mb-0">رزروهایی که به‌دلایل مالی یا حفاظتی آرشیو شده‌اند.</p>
+    </div>
+    <div>
+      <a href="{% url 'reservations:list' %}" class="btn btn-light">
+        <i class="fi fi-rr-arrow-left me-1"></i>
+        بازگشت به لیست فعال
+      </a>
+    </div>
+  </div>
+
+  <div class="card border-0 shadow-sm customer-list-card">
+    <div class="card-body">
+      <div class="table-responsive customer-table-wrap">
+        <table class="table table-sm table-row-rounded data-row-checkbox align-middle mb-0 customer-mobile-table">
+          <thead class="table-light">
+            <tr>
+              <th>مشتری</th>
+              <th>لباس</th>
+              <th>شروع اجاره</th>
+              <th>پایان اجاره</th>
+              <th>مبلغ نهایی</th>
+              <th>بیعانه</th>
+              <th>باقی مانده</th>
+              <th>عودت/خسارت</th>
+              <th>وضعیت</th>
+              <th class="text-end">عملیات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for reservation in reservations %}
+            <tr>
+              <td data-label="مشتری">{{ reservation.customer }}</td>
+              <td data-label="لباس">{{ reservation.dress }}</td>
+              <td data-label="شروع اجاره">{{ reservation.start_date|jformat:"%Y/%m/%d" }}</td>
+              <td data-label="پایان اجاره">{{ reservation.end_date|jformat:"%Y/%m/%d" }}</td>
+              <td data-label="مبلغ نهایی">{{ reservation.final_price|intcomma }} تومان</td>
+              <td data-label="بیعانه">{{ reservation.deposit_amount|intcomma }} تومان</td>
+              <td data-label="باقی مانده">{{ reservation.remaining_amount|intcomma }} تومان</td>
+              <td data-label="عودت/خسارت">
+                {% if reservation.refunded_amount > 0 %}
+                  <span class="text-info">عودت {{ reservation.refunded_amount|intcomma }} تومان</span><br>
+                {% endif %}
+                {% if reservation.damage_amount > 0 %}
+                  <span class="text-danger">خسارت {{ reservation.damage_amount|intcomma }} تومان</span>
+                {% endif %}
+                {% if reservation.refunded_amount == 0 and reservation.damage_amount == 0 %}
+                  <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+              <td data-label="وضعیت">
+                <span class="badge bg-secondary-subtle text-secondary">{{ reservation.get_status_display }}</span>
+              </td>
+              <td data-label="عملیات" class="text-end">
+                {% if can_restore_reservation %}
+                <form method="post" action="{% url 'reservations:restore' reservation.pk %}" class="d-inline">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-subtle-primary btn-sm btn-shadow btn-icon waves-effect" title="بازگردانی">
+                    <i class="fi fi-rr-rotate-left"></i>
+                  </button>
+                </form>
+                {% else %}
+                <span class="text-muted">—</span>
+                {% endif %}
+              </td>
+            </tr>
+            {% empty %}
+            <tr>
+              <td colspan="10" class="text-center py-4">هیچ رزروی در آرشیو وجود ندارد.</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  {% include 'partials/pagination.html' %}
+</div>
+{% endblock %}

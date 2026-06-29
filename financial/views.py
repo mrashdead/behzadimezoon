@@ -17,7 +17,7 @@ class FinancialListView(TemplateView):
 
         all_reservations = Reservation.objects.all()
         active_reservations = all_reservations.exclude(
-            status=ReservationStatus.CANCELLED
+            status__in=[ReservationStatus.CANCELLED, ReservationStatus.ARCHIVED]
         )
 
         try:
@@ -95,6 +95,7 @@ class FinancialListView(TemplateView):
 
         context['recent_reservations'] = (
             Reservation.objects.select_related('customer', 'dress', 'created_by')
+            .exclude(status__in=[ReservationStatus.CANCELLED, ReservationStatus.ARCHIVED])
             .order_by('-created_at')[:10]
         )
         return context

@@ -2,17 +2,36 @@
   <div class="modal-dialog modal-dialog-centered">
     <div class="modal-content">
       <div class="modal-header">
+        {% if 'CANCELLED' in reservation.allowed_transitions %}
         <h5 class="modal-title">لغو رزرو</h5>
+        {% elif 'ARCHIVED' in reservation.allowed_transitions %}
+        <h5 class="modal-title">آرشیو رزرو</h5>
+        {% else %}
+        <h5 class="modal-title">تغییر وضعیت رزرو</h5>
+        {% endif %}
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
       </div>
       <div class="modal-body">
-        <p class="mb-2">آیا از لغو این رزرو برای مشتری «{{ reservation.customer }}» و لباس «{{ reservation.dress }}» مطمئن هستید؟</p>
+        {% if 'CANCELLED' in reservation.allowed_transitions %}
+        <p class="mb-2">این رزرو از لیست فعال خارج می‌شود و وضعیت آن به «لغو» تغییر می‌کند.</p>
+        {% elif 'ARCHIVED' in reservation.allowed_transitions %}
+        <p class="mb-2">این رزرو از لیست فعال خارج می‌شود و برای حفظ سوابق مالی به آرشیو منتقل خواهد شد.</p>
+        {% else %}
+        <p class="mb-2">این رزرو در وضعیت فعلی قابل تغییر نیست.</p>
+        {% endif %}
+        {% if reservation.deposit_amount > 0 or reservation.remaining_payment_amount > 0 or reservation.refunded_amount > 0 or reservation.damage_amount > 0 %}
+        <p class="small text-muted">رزروهای دارای پرداخت، عودت وجه یا خسارت به‌صورت دائمی حذف نمی‌شوند و فقط آرشیو می‌شوند.</p>
+        {% endif %}
       </div>
       <div class="modal-footer">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">انصراف</button>
-        <form method="post" action="{% url 'reservations:delete' reservation.pk %}">
+        <form method="post" action="{% if 'CANCELLED' in reservation.allowed_transitions %}{% url 'reservations:cancel_action' reservation.pk %}{% else %}{% url 'reservations:archive_action' reservation.pk %}{% endif %}">
           {% csrf_token %}
-          <button type="submit" class="btn btn-danger">بله، لغو شود</button>
+          {% if 'CANCELLED' in reservation.allowed_transitions %}
+          <button type="submit" class="btn btn-warning">بله، لغو شود</button>
+          {% else %}
+          <button type="submit" class="btn btn-danger">بله، آرشیو شود</button>
+          {% endif %}
         </form>
       </div>
     </div>
