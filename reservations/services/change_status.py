@@ -3,13 +3,29 @@
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.utils import timezone
 from django.db import transaction
-from reservations.services.state_machin import ReservationStateMachine
 from reservations.services.payment_guards import PaymentGuardService
 from reservations.services.availability_service import ReservationAvailabilityService
+from reservations.services.state_machin import ReservationStateMachine
 from reservations.constants import ReservationStatus
 
 
 class ReservationStatusService:
+
+    @staticmethod
+    def _status_only_update(reservation, update_data):
+        from reservations.models import Reservation
+
+        update_data = update_data.copy()
+        if 'archived_by' in update_data:
+            archived_by = update_data.pop('archived_by')
+            update_data['archived_by_id'] = archived_by.pk if archived_by is not None else None
+        if 'updated_by' in update_data:
+            updated_by = update_data.pop('updated_by')
+            update_data['updated_by_id'] = updated_by.pk if updated_by is not None else None
+
+        Reservation.objects.filter(pk=reservation.pk).update(**update_data)
+        reservation.refresh_from_db()
+        return reservation
 
     @staticmethod
     def change_status(reservation, new_status, user):
@@ -34,14 +50,25 @@ class ReservationStatusService:
             reservation.cancelled_at = timezone.now()
 
         if new_status == ReservationStatus.ARCHIVED:
-            # Only archive when reservation is already finalized or canceled.
             reservation.previous_status = old_status
             reservation.archived_at = timezone.now()
             reservation.archived_by = user
-
-        reservation.status = new_status
-        reservation.updated_by = user
-        reservation.save()
+            reservation.status = new_status
+            reservation.updated_by = user
+            reservation = ReservationStatusService._status_only_update(
+                reservation,
+                {
+                    'status': reservation.status,
+                    'previous_status': reservation.previous_status,
+                    'archived_at': reservation.archived_at,
+                    'archived_by': reservation.archived_by,
+                    'updated_by': reservation.updated_by,
+                }
+            )
+        else:
+            reservation.status = new_status
+            reservation.updated_by = user
+            reservation.save()
 
         # Create a status log entry for auditability.
         try:
@@ -54,7 +81,6 @@ class ReservationStatusService:
                 changed_by=user
             )
         except Exception:
-            # Logging must not break status change flow; swallow errors.
             pass
 
         return reservation
@@ -80,32 +106,14 @@ class ReservationStatusService:
         if reservation.status != ReservationStatus.ARCHIVED:
             raise ValidationError("رزرو در وضعیت آرشیو نیست.")
 
-        if not reservation.previous_status:
-            inferred_status = ReservationStatusService._infer_previous_status_from_logs(reservation)
-            if inferred_status:
-                reservation.previous_status = inferred_status
-                reservation.save(update_fields=['previous_status'])
-            else:
-                raise ValidationError("وضعیت قبلی رزرو نامشخص است.")
-
-        final_states = {
-            ReservationStatus.RETURNED,
-            ReservationStatus.LAUNDRY,
-            ReservationStatus.READY,
-        }
-
-        if reservation.previous_status in final_states:
-            raise ValidationError("این رزرو قبلاً نهایی شده و امکان بازگردانی ندارد.")
-
-        if reservation.previous_status in ReservationAvailabilityService.get_blocking_statuses():
-            available, _ = ReservationAvailabilityService.is_dress_available(
-                dress=reservation.dress,
-                start_date=reservation.start_date,
-                rental_days=reservation.rental_days,
-                exclude_reservation_id=reservation.id
-            )
-            if not available:
-                raise ValidationError("این محصول در بازه زمانی رزرو شده و امکان بازگردانی وجود ندارد.")
+        available, _ = ReservationAvailabilityService.is_dress_available(
+            dress=reservation.dress,
+            start_date=reservation.start_date,
+            rental_days=reservation.rental_days,
+            exclude_reservation_id=reservation.id
+        )
+        if not available:
+            raise ValidationError("این محصول در بازه زمانی رزرو شده و امکان بازگردانی وجود ندارد.")
 
     @staticmethod
     def restore(reservation, user):
@@ -114,15 +122,28 @@ class ReservationStatusService:
 
         ReservationStatusService.validate_restore(reservation)
 
+        restored_status = reservation.previous_status or ReservationStatusService._infer_previous_status_from_logs(reservation)
+        if not restored_status:
+            raise ValidationError("وضعیت قبلی رزرو نامشخص است.")
+
         old_status = reservation.status
-        reservation.status = reservation.previous_status
+        reservation.status = restored_status
         reservation.previous_status = None
         reservation.archived_at = None
         reservation.archived_by = None
         reservation.updated_by = user
 
         with transaction.atomic():
-            reservation.save()
+            reservation = ReservationStatusService._status_only_update(
+                reservation,
+                {
+                    'status': reservation.status,
+                    'previous_status': None,
+                    'archived_at': None,
+                    'archived_by': None,
+                    'updated_by': reservation.updated_by,
+                }
+            )
 
             try:
                 from reservations.models import ReservationStatusLog

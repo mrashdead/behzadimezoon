@@ -66,10 +66,18 @@
               </td>
               <td data-label="عملیات" class="text-end">
                 {% if can_restore_reservation %}
-                <form method="post" action="{% url 'reservations:restore' reservation.pk %}" class="d-inline">
+                <form method="post" action="{% url 'reservations:restore' reservation.pk %}" class="d-inline" title="بازگردانی رزرو آرشیو شده">
                   {% csrf_token %}
-                  <button type="submit" class="btn btn-subtle-primary btn-sm btn-shadow btn-icon waves-effect" title="بازگردانی">
+                  <button type="submit" class="btn btn-subtle-primary btn-sm btn-shadow btn-icon waves-effect" aria-label="بازگردانی رزرو آرشیو شده">
                     <i class="fi fi-rr-rotate-left"></i>
+                  </button>
+                </form>
+                {% endif %}
+                {% if request.user.is_superuser %}
+                <form method="post" action="{% url 'reservations:delete_permanent' reservation.pk %}" class="d-inline" title="حذف کامل رزرو (فقط سوپر‌یوزر)">
+                  {% csrf_token %}
+                  <button type="submit" class="btn btn-subtle-danger btn-sm btn-shadow btn-icon waves-effect" aria-label="حذف کامل رزرو">
+                    <i class="fi fi-rr-trash"></i>
                   </button>
                 </form>
                 {% else %}

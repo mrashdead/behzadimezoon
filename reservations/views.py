@@ -90,6 +90,9 @@ def reservation_list(request):
 
 @login_required
 def reservation_archive_list(request):
+    if not request.user.is_superuser:
+        return HttpResponseForbidden()
+
     reservations = get_reservations_for_user(request.user).select_related(
         "customer",
         "dress"
@@ -642,14 +645,10 @@ def reservation_edit(request, pk):
 @require_POST
 def reservation_archive(request, pk):
 
-    if not can_delete_reservation(request.user):
+    if not request.user.is_superuser:
         return HttpResponseForbidden()
 
     reservation = get_object_or_404(Reservation, pk=pk)
-
-    # Sellers cannot archive (manager-only operation)
-    if request.user.role == "SELLER":
-        return HttpResponseForbidden()
 
     try:
         ReservationStatusService.change_status(
@@ -754,6 +753,37 @@ def reservation_restore(request, pk):
             "success": True,
             "message": success_message
         })
+
+    messages.success(request, success_message)
+    return redirect("reservations:archive")
+
+
+@login_required
+@require_POST
+def reservation_delete_permanent(request, pk):
+
+    if not request.user.is_superuser:
+        return HttpResponseForbidden()
+
+    reservation = get_object_or_404(Reservation, pk=pk)
+
+    if reservation.status != ReservationStatus.ARCHIVED:
+        return HttpResponseForbidden()
+
+    try:
+        from reservations.services.archive_service import ReservationArchiveService
+
+        ReservationArchiveService.create_snapshot_and_delete(reservation, request.user)
+    except Exception:
+        error_message = "حذف کامل رزرو انجام نشد."
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "message": error_message}, status=500)
+        messages.error(request, error_message)
+        return redirect("reservations:archive")
+
+    success_message = "رزرو با موفقیت به‌صورت کامل حذف شد."
+    if request.headers.get("x-requested-with") == "XMLHttpRequest":
+        return JsonResponse({"success": True, "message": success_message})
 
     messages.success(request, success_message)
     return redirect("reservations:archive")

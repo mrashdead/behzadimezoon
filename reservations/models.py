@@ -391,7 +391,20 @@ class Reservation(models.Model):
         )
 
     def can_be_permanently_deleted(self):
-        return not self.has_financial_activity()
+        # If reservation has any on-record financial activity, block permanent deletion.
+        if self.has_financial_activity():
+            return False
+
+        # Also block permanent deletion if any related financial Transaction records exist.
+        # financial.Transaction defines related_name='transactions'.
+        try:
+            if hasattr(self, 'transactions') and self.transactions.exists():
+                return False
+        except Exception:
+            # Be conservative: if we can't verify, do not allow permanent deletion.
+            return False
+
+        return True
 
     def clean(self):
         if self.discount_amount is None:
@@ -482,6 +495,27 @@ class ReservationManager(models.Manager):
 # attach manager to model dynamically to avoid migration churn when not applied
 Reservation.add_to_class('objects', ReservationManager())
 Reservation.add_to_class('all_objects', models.Manager())
+
+
+class ReservationArchiveSnapshot(models.Model):
+    original_reservation_id = models.IntegerField(db_index=True)
+    data = models.JSONField()
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='reservation_snapshots',
+        verbose_name="ایجاد کننده snapshot"
+    )
+    created_at = models.DateTimeField(auto_now_add=True)
+    note = models.TextField(blank=True)
+
+    class Meta:
+        verbose_name = "نسخه آرشیوی رزرو"
+        verbose_name_plural = "نسخه‌های آرشیوی رزرو"
+        ordering = ['-created_at']
+
+    def __str__(self):
+        return f"Snapshot for reservation {self.original_reservation_id} at {self.created_at}"
 
 
 class ReservationStatusLog(models.Model):
