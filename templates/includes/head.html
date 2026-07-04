@@ -45,6 +45,29 @@
   href="{% static 'assets/libs/bootstrap-select/css/bootstrap-select.min.css' %}"
 />
 
+<!-- Theme Initialization - Inline script to prevent flash of wrong theme -->
+<script>
+(function() {
+  const getCookie = (name) => {
+    const match = document.cookie.match(
+      new RegExp("(^| )" + name + "=([^;]+)")
+    );
+    return match ? match[2] : null;
+  };
+
+  const getPreferredTheme = () => {
+    const storedTheme = getCookie("theme");
+    if (storedTheme) return storedTheme;
+    if (window.matchMedia("(prefers-color-scheme: dark)").matches) {
+      return "dark";
+    }
+    return "light";
+  };
+
+  document.documentElement.setAttribute("data-bs-theme", getPreferredTheme());
+})();
+</script>
+
 <link
   rel="stylesheet"
   href="{% static 'assets/libs/persian-datepicker/persian-datepicker.min.css' %}"

@@ -1,6 +1,14 @@
-// App settings default
+// Helper to get cookie
+const getCookieForSettings = (name) => {
+	const match = document.cookie.match(
+		new RegExp("(^| )" + name + "=([^;]+)")
+	);
+	return match ? match[2] : null;
+};
+
+// App settings default - but read theme from cookie if available
 let appSettings = {
-	appTheme: 'light',
+	appTheme: getCookieForSettings('theme') || 'light',
 	appSidebar: 'full',
 	appColor: 'blue',
 };
