@@ -1,20 +1,20 @@
 {% load humanize %}
 {% load jformat %}
 <div class="modal fade" id="editReservationModal{{ reservation.id }}" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
+  <div class="modal-dialog modal-lg modal-fullscreen-md-down">
     <div class="modal-content border-0 shadow">
-      <form method="post" action="{% url 'reservations:edit' reservation.pk %}" class="h-100 d-flex flex-column needs-validation" novalidate id="reservationEditForm{{ reservation.id }}">
+      <form method="post" action="{% url 'reservations:edit' reservation.pk %}" class="d-flex flex-column needs-validation" novalidate id="reservationEditForm{{ reservation.id }}">
         {% csrf_token %}
 
         {% include 'partials/_modal_header.html' with title='ویرایش اطلاعات رزرو' %}
 
-        <div class="modal-body flex-grow-1 overflow-auto py-3">
+        <div class="modal-body flex-grow-1 overflow-y-auto py-3">
           <div class="alert alert-danger d-none js-form-error-summary" role="alert"></div>
           <div class="row g-3">
             <div class="col-12">
               <div class="card shadow-none border mb-3">
                 <div class="card-header bg-body-tertiary border-bottom py-3">
-                  <h6 class="mb-0 fw-semibold">ویرایش رزرو</h6>
+                  <h6 class="mb-0 fw-semibold">جزئیات رزرو</h6>
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
@@ -55,25 +55,157 @@
                       <div class="invalid-feedback">لطفا مدت اجاره را وارد کنید.</div>
                     </div>
                     <div class="col-12 col-md-6">
+                      <label class="form-label">تاریخ پایان</label>
+                      <input type="text" class="form-control" value="{{ reservation.end_date|jformat:'%Y/%m/%d' }}" readonly>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label class="form-label">هزینه اجاره</label>
+                      <input type="text" class="form-control money-input" value="{{ reservation.rent_price|intcomma }}" readonly>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-xl-6">
+              <div class="card shadow-none border mb-3">
+                <div class="card-header bg-body-tertiary border-bottom py-3">
+                  <h6 class="mb-0 fw-semibold">اطلاعات مالی</h6>
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-12 col-md-6">
                       <label for="id_discount_type_{{ reservation.id }}" class="form-label">نوع تخفیف</label>
-                        <select id="id_discount_type_{{ reservation.id }}" name="discount_type" class="form-select">
-                          <option value="NONE" {% if reservation.discount_type == 'NONE' %}selected{% endif %}>بدون تخفیف</option>
-                          <option value="AMOUNT" {% if reservation.discount_type == 'AMOUNT' %}selected{% endif %}>مبلغ ثابت</option>
-                          <option value="PERCENT" {% if reservation.discount_type == 'PERCENT' %}selected{% endif %}>درصد</option>
-                        </select>
-                      </div>
-                      <div class="col-12 col-md-6 mt-3">
-                        <label for="id_discount_value_{{ reservation.id }}" class="form-label">مقدار تخفیف</label>
-                        <input
-                          type="number"
-                          id="id_discount_value_{{ reservation.id }}"
-                          name="discount_value"
-                          class="form-control"
-                          min="0"
-                          value="{{ reservation.discount_value }}"
-                        />
-                        <div class="invalid-feedback">مقدار تخفیف باید عددی برابر یا بزرگتر از صفر باشد.</div>
-                      </div>
+                      <select id="id_discount_type_{{ reservation.id }}" name="discount_type" class="form-select">
+                        <option value="NONE" {% if reservation.discount_type == 'NONE' %}selected{% endif %}>بدون تخفیف</option>
+                        <option value="AMOUNT" {% if reservation.discount_type == 'AMOUNT' %}selected{% endif %}>مبلغ ثابت</option>
+                        <option value="PERCENT" {% if reservation.discount_type == 'PERCENT' %}selected{% endif %}>درصد</option>
+                      </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label for="id_discount_value_{{ reservation.id }}" class="form-label">مقدار تخفیف</label>
+                      <input
+                        type="number"
+                        id="id_discount_value_{{ reservation.id }}"
+                        name="discount_value"
+                        class="form-control"
+                        min="0"
+                        value="{{ reservation.discount_value }}"
+                      />
+                      <div class="invalid-feedback">مقدار تخفیف باید عددی برابر یا بزرگتر از صفر باشد.</div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label for="id_deposit_amount_{{ reservation.id }}" class="form-label">بیعانه</label>
+                      <input
+                        type="text"
+                        id="id_deposit_amount_{{ reservation.id }}"
+                        name="deposit_amount"
+                        class="form-control money-input"
+                        value="{{ reservation.deposit_amount|intcomma }}"
+                        min="0"
+                        required
+                      />
+                      <div class="invalid-feedback">بیعانه باید عددی برابر یا بزرگتر از صفر باشد.</div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label for="id_payment_method_{{ reservation.id }}" class="form-label">روش پرداخت</label>
+                      <select id="id_payment_method_{{ reservation.id }}" name="payment_method" class="form-select" required>
+                        <option value="">انتخاب کنید</option>
+                        {% for value, label in payment_methods %}
+                          <option value="{{ value }}" {% if reservation.payment_method == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                      </select>
+                      <div class="invalid-feedback">لطفا روش پرداخت را انتخاب کنید.</div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label for="id_payment_tracking_code_{{ reservation.id }}" class="form-label">کد رهگیری پرداخت</label>
+                      <input
+                        type="text"
+                        id="id_payment_tracking_code_{{ reservation.id }}"
+                        name="payment_tracking_code"
+                        class="form-control"
+                        value="{{ reservation.payment_tracking_code }}"
+                        required
+                      />
+                      <div class="invalid-feedback">لطفا کد رهگیری پرداخت را وارد کنید.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12 col-xl-6">
+              <div class="card shadow-none border mb-3">
+                <div class="card-header bg-body-tertiary border-bottom py-3">
+                  <h6 class="mb-0 fw-semibold">اطلاعات ضمانت</h6>
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                      <label for="id_guarantee1_type_{{ reservation.id }}" class="form-label">نوع ضمانت اول</label>
+                      <select id="id_guarantee1_type_{{ reservation.id }}" name="guarantee1_type" class="form-select" required>
+                        <option value="">انتخاب کنید</option>
+                        {% for value, label in guarantee_types %}
+                          <option value="{{ value }}" {% if reservation.guarantee1_type == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                      </select>
+                      <div class="invalid-feedback">لطفا نوع ضمانت اول را انتخاب کنید.</div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label for="id_guarantee1_tracking_code_{{ reservation.id }}" class="form-label">کد رهگیری ضمانت اول</label>
+                      <input
+                        type="text"
+                        id="id_guarantee1_tracking_code_{{ reservation.id }}"
+                        name="guarantee1_tracking_code"
+                        class="form-control"
+                        value="{{ reservation.guarantee1_tracking_code }}"
+                        required
+                      />
+                      <div class="invalid-feedback">لطفا کد رهگیری ضمانت اول را وارد کنید.</div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label for="id_guarantee2_type_{{ reservation.id }}" class="form-label">نوع ضمانت دوم</label>
+                      <select id="id_guarantee2_type_{{ reservation.id }}" name="guarantee2_type" class="form-select">
+                        <option value="">ندارد</option>
+                        {% for value, label in guarantee_types %}
+                          <option value="{{ value }}" {% if reservation.guarantee2_type == value %}selected{% endif %}>{{ label }}</option>
+                        {% endfor %}
+                      </select>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label for="id_guarantee2_tracking_code_{{ reservation.id }}" class="form-label">کد رهگیری ضمانت دوم</label>
+                      <input
+                        type="text"
+                        id="id_guarantee2_tracking_code_{{ reservation.id }}"
+                        name="guarantee2_tracking_code"
+                        class="form-control"
+                        value="{{ reservation.guarantee2_tracking_code|default:'' }}"
+                      />
+                      <div class="invalid-feedback">در صورت انتخاب ضمانت دوم، کد رهگیری آن را وارد کنید.</div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="card shadow-none border mb-3">
+                <div class="card-header bg-body-tertiary border-bottom py-3">
+                  <h6 class="mb-0 fw-semibold">خلاصه مالی</h6>
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-12 col-md-4">
+                      <label class="form-label">مبلغ تخفیف</label>
+                      <input type="text" class="form-control money-input" value="{{ reservation.discount_amount|intcomma }}" readonly>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label">مبلغ نهایی</label>
+                      <input type="text" class="form-control money-input" value="{{ reservation.final_price|intcomma }}" readonly>
+                    </div>
+                    <div class="col-12 col-md-4">
+                      <label class="form-label">باقی‌مانده</label>
+                      <input type="text" class="form-control money-input" value="{{ reservation.remaining_amount|intcomma }}" readonly>
                     </div>
                   </div>
                 </div>

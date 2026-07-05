@@ -8,7 +8,7 @@ import jdatetime
 from customers.models import Customer
 from products.models import Dress
 from reservations.models import Reservation
-from reservations.constants import PaymentMethod
+from reservations.constants import GuaranteeType, PaymentMethod
 from reservations.services.availability_service import ReservationAvailabilityService
 from .utils import parse_reservation_date
 
@@ -166,7 +166,7 @@ class ReservationStepTwoForm(forms.ModelForm):
 class ReservationEditForm(forms.ModelForm):
 
     discount_type = forms.ChoiceField(
-        choices=Reservation.DISCOUNT_TYPE_CHOICES,
+        choices=[("", "بدون تخفیف")] + list(Reservation.DISCOUNT_TYPE_CHOICES),
         required=False,
         label="نوع تخفیف"
     )
@@ -194,6 +194,48 @@ class ReservationEditForm(forms.ModelForm):
         label="مدت اجاره (روز)"
     )
 
+    payment_method = forms.ChoiceField(
+        choices=PaymentMethod.CHOICES,
+        required=True,
+        label="روش پرداخت"
+    )
+
+    payment_tracking_code = forms.CharField(
+        max_length=100,
+        required=True,
+        label="کد رهگیری پرداخت"
+    )
+
+    guarantee1_type = forms.ChoiceField(
+        choices=GuaranteeType.CHOICES,
+        required=True,
+        label="نوع ضمانت اول"
+    )
+
+    guarantee1_tracking_code = forms.CharField(
+        max_length=100,
+        required=True,
+        label="کد رهگیری ضمانت اول"
+    )
+
+    guarantee2_type = forms.ChoiceField(
+        choices=[("", "ندارد")] + list(GuaranteeType.CHOICES),
+        required=False,
+        label="نوع ضمانت دوم"
+    )
+
+    guarantee2_tracking_code = forms.CharField(
+        max_length=100,
+        required=False,
+        label="کد رهگیری ضمانت دوم"
+    )
+
+    deposit_amount = forms.IntegerField(
+        min_value=0,
+        required=True,
+        label="بیعانه"
+    )
+
     class Meta:
         model = Reservation
 
@@ -203,11 +245,25 @@ class ReservationEditForm(forms.ModelForm):
             "rental_days",
             "discount_type",
             "discount_value",
+            "payment_method",
+            "payment_tracking_code",
+            "guarantee1_type",
+            "guarantee1_tracking_code",
+            "guarantee2_type",
+            "guarantee2_tracking_code",
+            "deposit_amount",
         ]
 
         labels = {
             "discount_type": "نوع تخفیف",
             "discount_value": "مقدار تخفیف",
+            "payment_method": "روش پرداخت",
+            "payment_tracking_code": "کد رهگیری پرداخت",
+            "guarantee1_type": "نوع ضمانت اول",
+            "guarantee1_tracking_code": "کد رهگیری ضمانت اول",
+            "guarantee2_type": "نوع ضمانت دوم",
+            "guarantee2_tracking_code": "کد رهگیری ضمانت دوم",
+            "deposit_amount": "بیعانه",
         }
 
     def __init__(self, *args, **kwargs):
@@ -252,6 +308,29 @@ class ReservationEditForm(forms.ModelForm):
                 "discount_value": "درصد تخفیف نمی‌تواند بیشتر از ۱۰۰٪ باشد."
             })
 
+        payment_method = cleaned_data.get("payment_method")
+        payment_tracking_code = cleaned_data.get("payment_tracking_code")
+        guarantee1_type = cleaned_data.get("guarantee1_type")
+        guarantee1_tracking_code = cleaned_data.get("guarantee1_tracking_code")
+        guarantee2_type = cleaned_data.get("guarantee2_type")
+        guarantee2_tracking_code = cleaned_data.get("guarantee2_tracking_code")
+        deposit_amount = cleaned_data.get("deposit_amount") or 0
+
+        # Both guarantee2 fields are optional as a pair.
+        # If user selects guarantee2_type (non-empty), code is required.
+        if guarantee2_type and guarantee2_type.strip():
+            if not guarantee2_tracking_code or not guarantee2_tracking_code.strip():
+                raise ValidationError({
+                    "guarantee2_tracking_code": "در صورت انتخاب ضمانت دوم، کد رهگیری آن الزامی است."
+                })
+
+        # If user enters guarantee2_tracking_code, type is required.
+        if guarantee2_tracking_code and guarantee2_tracking_code.strip():
+            if not guarantee2_type or not guarantee2_type.strip():
+                raise ValidationError({
+                    "guarantee2_type": "اگر کد رهگیری ضمانت دوم وارد شده است، نوع ضمانت دوم را انتخاب کنید."
+                })
+
         if not dress or not start_date or not rental_days:
             return cleaned_data
 
@@ -267,7 +346,6 @@ class ReservationEditForm(forms.ModelForm):
 
         cleaned_data["end_date"] = end_date
 
-        deposit_amount = self.instance.deposit_amount or 0
         rent_price = dress.daily_rent_price
 
         if discount_type == Reservation.DISCOUNT_AMOUNT:
@@ -283,8 +361,19 @@ class ReservationEditForm(forms.ModelForm):
 
         if deposit_amount > final_price:
             raise ValidationError({
-                "discount_value": "تخفیف فعلی به گونه‌ای است که بیعانه ثبت‌شده بیش از قیمت نهایی می‌شود."
+                "deposit_amount": "بیعانه نمی‌تواند بیشتر از مبلغ نهایی اجاره باشد."
             })
+
+        remaining_payment_amount = self.instance.remaining_payment_amount or 0
+        if remaining_payment_amount > 0 and deposit_amount + remaining_payment_amount > final_price:
+            raise ValidationError({
+                "deposit_amount": "جمع بیعانه و پرداخت باقی‌مانده نباید بیشتر از مبلغ نهایی باشد."
+            })
+
+        if remaining_payment_amount > 0 and remaining_payment_amount > final_price:
+            raise ValidationError(
+                "پرداخت باقی‌مانده ثبت‌شده بیشتر از مبلغ نهایی رزرو است. لطفاً ابتدا وضعیت مالی رزرو را بررسی کنید."
+            )
 
         return cleaned_data
 

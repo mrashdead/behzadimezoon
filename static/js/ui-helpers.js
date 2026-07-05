@@ -165,6 +165,21 @@ function normalizeDigits(value) {
   return value.toString().replace(persianArabicDigits, (d) => map[d]);
 }
 
+function getCookie(name) {
+  let cookieValue = null;
+  if (document.cookie && document.cookie !== '') {
+    const cookies = document.cookie.split(';');
+    for (let i = 0; i < cookies.length; i++) {
+      const cookie = cookies[i].trim();
+      if (cookie.substring(0, name.length + 1) === name + '=') {
+        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+        break;
+      }
+    }
+  }
+  return cookieValue;
+}
+
 // Backwards-compatible alias used by inline scripts
 window.UIHelpers = window.UIHelpers || {};
 window.UIHelpers.normalizeDigits = normalizeDigits;
@@ -177,7 +192,7 @@ function setupModalForms() {
     }
     form.dataset.uiHelpersSubmitBound = '1';
 
-    form.addEventListener('submit', function (e) {
+    form.addEventListener('submit', async function (e) {
       if (form.classList.contains('no-ajax')) {
         return;
       }
@@ -190,6 +205,7 @@ function setupModalForms() {
       if (form.classList.contains('needs-validation') && !form.checkValidity()) {
         e.preventDefault();
         form.classList.add('was-validated');
+        form.reportValidity();
         return;
       }
 
@@ -207,48 +223,56 @@ function setupModalForms() {
       const modal = form.closest('.modal');
       const modalInstance = bootstrap.Modal.getInstance(modal);
 
-      fetch(url, {
-        method: 'POST',
-        body: formData,
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-        },
-      })
-        .then(response => response.json())
-        .then(data => {
-          if (data.success) {
-            if (modalInstance) {
-              modalInstance.hide();
-            }
-            if (data.message) {
-              showNotification(data.message, 'success');
-            }
-            setTimeout(() => {
-              location.reload();
-            }, 500);
-          } else {
-            if (data.errors) {
-              showFormErrors(form, data.errors);
-            }
-            if (data.message) {
-              showNotification(data.message, 'error');
-            } else if (!data.errors) {
-              showNotification('خطایی در ارسال فرم رخ داده است.', 'error');
-            }
-          }
-        })
-        .catch(error => {
-          console.error('Error:', error);
-          showNotification('خطایی در فرم به وجود آمد', 'error');
-        })
-        .finally(() => {
-          form.dataset.isSubmitting = '0';
-          const submitButtons = Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"]'));
-          submitButtons.forEach(button => {
-            button.disabled = false;
-            button.classList.remove('disabled');
-          });
+      try {
+        const response = await fetch(url, {
+          method: 'POST',
+          body: formData,
+          headers: {
+            'X-Requested-With': 'XMLHttpRequest',
+            'X-CSRFToken': getCookie('csrftoken'),
+          },
         });
+
+        const contentType = response.headers.get('content-type') || '';
+        let data;
+
+        if (contentType.includes('application/json')) {
+          data = await response.json();
+        } else {
+          const text = await response.text();
+          throw new Error('Expected JSON response from reservation edit endpoint. Response body: ' + text);
+        }
+
+        if (data.success) {
+          if (modalInstance) {
+            modalInstance.hide();
+          }
+          if (data.message) {
+            showNotification(data.message, 'success');
+          }
+          setTimeout(() => {
+            location.reload();
+          }, 500);
+        } else {
+          if (data.errors) {
+            showFormErrors(form, data.errors);
+          }
+          if (data.message) {
+            showNotification(data.message, 'error');
+          } else if (!data.errors) {
+            showNotification('خطایی در ارسال فرم رخ داده است.', 'error');
+          }
+        }
+      } catch (error) {
+        console.error('Error submitting modal form:', error);
+        showNotification('خطا در ارسال فرم. لطفا دوباره تلاش کنید.', 'error');
+      } finally {
+        form.dataset.isSubmitting = '0';
+        submitButtons.forEach(button => {
+          button.disabled = false;
+          button.classList.remove('disabled');
+        });
+      }
     });
   });
 }

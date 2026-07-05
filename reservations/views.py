@@ -24,7 +24,8 @@ from reservations.forms import (
 )
 from .services.availability_service import ReservationAvailabilityService
 from .services.change_status import ReservationStatusService
-from .constants import ReservationStatus
+from .constants import ReservationStatus, GuaranteeType, PaymentMethod
+from financial.services.transaction_service import TransactionService
 
 
 def can_create_reservation(user):
@@ -74,6 +75,8 @@ def reservation_list(request):
         "reservations": reservations,
         "customers": Customer.objects.all(),
         "dresses": Dress.objects.filter(status=Dress.STATUS_ACTIVE),
+        "payment_methods": PaymentMethod.CHOICES,
+        "guarantee_types": GuaranteeType.CHOICES,
         "can_create_reservation": can_create_reservation(request.user),
         "can_edit_reservation": can_edit_reservation(request.user),
         "can_delete_reservation": can_delete_reservation(request.user),
@@ -297,7 +300,26 @@ def reservation_create(request):
                     return JsonResponse({"success": True, "message": "رزرو قبلا ثبت شد."})
                 return redirect("reservations:list")
 
-            reservation.save()
+            # Make reservation save and deposit transaction atomic
+            try:
+                with transaction.atomic():
+                    reservation.save()
+                    if reservation.deposit_amount and reservation.deposit_amount > 0:
+                        TransactionService.create_deposit(
+                            reservation=reservation,
+                            amount=reservation.deposit_amount,
+                            created_by=request.user,
+                            payment_method=reservation.payment_method,
+                            external_reference=reservation.payment_tracking_code,
+                            note='بیعانه رزرو ثبت شد'
+                        )
+            except Exception as exc:
+                # If transaction creation fails, return error so client can retry
+                message = str(exc) or 'خطا در ثبت تراکنش بیعانه'
+                if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                    return JsonResponse({"success": False, "message": message}, status=500)
+                messages.error(request, message)
+                return redirect("reservations:list")
 
     except Dress.DoesNotExist:
         return JsonResponse({
@@ -398,13 +420,21 @@ def reservation_mark_returned(request, pk):
     reservation.item_damaged = item_damaged
     reservation.damage_amount = damage_amount if item_damaged and damage_amount and damage_amount > 0 else None
     reservation.damage_notes = damage_notes or ""
-
+    # Make damage update, transaction creation and status change atomic
     try:
-        ReservationStatusService.change_status(
-            reservation,
-            ReservationStatus.RETURNED,
-            request.user
-        )
+        with transaction.atomic():
+            if reservation.damage_amount and reservation.damage_amount > 0:
+                TransactionService.create_damage_charge(
+                    reservation=reservation,
+                    amount=reservation.damage_amount,
+                    created_by=request.user,
+                    note='خسارت بازگشت لباس ثبت شد'
+                )
+            ReservationStatusService.change_status(
+                reservation,
+                ReservationStatus.RETURNED,
+                request.user
+            )
     except ValueError:
         error_msg = "این تغییر وضعیت مجاز نیست."
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
@@ -531,12 +561,29 @@ def reservation_finalize_delivery(request, pk):
             messages.error(request, str(e))
             return redirect("reservations:list")
 
-        reservation.remaining_payment_amount = amount
-        reservation.remaining_payment_method = method
-        reservation.remaining_payment_tracking_code = code
-        reservation.remaining_paid_at = timezone.now()
-        reservation.remaining_amount = 0
-        reservation.save()
+        # Atomically create FINAL_PAYMENT and persist reservation payment snapshot
+        try:
+            with transaction.atomic():
+                TransactionService.create_final_payment(
+                    reservation=reservation,
+                    amount=amount,
+                    created_by=request.user,
+                    payment_method=method,
+                    external_reference=code,
+                    note='پرداخت نهایی در تحویل ثبت شد'
+                )
+                reservation.remaining_payment_amount = amount
+                reservation.remaining_payment_method = method
+                reservation.remaining_payment_tracking_code = code
+                reservation.remaining_paid_at = timezone.now()
+                reservation.remaining_amount = 0
+                reservation.save()
+        except Exception as exc:
+            message = str(exc) or 'خطا در ثبت تراکنش پرداخت نهایی'
+            if request.headers.get("x-requested-with") == "XMLHttpRequest":
+                return JsonResponse({"success": False, "message": message}, status=500)
+            messages.error(request, message)
+            return redirect("reservations:list")
 
     try:
         ReservationStatusService.change_status(
@@ -650,12 +697,14 @@ def reservation_archive(request, pk):
 
     reservation = get_object_or_404(Reservation, pk=pk)
 
+    # Archive reservation (no refund/cancellation transactions here)
     try:
-        ReservationStatusService.change_status(
-            reservation,
-            ReservationStatus.ARCHIVED,
-            request.user
-        )
+        with transaction.atomic():
+            ReservationStatusService.change_status(
+                reservation,
+                ReservationStatus.ARCHIVED,
+                request.user
+            )
     except ValueError as exc:
         error_message = str(exc) or "این رزرو در وضعیت حاضر قابل آرشیو نیست."
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
@@ -665,6 +714,12 @@ def reservation_archive(request, pk):
             }, status=400)
 
         messages.error(request, error_message)
+        return redirect("reservations:list")
+    except Exception as exc:
+        message = str(exc) or 'خطا در آرشیو رزرو'
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "message": message}, status=500)
+        messages.error(request, message)
         return redirect("reservations:list")
 
     success_message = "رزرو با موفقیت آرشیو شد."
@@ -703,6 +758,27 @@ def reservation_cancel(request, pk):
             ReservationStatus.CANCELLED,
             request.user
         )
+        # Dual-write: create cancellation fee / refund transactions if applicable
+        try:
+            # If there's a cancellation_fee set on reservation, create CANCELLATION_FEE transaction
+            if getattr(reservation, 'cancellation_fee', None):
+                TransactionService.create_cancellation_fee(
+                    reservation=reservation,
+                    amount=reservation.cancellation_fee,
+                    created_by=request.user,
+                    note='جریمه لغو رزرو ثبت شد'
+                )
+            # If there's a refunded_amount on reservation, create REFUND transaction
+            if getattr(reservation, 'refunded_amount', None) and reservation.refunded_amount > 0:
+                TransactionService.create_refund(
+                    reservation=reservation,
+                    amount=reservation.refunded_amount,
+                    created_by=request.user,
+                    note='بازپرداخت لغو رزرو ثبت شد'
+                )
+        except Exception:
+            # Non-fatal: allow cancellation to proceed and catch mismatches in reconciliation
+            pass
     except ValueError as exc:
         error_message = str(exc) or "این رزرو در وضعیت حاضر قابل لغو نیست."
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
@@ -774,8 +850,11 @@ def reservation_delete_permanent(request, pk):
         from reservations.services.archive_service import ReservationArchiveService
 
         ReservationArchiveService.create_snapshot_and_delete(reservation, request.user)
-    except Exception:
+    except Exception as exc:
         error_message = "حذف کامل رزرو انجام نشد."
+        # Log full traceback to stderr for test diagnostics
+        import traceback, sys
+        traceback.print_exc(file=sys.stderr)
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
             return JsonResponse({"success": False, "message": error_message}, status=500)
         messages.error(request, error_message)
