@@ -1,0 +1,10 @@
+reservation_id,expected_cash,reservation_cash,cash_difference,open_receivable,has_discrepancy
+17,0,22000000,-22000000,0,True
+9,0,100000,-100000,0,True
+8,0,10000000,-10000000,0,True
+7,0,500000,-500000,0,True
+6,0,9000000,-9000000,0,True
+5,0,15000000,-15000000,0,True
+3,0,17000000,-17000000,0,True
+2,0,10000000,-10000000,0,True
+1,0,6000000,-6000000,0,True

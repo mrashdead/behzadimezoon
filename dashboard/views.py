@@ -6,6 +6,7 @@ from products.models import Dress
 from reservations.constants import ReservationStatus
 from reservations.utils import get_reservations_for_user
 from reservations.models import Reservation
+from financial.services import DashboardService
 
 
 class DashboardView(TemplateView):
@@ -27,13 +28,14 @@ class DashboardView(TemplateView):
             ]
         ).count()
 
-        # Only count income from delivered (completed) reservations, excluding cancelled
-        total_income = user_reservations.filter(
-            status=ReservationStatus.DELIVERED
-        ).exclude(
-            status=ReservationStatus.CANCELLED
-        ).aggregate(total=Sum('final_price'))['total'] or 0
-        context['total_income'] = total_income
+        # Financial context (transaction-first where available)
+        financial_ctx = DashboardService.get_financial_context()
+        context['totals'] = financial_ctx.get('totals', {})
+        context['recent_transactions'] = financial_ctx.get('recent_transactions', [])
+        context['uses_transaction_ledger'] = financial_ctx.get('uses_transaction_ledger', False)
+        context['open_reconciliation_issues'] = financial_ctx.get('open_reconciliation_issues', 0)
+        # Backwards-compatible single value used in template
+        context['total_income'] = context['totals'].get('total_cash_inflow', 0)
 
         # Defer newly added DB columns until migrations have been applied
         context['recent_reservations'] = user_reservations.select_related(

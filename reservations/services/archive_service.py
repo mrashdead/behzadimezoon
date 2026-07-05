@@ -38,11 +38,16 @@ class ReservationArchiveService:
             'type',
             'created_by_id',
             'created_at',
+            'transaction_date',
             'note',
-            'reference'
+            'external_reference',
+            'payment_method',
+            'reservation_snapshot',
         ):
             if transaction_data.get('created_at') is not None:
                 transaction_data['created_at'] = str(transaction_data['created_at'])
+            if transaction_data.get('transaction_date') is not None:
+                transaction_data['transaction_date'] = str(transaction_data['transaction_date'])
             transactions.append(transaction_data)
 
         snapshot_data = {
@@ -58,4 +63,5 @@ class ReservationArchiveService:
             )
 
             from reservations.models import Reservation as ReservationModel
+            # Use the unconditional manager to perform a real delete (bypass soft-delete)
             ReservationModel.all_objects.filter(pk=reservation.pk).delete()
