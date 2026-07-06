@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% load humanize %}
+{% load jformat %}
+
+{% block title %}لیست تراکنش‌ها - مالی{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'financial:list' %}">مالی</a></li>
+<li class="breadcrumb-item active" aria-current="page">لیست تراکنش‌ها</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-3 mb-4">
+    <div>
+        <h1 class="h4 mb-1">لیست تراکنش‌ها</h1>
+        <p class="text-muted mb-1">این صفحه تمام تراکنش‌های مالی را به صورت دفتر حساب ثبت می‌کند و مرور تاریخچه پرداخت‌ها را ساده می‌کند.</p>
+        <div class="small text-muted">
+            <div>ستون «نوع تراکنش» نشان‌دهنده دستهٔ پرداخت است، مثل:</div>
+            <ul class="mb-1" style="list-style-type: disc; padding-inline-start: 20px;">
+                <li>بیعانه (= پیش‌پرداخت رزرو)</li>
+                <li>پرداخت نهایی (= تسویه مبلغ اصلی رزرو)</li>
+                <li>بازپرداخت (= برگشت وجه به مشتری)</li>
+                <li>خسارت (= دریافت هزینهٔ خسارت یا جریمه)</li>
+            </ul>
+            <div>ستون «شرح تراکنش» همیشه باید به‌صورت انسانی قابل فهم باشد. در صورتی که توضیح ثبت نشده باشد، سیستم خودش یک شرح فارسی و روشن تولید می‌کند.</div>
+        </div>
+    </div>
+    <a href="{% url 'financial:list' %}" class="btn btn-outline-secondary">بازگشت به داشبورد مالی</a>
+</div>
+
+<div class="table-responsive">
+    <table class="table table-striped align-middle mb-0">
+        <thead>
+            <tr>
+                <th>تاریخ</th>
+                <th>نوع تراکنش</th>
+                <th>مبلغ</th>
+                <th>رزرو مرتبط</th>
+                <th>ایجادکننده</th>
+                <th>شرح تراکنش</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for tx in transactions %}
+            <tr>
+                <td>{{ tx.transaction_date|jformat:"%Y/%m/%d %H:%M" }}</td>
+                <td>{{ tx.get_type_display }}</td>
+                <td>{{ tx.amount|intcomma }} تومان</td>
+                <td>{% if tx.reservation %}#{{ tx.reservation.pk }}{% else %}-{% endif %}</td>
+                <td>{% if tx.created_by %}{{ tx.created_by.get_full_name }}{% else %}-{% endif %}</td>
+                <td>{{ tx.description }}</td>
+            </tr>
+            {% empty %}
+            <tr>
+                <td colspan="6" class="text-center py-4 text-muted">
+                    هیچ تراکنشی برای نمایش وجود ندارد. برای شروع، از بخش مالی یک تراکنش ثبت کنید.
+                </td>
+            </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+</div>
+
+{% if is_paginated %}
+<div class="d-flex flex-wrap align-items-center justify-content-between mt-3">
+    <div class="text-muted">
+        نمایش {{ page_obj.start_index }} تا {{ page_obj.end_index }} از {{ page_obj.paginator.count }} تراکنش
+    </div>
+    <nav aria-label="Page navigation">
+      <ul class="pagination mb-0">
+        {% if page_obj.has_previous %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">قبلی</a></li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">قبلی</span></li>
+        {% endif %}
+        <li class="page-item disabled"><span class="page-link">صفحه {{ page_obj.number }} از {{ page_obj.paginator.num_pages }}</span></li>
+        {% if page_obj.has_next %}
+          <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">بعدی</a></li>
+        {% else %}
+          <li class="page-item disabled"><span class="page-link">بعدی</span></li>
+        {% endif %}
+      </ul>
+    </nav>
+</div>
+{% endif %}
+
+{% endblock %}

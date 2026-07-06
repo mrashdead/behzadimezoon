@@ -1,14 +1,19 @@
 {% extends 'base.html' %}
+{% load static %}
 {% load humanize %}
 {% load jformat %}
+
+{% block title %}داشبورد مالی{% endblock %}
 
 {% block breadcrumb %}
 <li class="breadcrumb-item active" aria-current="page">صفحه مالی</li>
 {% endblock %}
 
 {% block content %}
-
-<!-- بخش آمار کل -->
+<div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-3 mb-4">
+  <div>
+    <h1 class="h4 mb-2">داشبورد مالی</h1>
+    <p class="text-muted mb-0">این صفحه برای مشاهده خلاصه مالی و تاریخچه پرداخت‌ها طراحی شده است. عملکردهای ثبت و اصلاح مالی در این بخش غیرفعال شده‌اند.</p>
 <div class="row g-3 mb-4">
   {% include 'partials/_stat_card.html' with icon='fi-rr-chart-histogram' label='تعداد رزروها' value=totals.total_reservations badge_type='primary' badge_text='کل' %}
   {% include 'partials/_stat_card.html' with icon='fi-rr-coins' label='درآمد نهایی' value=totals.total_revenue badge_type='success' badge_text='تومان' %}
@@ -17,18 +22,87 @@
 </div>
 
 <div class="row g-3 mb-4">
+  {% include 'partials/_stat_card.html' with icon='fi-rr-wallet' label='جریان نقدی' value=totals.total_cash_inflow badge_type='success' badge_text='تومان' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-percent' label='مبلغ تخفیف' value=totals.total_discounts badge_type='secondary' badge_text='تومان' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-money-bills' label='بازپرداخت‌ها' value=totals.total_refunded badge_type='warning' badge_text='تومان' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-briefcase' label='ارزش ناخالص رزرو' value=reporting.reservation_summary.total_gross_reservation_value badge_type='info' badge_text='تومان' %}
+</div>
+
+<div class="row g-3 mb-4">
   {% include 'partials/_stat_card.html' with icon='fi-rr-ban' label='رزروهای لغو شده' value=cancelled_totals.total_cancelled_reservations badge_type='danger' badge_text='عدد' %}
   {% include 'partials/_stat_card.html' with icon='fi-rr-wallet' label='مبالغ دریافت شده از لغو شده‌ها' value=cancelled_totals.cancelled_received_amount badge_type='warning' badge_text='تومان' %}
   {% include 'partials/_stat_card.html' with icon='fi-rr-money-bills' label='خسارت‌های دریافت شده (کل)' value=totals.total_damage_received badge_type='warning' badge_text='تومان' %}
+  <div class="col-xxl-3 col-sm-6">
+    <div class="card h-100 border-0 shadow-sm">
+      <div class="card-body d-flex flex-column justify-content-between">
+        <div>
+          <div class="d-flex align-items-center gap-3 mb-3">
+            <div class="avatar bg-info-subtle rounded-circle text-info" style="width: 50px; height: 50px; display:flex; align-items:center; justify-content:center; font-size:24px;">
+              <i class="fi fi-rr-file-check"></i>
+            </div>
+            <div>
+              <span class="fw-semibold text-muted d-block">وضعیت تسویه</span>
+              <h4 class="fw-bold mb-0">{{ open_reconciliation_issues }} اختلاف باز</h4>
+            </div>
+          </div>
+          <p class="text-muted small mb-0">پیوند سریع برای رسیدگی به اختلاف‌های مالی.</p>
+        </div>
+        <div class="mt-4 d-grid gap-2">
+          <a href="{% url 'financial:transactions' %}" class="btn btn-sm btn-outline-primary">لیست تراکنش‌ها</a>
+        </div>
+      </div>
+    </div>
+  </div>
 </div>
 
-<!-- جدول آخرین رزروها -->
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-body-tertiary border-bottom py-3 d-flex flex-wrap gap-3 align-items-center justify-content-between">
+    <div>
+      <h6 class="card-title mb-0">فیلترهای گزارش</h6>
+      <p class="text-muted small mb-0">محدوده تاریخ، فروشنده و حالت دفتر تراکنش را برای محدود کردن نتایج انتخاب کنید.</p>
+    </div>
+  </div>
+  <div class="card-body">
+    <form id="financialFilters" method="get" class="row g-3 align-items-end">
+      <div class="col-sm-6 col-md-3">
+        <label class="form-label small mb-1" for="dateFrom">از تاریخ</label>
+        <input type="date" id="dateFrom" name="date_from" class="form-control form-control-sm" value="{{ request.GET.date_from }}">
+      </div>
+      <div class="col-sm-6 col-md-3">
+        <label class="form-label small mb-1" for="dateTo">تا تاریخ</label>
+        <input type="date" id="dateTo" name="date_to" class="form-control form-control-sm" value="{{ request.GET.date_to }}">
+      </div>
+      <div class="col-sm-6 col-md-3">
+        <label class="form-label small mb-1" for="sellerSelect">فروشنده</label>
+        <select id="sellerSelect" name="seller" class="form-select form-select-sm">
+          <option value="">همه فروشنده‌ها</option>
+          {% for s in sellers %}
+            <option value="{{ s.pk }}" {% if request.GET.seller == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.get_full_name }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-sm-6 col-md-2">
+        <div class="form-check form-switch mt-3">
+          <input class="form-check-input" type="checkbox" name="ledger" id="ledgerToggle" {% if uses_transaction_ledger %}checked{% endif %} value="1">
+          <label class="form-check-label small" for="ledgerToggle">دفتر تراکنش</label>
+        </div>
+      </div>
+      <div class="col-sm-12 col-md-1 d-grid">
+        <button type="submit" class="btn btn-primary btn-sm">اعمال</button>
+      </div>
+      <div class="col-sm-12 col-md-3 d-grid">
+        <a id="exportCsvBtn" href="{% url 'financial:export_csv' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-sm btn-outline-secondary">خروجی CSV</a>
+      </div>
+    </form>
+  </div>
+</div>
+
 <div class="card border-0 shadow-sm">
   <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between border-0 pb-0">
-    <h6 class="card-title mb-0">
-      <i class="fi fi-rr-list me-2"></i>
-      آخرین رزروها
-    </h6>
+    <div>
+      <h6 class="card-title mb-0"><i class="fi fi-rr-list me-2"></i>آخرین رزروها</h6>
+    </div>
+    <span class="text-muted small">نمایش {{ recent_reservations|length }} رزرو</span>
   </div>
   <div class="card-body px-1 pt-2 pb-2">
     {% if recent_reservations %}
@@ -36,60 +110,48 @@
         <table class="table table-sm table-row-rounded align-middle mb-0">
           <thead class="table-light">
             <tr>
-              <th class="minw-150px">مشتری</th>
-              <th class="minw-150px">لباس</th>
-              <th class="minw-120px">تاریخ شروع</th>
-              <th class="minw-100px">مدت</th>
-              <th class="minw-130px text-end">مبلغ نهایی</th>
-              <th class="minw-130px text-end">بیعانه</th>
-              <th class="minw-130px text-end">باقی مانده</th>
-              <th class="minw-130px text-end">خسارت</th>
-              <th class="minw-120px">وضعیت</th>
+              <th class="minw-120px">رزرو</th>
+              <th class="minw-170px">مشتری</th>
+              <th class="minw-140px">لباس</th>
+              <th class="minw-120px">شروع</th>
+              <th class="minw-90px">روز</th>
+              <th class="minw-180px text-end">مبالغ</th>
+              <th class="minw-130px">وضعیت</th>
+              <th class="text-center">اقدام</th>
             </tr>
           </thead>
           <tbody>
             {% for item in recent_reservations %}
               <tr>
                 <td>
-                  <div class="d-flex align-items-center gap-2">
+                  <div class="d-flex flex-column">
+                    <span class="fw-semibold">#{{ item.pk }}</span>
+                    <small class="text-muted">{{ item.created_at|default:""|jformat:"%Y/%m/%d" }}</small>
+                  </div>
+                </td>
+                <td>
+                  <div class="d-flex flex-column gap-1">
                     <span>{{ item.customer }}</span>
                     {% if item.item_damaged %}
-                      <span class="badge bg-danger-subtle text-danger ms-2">خسارت</span>
+                      <span class="badge bg-danger-subtle text-danger">خسارت</span>
                     {% endif %}
                   </div>
                 </td>
                 <td>{{ item.dress }}</td>
                 <td>
-                  <span class="fw-medium">
-                    {% if item.start_date %}
-                      {{ item.start_date|jformat:"%Y/%m/%d" }}
-                    {% endif %}
-                  </span>
+                  {% if item.start_date %}
+                    {{ item.start_date|jformat:"%Y/%m/%d" }}
+                  {% else %}
+                    —
+                  {% endif %}
                 </td>
                 <td>{{ item.rental_days }} روز</td>
                 <td class="text-end">
-                  <span class="fw-semibold text-success number-display" data-value="{{ item.final_price|default:0 }}">
-                    {{ item.final_price|intcomma }} تومان
-                  </span>
-                </td>
-                <td class="text-end">
-                  <span class="fw-semibold text-info number-display" data-value="{{ item.deposit_amount|default:0 }}">
-                    {{ item.deposit_amount|intcomma }} تومان
-                  </span>
-                </td>
-                <td class="text-end">
-                  <span class="fw-semibold number-display {% if item.remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}" data-value="{{ item.remaining_amount|default:0 }}">
-                    {{ item.remaining_amount|intcomma }} تومان
-                  </span>
-                </td>
-                <td class="text-end">
-                  {% if item.item_damaged and item.damage_amount %}
-                    <span class="fw-semibold text-danger number-display" data-value="{{ item.damage_amount|default:0 }}">{{ item.damage_amount|intcomma }} تومان</span>
-                  {% elif item.item_damaged %}
-                    <span class="text-danger">ثبت شده</span>
-                  {% else %}
-                    <span class="text-muted">—</span>
-                  {% endif %}
+                  <div class="d-flex flex-column align-items-end gap-1">
+                    <div><small class="text-muted">نهایی</small> <span class="fw-semibold">{{ item.final_price|intcomma }} تومان</span></div>
+                    <div><small class="text-muted">بیعانه</small> <span class="text-info fw-semibold">{{ item.deposit_amount|intcomma }} تومان</span></div>
+                    <div><small class="text-muted">باقی</small> <span class="fw-semibold {% if item.remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}">{{ item.remaining_amount|intcomma }} تومان</span></div>
+                  </div>
                 </td>
                 <td>
                   {% if item.status == 'CONFIRMED' %}
@@ -106,7 +168,12 @@
                     <span class="badge bg-danger-subtle text-danger">لغو شده</span>
                   {% elif item.status == 'DRAFT' %}
                     <span class="badge bg-light-subtle text-dark">پیش‌نویس</span>
+                  {% else %}
+                    <span class="badge bg-light-subtle text-dark">نامشخص</span>
                   {% endif %}
+                </td>
+                <td class="text-center">
+                  <button type="button" class="btn btn-sm btn-outline-secondary open-financial-modal" data-url="{% url 'financial:reservation_financial' item.pk %}">خلاصه</button>
                 </td>
               </tr>
             {% endfor %}
@@ -121,5 +188,66 @@
     {% endif %}
   </div>
 </div>
+
+<!-- Modal container for financial partial -->
+<div class="modal fade" id="financialModal" tabindex="-1" aria-labelledby="financialModalLabel" aria-hidden="true">
+  <div class="modal-dialog modal-xl modal-dialog-centered">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h5 class="modal-title" id="financialModalLabel">خلاصه مالی</h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      <div class="modal-body" id="financialModalBody">
+        <div class="d-flex justify-content-center py-5"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>
+      </div>
+      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button></div>
+    </div>
+  </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const financialModal = document.getElementById('financialModal');
+  if (financialModal) {
+    financialModal.addEventListener('show.bs.modal', function(){
+      this.setAttribute('aria-hidden', 'false');
+    });
+    financialModal.addEventListener('hide.bs.modal', function(){
+      this.setAttribute('aria-hidden', 'true');
+    });
+    financialModal.addEventListener('hidden.bs.modal', function(){
+      // Clean up any nested modals and event listeners
+      const body = document.getElementById('financialModalBody');
+      if (body) {
+        // Remove any nested modals
+        body.querySelectorAll('.modal').forEach(m => {
+          const instance = bootstrap.Modal.getInstance(m);
+          if (instance) {
+            instance.dispose();
+          }
+          // Remove backdrop for this modal
+          document.querySelectorAll('.modal-backdrop').forEach(bd => bd.remove());
+          m.remove();
+        });
+        // Clear all event listeners by cloning and replacing
+        const newBody = body.cloneNode(false);
+        newBody.id = 'financialModalBody';
+        newBody.innerHTML = '<div class="d-flex justify-content-center py-5"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+        body.parentNode.replaceChild(newBody, body);
+      }
+      
+      // Remove any leftover backdrops
+      setTimeout(() => {
+        document.querySelectorAll('.modal-backdrop').forEach(bd => bd.remove());
+        document.body.classList.remove('modal-open');
+      }, 100);
+    });
+  }
+});
+</script>
+
+{% block extra_js %}
+<script src="{% static 'js/finance_helpers.js' %}"></script>
+{% endblock %}
 
 {% endblock %}

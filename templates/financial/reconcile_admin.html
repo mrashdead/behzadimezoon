@@ -1,0 +1,100 @@
+{% extends 'base.html' %}
+{% load humanize %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'financial:list' %}">مالی</a></li>
+<li class="breadcrumb-item active" aria-current="page">تسویه مالی</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-3 mb-4">
+  <div>
+    <h1 class="h4 mb-2">مدیریت تسویه مالی</h1>
+    <p class="text-muted mb-0">این صفحه فقط گزارش اختلاف‌های تسویه را نمایش می‌دهد؛ عملیات اصلاحات از اینجا حذف شده است.</p>
+  </div>
+  <div class="text-end">
+    <span class="badge bg-primary-subtle text-primary">{{ problems|length }} اختلاف باز</span>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-md-6 col-xl-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div class="avatar bg-danger-subtle rounded-circle text-danger" style="width: 48px; height: 48px; display:flex; align-items:center; justify-content:center; font-size:22px;">
+            <i class="fi fi-rr-warning"></i>
+          </div>
+          <div>
+            <span class="fw-semibold text-muted d-block">اختلاف‌های باز</span>
+            <h4 class="fw-bold mb-0">{{ problems|length }}</h4>
+          </div>
+        </div>
+        <p class="text-muted small mb-0">این موارد صرفاً برای مشاهده و بررسی در گزارش‌های مالی نمایش داده شده‌اند.</p>
+      </div>
+    </div>
+  </div>
+  <div class="col-md-6 col-xl-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body">
+        <div class="d-flex align-items-center gap-3 mb-3">
+          <div class="avatar bg-info-subtle rounded-circle text-info" style="width: 48px; height: 48px; display:flex; align-items:center; justify-content:center; font-size:22px;">
+            <i class="fi fi-rr-refresh"></i>
+          </div>
+          <div>
+            <span class="fw-semibold text-muted d-block">مرور گزارش</span>
+            <h4 class="fw-bold mb-0">بدون عملیات</h4>
+          </div>
+        </div>
+        <p class="text-muted small mb-0">در این نسخه رابط، فقط گزارش اختلاف‌ها و پیشنهادهای اصلاحی نمایش داده می‌شود.</p>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body px-1 pt-2 pb-2">
+    <div class="alert alert-info text-center py-3 mb-4" role="alert">
+      این صفحه گزارش اختلاف‌های تسویه را نمایش می‌دهد. در این نسخه، هیچ عملیات اصلاحی در UI ارائه نشده است.
+    </div>
+    {% if problems %}
+      <div class="table-responsive">
+        <table class="table table-sm table-row-rounded align-middle mb-0">
+          <thead class="table-light">
+            <tr>
+              <th class="minw-130px">رزرو</th>
+              <th class="text-end minw-140px">انتظار</th>
+              <th class="text-end minw-140px">ثبت شده</th>
+              <th class="text-end minw-140px">اختلاف</th>
+              <th class="minw-160px">پیشنهاد</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for item in problems %}
+              <tr>
+                <td>#{{ item.reservation_id }}</td>
+                <td class="text-end">{{ item.expected_cash|intcomma }} تومان</td>
+                <td class="text-end">{{ item.reservation_cash|intcomma }} تومان</td>
+                <td class="text-end">
+                  {% if item.cash_difference > 0 %}
+                    <span class="text-danger">+{{ item.cash_difference|intcomma }} تومان</span>
+                  {% elif item.cash_difference < 0 %}
+                    <span class="text-success">{{ item.cash_difference|intcomma }} تومان</span>
+                  {% else %}
+                    <span class="text-muted">۰</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <span class="badge {% if item.suggested_action == 'refund' %}bg-danger-subtle text-danger{% else %}bg-secondary-subtle text-secondary{% endif %}">{{ item.action_label }}</span>
+                </td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <div class="alert alert-success text-center py-4" role="alert">
+        هیچ اختلاف مالی‌ای یافت نشد. دفتر حساب شما پاک و همگام است.
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{% endblock %}

@@ -186,95 +186,111 @@ window.UIHelpers.normalizeDigits = normalizeDigits;
 
 // Setup AJAX form submission for modals
 function setupModalForms() {
-  document.querySelectorAll('.modal form').forEach(form => {
-    if (form.dataset.uiHelpersSubmitBound === '1') {
+  if (document.body.dataset.uiHelpersModalSubmitBound === '1') {
+    return;
+  }
+  document.body.dataset.uiHelpersModalSubmitBound = '1';
+
+  document.addEventListener('submit', async function (e) {
+    const form = e.target;
+    if (!form || form.tagName.toLowerCase() !== 'form') {
       return;
     }
-    form.dataset.uiHelpersSubmitBound = '1';
 
-    form.addEventListener('submit', async function (e) {
-      if (form.classList.contains('no-ajax')) {
-        return;
-      }
+    const modal = form.closest('.modal');
+    if (!modal || form.classList.contains('no-ajax')) {
+      return;
+    }
 
-      if (form.dataset.isSubmitting === '1') {
-        e.preventDefault();
-        return;
-      }
-
-      if (form.classList.contains('needs-validation') && !form.checkValidity()) {
-        e.preventDefault();
-        form.classList.add('was-validated');
-        form.reportValidity();
-        return;
-      }
-
+    if (form.dataset.isSubmitting === '1') {
       e.preventDefault();
-      clearFormErrors(form);
-      form.dataset.isSubmitting = '1';
-      const submitButtons = Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"]'));
-      submitButtons.forEach(button => {
-        button.disabled = true;
-        button.classList.add('disabled');
+      return;
+    }
+
+    if (form.classList.contains('needs-validation') && !form.checkValidity()) {
+      e.preventDefault();
+      form.classList.add('was-validated');
+      form.reportValidity();
+      return;
+    }
+
+    e.preventDefault();
+    clearFormErrors(form);
+    form.dataset.isSubmitting = '1';
+    const submitButtons = Array.from(form.querySelectorAll('button[type="submit"], input[type="submit"]'));
+    submitButtons.forEach(button => {
+      button.disabled = true;
+      button.classList.add('disabled');
+    });
+
+    const formData = normalizeFormDataForSubmission(form);
+    const url = form.getAttribute('action');
+    const modalInstance = bootstrap.Modal.getOrCreateInstance(modal);
+
+    try {
+      const response = await fetch(url, {
+        method: 'POST',
+        body: formData,
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json',
+          'X-CSRFToken': getCookie('csrftoken'),
+        },
       });
 
-      const formData = normalizeFormDataForSubmission(form);
-      const url = form.getAttribute('action');
-      const modal = form.closest('.modal');
-      const modalInstance = bootstrap.Modal.getInstance(modal);
+      const contentType = response.headers.get('content-type') || '';
+      let data;
 
-      try {
-        const response = await fetch(url, {
-          method: 'POST',
-          body: formData,
-          headers: {
-            'X-Requested-With': 'XMLHttpRequest',
-            'X-CSRFToken': getCookie('csrftoken'),
-          },
-        });
-
-        const contentType = response.headers.get('content-type') || '';
-        let data;
-
-        if (contentType.includes('application/json')) {
-          data = await response.json();
-        } else {
-          const text = await response.text();
-          throw new Error('Expected JSON response from reservation edit endpoint. Response body: ' + text);
-        }
-
-        if (data.success) {
-          if (modalInstance) {
-            modalInstance.hide();
-          }
-          if (data.message) {
-            showNotification(data.message, 'success');
-          }
-          setTimeout(() => {
-            location.reload();
-          }, 500);
-        } else {
-          if (data.errors) {
-            showFormErrors(form, data.errors);
-          }
-          if (data.message) {
-            showNotification(data.message, 'error');
-          } else if (!data.errors) {
-            showNotification('خطایی در ارسال فرم رخ داده است.', 'error');
-          }
-        }
-      } catch (error) {
-        console.error('Error submitting modal form:', error);
-        showNotification('خطا در ارسال فرم. لطفا دوباره تلاش کنید.', 'error');
-      } finally {
-        form.dataset.isSubmitting = '0';
-        submitButtons.forEach(button => {
-          button.disabled = false;
-          button.classList.remove('disabled');
-        });
+      if (contentType.includes('application/json')) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        throw new Error('Expected JSON response from reservation edit endpoint. Response body: ' + text);
       }
-    });
-  });
+
+      if (!response.ok && !data.success) {
+        if (data.errors) {
+          showFormErrors(form, data.errors);
+        }
+        if (data.message) {
+          showNotification(data.message, 'error');
+        } else {
+          showNotification('خطایی در ارسال فرم رخ داده است.', 'error');
+        }
+        return;
+      }
+
+      if (data.success) {
+        if (modalInstance) {
+          modalInstance.hide();
+        }
+        if (data.message) {
+          showNotification(data.message, 'success');
+        }
+        setTimeout(() => {
+          location.reload();
+        }, 500);
+      } else {
+        if (data.errors) {
+          showFormErrors(form, data.errors);
+        }
+        if (data.message) {
+          showNotification(data.message, 'error');
+        } else if (!data.errors) {
+          showNotification('خطایی در ارسال فرم رخ داده است.', 'error');
+        }
+      }
+    } catch (error) {
+      console.error('Error submitting modal form:', error);
+      showNotification('خطا در ارسال فرم. لطفا دوباره تلاش کنید.', 'error');
+    } finally {
+      form.dataset.isSubmitting = '0';
+      submitButtons.forEach(button => {
+        button.disabled = false;
+        button.classList.remove('disabled');
+      });
+    }
+  }, true);
 }
 
 function clearFormErrors(form) {

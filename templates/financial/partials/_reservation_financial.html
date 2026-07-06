@@ -1,0 +1,453 @@
+{% load humanize %}
+{% load jformat %}
+
+<div class="card mb-3" data-financial-url="{% url 'financial:reservation_financial' reservation.pk %}">
+  <div class="card-body">
+    <div class="row gy-3 mb-4">
+      <div class="col-6 col-xl-3">
+        <div class="card shadow-sm border rounded-3 h-100">
+          <div class="card-body text-center py-3">
+            <div class="small text-muted">بهای پایه</div>
+            <div class="h5 mb-0">{{ reservation.rent_price|intcomma }} تومان</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-xl-3">
+        <div class="card shadow-sm border rounded-3 h-100">
+          <div class="card-body text-center py-3">
+            <div class="small text-muted">تخفیف</div>
+            <div class="h5 mb-0">{{ reservation.discount_amount|default:0|intcomma }} تومان</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-xl-3">
+        <div class="card shadow-sm border rounded-3 h-100">
+          <div class="card-body text-center py-3">
+            <div class="small text-muted">قیمت نهایی</div>
+            <div class="h5 mb-0">{{ totals.final_price|intcomma }} تومان</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-xl-3">
+        <div class="card shadow-sm border rounded-3 h-100">
+          <div class="card-body text-center py-3">
+            <div class="small text-muted">دریافتی تا کنون</div>
+            <div class="h5 mb-0">{{ totals.total_received|intcomma }} تومان</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="row gy-4">
+      <div class="col-12">
+        <div class="card shadow-sm border rounded-3">
+          <div class="card-header bg-body-tertiary border-bottom py-3">
+            <h6 class="mb-0">تراکنش‌ها</h6>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive mb-0">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>تاریخ</th>
+                    <th>نوع</th>
+                    <th class="text-end">مبلغ</th>
+                    <th>ایجادکننده</th>
+                    <th>شرح</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for tx in transactions %}
+                    <tr>
+                      <td>{{ tx.transaction_date|jformat:"%Y/%m/%d %H:%M" }}</td>
+                      <td>{{ tx.get_type_display }}</td>
+                      <td class="text-end">{{ tx.amount|intcomma }} تومان</td>
+                      <td>{{ tx.created_by.get_full_name }}</td>
+                      <td>{{ tx.description }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="5" class="text-center text-muted">تراکنشی ثبت نشده است.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-xl-6">
+        <div class="card shadow-sm border rounded-3">
+          <div class="card-header bg-body-tertiary border-bottom py-3">
+            <h6 class="mb-0">تضمین‌ها</h6>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive mb-0">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>کد</th>
+                    <th>نوع</th>
+                    <th class="text-end">مبلغ</th>
+                    <th>وضعیت</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for g in guarantees %}
+                    <tr>
+                      <td>{{ g.tracking_code }}</td>
+                      <td>{{ g.guarantee_type }}</td>
+                      <td class="text-end">{{ g.estimated_value|default:0|intcomma }} تومان</td>
+                      <td>{{ g.get_status_display|default:g.status }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted">تضمینی ثبت نشده است.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="card shadow-sm border rounded-3">
+          <div class="card-header bg-body-tertiary border-bottom py-3">
+            <h6 class="mb-0">خسارت‌ها</h6>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive mb-0">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>تاریخ</th>
+                    <th>نوع</th>
+                    <th class="text-end">مبلغ</th>
+                    <th>وضعیت دریافت</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for d in damages %}
+                    <tr>
+                      <td>{{ d.detected_at|jformat:"%Y/%m/%d %H:%M" }}</td>
+                      <td>{{ d.damage_type }}</td>
+                      <td class="text-end">{{ d.amount|default:0|intcomma }} تومان</td>
+                      <td>{% if d.collected %}<span class="badge bg-success-subtle text-success">پرداخت شد</span>{% else %}<span class="badge bg-danger-subtle text-danger">پرداخت نشده</span>{% endif %}</td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="4" class="text-center text-muted">خسارتی ثبت نشده است.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="card shadow-sm border rounded-3">
+          <div class="card-header bg-body-tertiary border-bottom py-3">
+            <h6 class="mb-0">لغو رزرو</h6>
+          </div>
+          <div class="card-body">
+            {% if cancellation %}
+              <div class="row gy-2 mb-4">
+                <div class="col-12 col-md-4"><strong>تاریخ لغو:</strong> {{ cancellation.cancelled_at|jformat:"%Y/%m/%d %H:%M" }}</div>
+                <div class="col-12 col-md-4"><strong>بازپرداخت:</strong> {{ cancellation.refund_amount|default:0|intcomma }} تومان</div>
+                <div class="col-12 col-md-4"><strong>جریمه:</strong> {{ cancellation.penalty_amount|default:0|intcomma }} تومان</div>
+              </div>
+              <div class="d-grid gap-2 d-sm-flex">
+                <button type="button" class="btn btn-sm btn-outline-primary open-damage-form" data-reservation-id="{{ reservation.pk }}" data-form-type="damage">
+                  <i class="fi fi-rr-plus me-2"></i>ثبت خسارت
+                </button>
+                <button type="button" class="btn btn-sm btn-outline-success open-refund-form" data-reservation-id="{{ reservation.pk }}" data-form-type="refund">
+                  <i class="fi fi-rr-undo me-2"></i>ثبت بازگشت وجه
+                </button>
+              </div>
+            {% else %}
+              <div class="text-muted">این رزرو لغو نشده است.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <!-- Damage Form Modal -->
+      <div class="modal fade" id="damageModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">ثبت خسارت</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="damageForm" method="post" action="{% url 'financial:add_damage' reservation.pk %}">
+              {% csrf_token %}
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label for="damageType" class="form-label">نوع خسارت</label>
+                  <input type="text" class="form-control" id="damageType" name="damage_type" required>
+                </div>
+                <div class="mb-3">
+                  <label for="damageAmount" class="form-label">مبلغ خسارت (تومان)</label>
+                  <input type="number" class="form-control" id="damageAmount" name="amount" min="0">
+                </div>
+                <div class="mb-3">
+                  <label for="damagePaymentRef" class="form-label">کد پیگیری پرداخت</label>
+                  <input type="text" class="form-control" id="damagePaymentRef" name="payment_reference" placeholder="اختیاری">
+                </div>
+                <div class="mb-3">
+                  <label for="damageDesc" class="form-label">شرح</label>
+                  <textarea class="form-control" id="damageDesc" name="description" rows="3"></textarea>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="submit" class="btn btn-primary">ثبت خسارت</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+
+      <!-- Refund Form Modal -->
+      <div class="modal fade" id="refundModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">ثبت بازگشت وجه</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="refundForm" method="post" action="{% url 'financial:create_transaction' reservation.pk %}">
+              {% csrf_token %}
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label for="refundAmount" class="form-label">مبلغ بازگشت (تومان)</label>
+                  <input type="number" class="form-control" id="refundAmount" name="amount" min="0" required>
+                </div>
+                <div class="mb-3">
+                  <label for="refundMethod" class="form-label">روش پرداخت</label>
+                  <select class="form-select" id="refundMethod" name="payment_method">
+                    <option value="">انتخاب روش</option>
+                    <option value="CASH">نقد</option>
+                    <option value="CARD">کارت</option>
+                    <option value="TRANSFER">انتقال بانکی</option>
+                    <option value="CHECK">چک</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="refundRef" class="form-label">کد پیگیری</label>
+                  <input type="text" class="form-control" id="refundRef" name="external_reference" placeholder="کد پیگیری بازگشت وجه">
+                </div>
+                <div class="mb-3">
+                  <label for="refundNote" class="form-label">یادداشت</label>
+                  <textarea class="form-control" id="refundNote" name="note" rows="3"></textarea>
+                </div>
+                <input type="hidden" name="type" value="REFUND">
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="submit" class="btn btn-success">ثبت بازگشت وجه</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  // Toast container
+  let toastContainer = document.getElementById('financeToastContainer');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'financeToastContainer';
+    toastContainer.style.position = 'fixed';
+    toastContainer.style.top = '1rem';
+    toastContainer.style.left = '50%';
+    toastContainer.style.transform = 'translateX(-50%)';
+    toastContainer.style.zIndex = 1080;
+    document.body.appendChild(toastContainer);
+  }
+
+  function showToast(message, variant='info'){
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-bg-${variant} border-0 show`;
+    toast.setAttribute('role','alert');
+    toast.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    toastContainer.appendChild(toast);
+    setTimeout(()=>{ toast.remove(); }, 4000);
+  }
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  function clearFormErrors(form){
+    form.querySelectorAll('.is-invalid').forEach(el=>el.classList.remove('is-invalid'));
+    form.querySelectorAll('.invalid-feedback').forEach(el=>el.remove());
+  }
+
+  function renderFormErrors(form, errors){
+    for (const [field, msgs] of Object.entries(errors)){
+      const input = form.querySelector(`[name="${field}"]`);
+      if (input){
+        input.classList.add('is-invalid');
+        const fb = document.createElement('div');
+        fb.className = 'invalid-feedback';
+        fb.innerText = msgs.join(' ');
+        input.parentNode && input.parentNode.appendChild(fb);
+      } else {
+        showToast(msgs.join(' '), 'danger');
+      }
+    }
+  }
+
+  async function refreshFinancialPartial(){
+    try{
+      const url = document.querySelector('[data-financial-url]').dataset.financialUrl;
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const html = await res.text();
+      const tmp = document.createElement('div'); tmp.innerHTML = html;
+      const newCard = tmp.querySelector('.card');
+      if (newCard) {
+        const oldCard = document.querySelector('[data-financial-url]');
+        oldCard.parentNode.replaceChild(newCard, oldCard);
+      }
+    }catch(e){ console.warn('refresh failed', e); }
+  }
+
+  async function submitFormAjax(form, onSuccess){
+    clearFormErrors(form);
+    const btn = form.querySelector('button[type=submit]');
+    if (btn) btn.disabled = true;
+    const data = new URLSearchParams(new FormData(form));
+    try{
+      const res = await fetch(form.action, {method: 'POST', headers: {'X-CSRFToken': getCookie('csrftoken')}, body: data});
+      const json = await res.json();
+      if (!res.ok || json.error){
+        if (json.error && typeof json.error === 'object') renderFormErrors(form, json.error);
+        else showToast(json.error || 'خطا در عملیات', 'danger');
+        if (btn) btn.disabled = false;
+        return;
+      }
+      showToast(json.message || 'عملیات موفق', 'success');
+      if (onSuccess) onSuccess(json);
+      setTimeout(()=>refreshFinancialPartial(), 1000);
+    }catch(e){ showToast('خطا در ارتباط با سرور', 'danger'); if (btn) btn.disabled = false; }
+  }
+
+  // Damage form button
+  (function initDamageBtn() {
+    let maxAttempts = 0;
+    const checkDamageBtn = () => {
+      const damageBtn = document.querySelector('.open-damage-form');
+      if (damageBtn) {
+        damageBtn.removeEventListener('click', handleDamageClick);
+        damageBtn.addEventListener('click', handleDamageClick);
+      } else if (maxAttempts < 5) {
+        maxAttempts++;
+        setTimeout(checkDamageBtn, 100);
+      }
+    };
+    const handleDamageClick = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      const damageModal = document.getElementById('damageModal');
+      if (damageModal) {
+        const modal = new bootstrap.Modal(damageModal);
+        modal.show();
+      }
+    };
+    checkDamageBtn();
+  })();
+
+  // Refund form button
+  (function initRefundBtn() {
+    let maxAttempts = 0;
+    const checkRefundBtn = () => {
+      const refundBtn = document.querySelector('.open-refund-form');
+      if (refundBtn) {
+        refundBtn.removeEventListener('click', handleRefundClick);
+        refundBtn.addEventListener('click', handleRefundClick);
+      } else if (maxAttempts < 5) {
+        maxAttempts++;
+        setTimeout(checkRefundBtn, 100);
+      }
+    };
+    const handleRefundClick = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      const refundModal = document.getElementById('refundModal');
+      if (refundModal) {
+        const modal = new bootstrap.Modal(refundModal);
+        modal.show();
+      }
+    };
+    checkRefundBtn();
+  })();
+
+  // Damage form submit
+  (function initDamageForm() {
+    let maxAttempts = 0;
+    const checkDamageForm = () => {
+      const damageForm = document.getElementById('damageForm');
+      if (damageForm) {
+        damageForm.removeEventListener('submit', handleDamageSubmit);
+        damageForm.addEventListener('submit', handleDamageSubmit);
+      } else if (maxAttempts < 5) {
+        maxAttempts++;
+        setTimeout(checkDamageForm, 100);
+      }
+    };
+    const handleDamageSubmit = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      submitFormAjax(this, ()=>{
+        const modal = bootstrap.Modal.getInstance(document.getElementById('damageModal'));
+        if (modal) modal.hide();
+        setTimeout(refreshFinancialPartial, 800);
+      });
+    };
+    checkDamageForm();
+  })();
+
+  // Refund form submit
+  (function initRefundForm() {
+    let maxAttempts = 0;
+    const checkRefundForm = () => {
+      const refundForm = document.getElementById('refundForm');
+      if (refundForm) {
+        refundForm.removeEventListener('submit', handleRefundSubmit);
+        refundForm.addEventListener('submit', handleRefundSubmit);
+      } else if (maxAttempts < 5) {
+        maxAttempts++;
+        setTimeout(checkRefundForm, 100);
+      }
+    };
+    const handleRefundSubmit = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      submitFormAjax(this, ()=>{
+        const modal = bootstrap.Modal.getInstance(document.getElementById('refundModal'));
+        if (modal) modal.hide();
+        setTimeout(refreshFinancialPartial, 800);
+      });
+    };
+    checkRefundForm();
+  })();
+});
+</script>
+{% endblock %}

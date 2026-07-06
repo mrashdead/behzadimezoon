@@ -28,10 +28,38 @@
     try{
       const res = await fetch(url);
       if (!res.ok) { targetEl.innerHTML = '<div class="text-danger text-center py-3">خطا در بارگذاری</div>'; return; }
-      const html = await res.text(); targetEl.innerHTML = html;
-      // re-run any inline init scripts in loaded fragment
-      const tmp = document.createElement('div'); tmp.innerHTML = html; tmp.querySelectorAll('script').forEach(s => { try{ eval(s.innerText); }catch(e){ console.warn('fragment script error', e); }});
-    }catch(e){ targetEl.innerHTML = '<div class="text-danger text-center py-3">خطا در ارتباط</div>'; }
+      const html = await res.text();
+      
+      // Clean up old content first
+      targetEl.innerHTML = '';
+      
+      // Create a container to parse HTML
+      const tmp = document.createElement('div');
+      tmp.innerHTML = html;
+      
+      // Extract main content (excluding nested modals)
+      const mainContent = tmp.querySelector('.card') || tmp.firstElementChild;
+      if (mainContent) {
+        targetEl.appendChild(mainContent.cloneNode(true));
+      } else {
+        targetEl.innerHTML = html;
+      }
+      
+      // Extract and execute scripts separately
+      const scripts = tmp.querySelectorAll('script');
+      scripts.forEach(s => {
+        try {
+          const newScript = document.createElement('script');
+          newScript.textContent = s.textContent;
+          targetEl.appendChild(newScript);
+        } catch(e) {
+          console.warn('fragment script error', e);
+        }
+      });
+    }catch(e){
+      targetEl.innerHTML = '<div class="text-danger text-center py-3">خطا در ارتباط</div>';
+      console.error('fetchHtmlInto error:', e);
+    }
   }
 
   async function submitFormAjax(form, opts={}){
@@ -53,13 +81,39 @@
     elAll('.open-financial-modal').forEach(btn=>{
       btn.addEventListener('click', (e)=>{
         e.preventDefault();
-        const url = btn.dataset.url; const modalEl = el('#financialModal'); const body = el('#financialModalBody'); if (!modalEl || !body) return; const modal = new bootstrap.Modal(modalEl); modal.show(); fetchHtmlInto(url, body);
+        const url = btn.dataset.url;
+        const modalEl = el('#financialModal');
+        const body = el('#financialModalBody');
+        if (!modalEl || !body) return;
+        
+        // Clean up any existing modal state
+        const existingModal = bootstrap.Modal.getInstance(modalEl);
+        if (existingModal) {
+          existingModal.hide();
+          setTimeout(() => {
+            body.innerHTML = '';
+            const modal = new bootstrap.Modal(modalEl);
+            modal.show();
+            fetchHtmlInto(url, body);
+          }, 300);
+        } else {
+          const modal = new bootstrap.Modal(modalEl);
+          modal.show();
+          fetchHtmlInto(url, body);
+        }
       });
     });
-
-    elAll('.reconcile-action-row').forEach(form=>{
-      form.addEventListener('submit', function(e){ e.preventDefault(); if (!confirm('آیا مطمئن هستید؟')) return; submitFormAjax(this, {onSuccess: ()=>{ const btn = this.querySelector('button'); if (btn) btn.disabled = true; }}); });
-    });
+    
+    // Handle modal cleanup on hide
+    const modalEl = el('#financialModal');
+    if (modalEl) {
+      modalEl.addEventListener('hidden.bs.modal', function(){
+        const body = el('#financialModalBody');
+        if (body) {
+          body.innerHTML = '<div class="d-flex justify-content-center py-5"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+        }
+      });
+    }
   }
 
   window.FinanceHelpers = { showToast, fetchHtmlInto, submitFormAjax, initList };

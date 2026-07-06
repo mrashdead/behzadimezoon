@@ -355,6 +355,9 @@ class ReservationEditForm(forms.ModelForm):
         else:
             discount_amount = 0
 
+        cleaned_data["discount_type"] = discount_type
+        cleaned_data["discount_value"] = discount_value
+
         final_price = rent_price - discount_amount
         if final_price < 0:
             final_price = 0

@@ -6,6 +6,9 @@ from django.views.decorators.http import require_POST
 from financial.forms import GuaranteeForm, DamageForm, TransactionForm, CancellationForm
 from financial.services.guarantee_service import GuaranteeService
 from financial.services.damage_service import DamageService
+from financial.services.payment_service import PaymentService
+from financial.services.refund_service import RefundService
+from financial.services.cancellation_service import CancellationService
 from financial.services.transaction_service import TransactionService
 from financial.models import Guarantee, DamageRecord, CancellationRecord
 
@@ -131,13 +134,34 @@ def create_transaction_view(request, pk):
     external = data.get('external_reference')
     note = data.get('note')
 
-    # Map to TransactionService helpers
+    # Map to service helpers
     if tx_type == 'DEPOSIT':
-        tx = TransactionService.create_deposit(reservation=reservation, amount=amount, created_by=request.user, payment_method=payment_method, external_reference=external, note=note)
+        tx = PaymentService.record_deposit(
+            reservation=reservation,
+            amount=amount,
+            created_by=request.user,
+            payment_method=payment_method,
+            external_reference=external,
+            note=note
+        )
     elif tx_type == 'FINAL_PAYMENT':
-        tx = TransactionService.create_final_payment(reservation=reservation, amount=amount, created_by=request.user, payment_method=payment_method, external_reference=external, note=note)
+        tx = PaymentService.record_balance_payment(
+            reservation=reservation,
+            amount=amount,
+            created_by=request.user,
+            payment_method=payment_method,
+            external_reference=external,
+            note=note
+        )
     elif tx_type == 'REFUND':
-        tx = TransactionService.create_refund(reservation=reservation, amount=amount, created_by=request.user, payment_method=payment_method, external_reference=external, note=note)
+        tx = RefundService.record_refund(
+            reservation=reservation,
+            amount=amount,
+            created_by=request.user,
+            payment_method=payment_method,
+            external_reference=external,
+            note=note
+        )
     else:
         tx = TransactionService.create(reservation=reservation, transaction_type=tx_type, amount=amount, created_by=request.user, payment_method=payment_method, external_reference=external, note=note)
 
@@ -167,12 +191,17 @@ def cancel_reservation_flow(request, pk):
         notes=data.get('notes', '')
     )
 
-    # Create refund transaction if refund_amount > 0
-    if cr.refund_amount and cr.refund_amount > 0:
-        TransactionService.create_refund(reservation=reservation, amount=cr.refund_amount, created_by=request.user, note='بازپرداخت در لغو رزرو')
-
-    # Create cancellation fee as accrual if penalty_amount > 0
-    if cr.penalty_amount and cr.penalty_amount > 0:
-        TransactionService.create_cancellation_fee(reservation=reservation, amount=cr.penalty_amount, created_by=request.user, note='جریمه لغو ثبت‌شده')
+    # Create cancellation record and related transaction entries
+    if cr.refund_amount or cr.penalty_amount:
+        CancellationService.create_cancellation_record(
+            reservation=reservation,
+            reason=cr.reason,
+            created_by=request.user,
+            refund_amount=cr.refund_amount or 0,
+            penalty_amount=cr.penalty_amount or 0,
+            payment_method=None,
+            external_reference=None,
+            note=cr.notes or 'لغو رزرو ثبت شد'
+        )
 
     return JsonResponse({'result': 'ok', 'cancellation_id': cr.pk, 'message': 'لغو رزرو ثبت شد.'})

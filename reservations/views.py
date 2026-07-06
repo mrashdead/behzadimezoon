@@ -25,6 +25,9 @@ from reservations.forms import (
 from .services.availability_service import ReservationAvailabilityService
 from .services.change_status import ReservationStatusService
 from .constants import ReservationStatus, GuaranteeType, PaymentMethod
+from financial.services.cancellation_service import CancellationService
+from financial.services.damage_service import DamageService
+from financial.services.payment_service import PaymentService
 from financial.services.transaction_service import TransactionService
 
 
@@ -305,7 +308,7 @@ def reservation_create(request):
                 with transaction.atomic():
                     reservation.save()
                     if reservation.deposit_amount and reservation.deposit_amount > 0:
-                        TransactionService.create_deposit(
+                        PaymentService.record_initial_deposit(
                             reservation=reservation,
                             amount=reservation.deposit_amount,
                             created_by=request.user,
@@ -424,11 +427,13 @@ def reservation_mark_returned(request, pk):
     try:
         with transaction.atomic():
             if reservation.damage_amount and reservation.damage_amount > 0:
-                TransactionService.create_damage_charge(
+                DamageService.record_damage(
                     reservation=reservation,
+                    customer=reservation.customer,
+                    damage_type='خسارت بازگشت لباس',
                     amount=reservation.damage_amount,
+                    description=damage_notes or 'خسارت هنگام بازگشت لباس',
                     created_by=request.user,
-                    note='خسارت بازگشت لباس ثبت شد'
                 )
             ReservationStatusService.change_status(
                 reservation,
@@ -561,23 +566,16 @@ def reservation_finalize_delivery(request, pk):
             messages.error(request, str(e))
             return redirect("reservations:list")
 
-        # Atomically create FINAL_PAYMENT and persist reservation payment snapshot
         try:
-            with transaction.atomic():
-                TransactionService.create_final_payment(
-                    reservation=reservation,
-                    amount=amount,
-                    created_by=request.user,
-                    payment_method=method,
-                    external_reference=code,
-                    note='پرداخت نهایی در تحویل ثبت شد'
-                )
-                reservation.remaining_payment_amount = amount
-                reservation.remaining_payment_method = method
-                reservation.remaining_payment_tracking_code = code
-                reservation.remaining_paid_at = timezone.now()
-                reservation.remaining_amount = 0
-                reservation.save()
+            PaymentService.record_balance_payment(
+                reservation=reservation,
+                amount=amount,
+                created_by=request.user,
+                payment_method=method,
+                external_reference=code,
+                note='پرداخت نهایی در تحویل ثبت شد',
+                transaction_date=timezone.now()
+            )
         except Exception as exc:
             message = str(exc) or 'خطا در ثبت تراکنش پرداخت نهایی'
             if request.headers.get("x-requested-with") == "XMLHttpRequest":
@@ -633,6 +631,11 @@ def reservation_detail(request, pk):
 def reservation_edit(request, pk):
 
     if not can_edit_reservation(request.user):
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({
+                "success": False,
+                "message": "شما مجوز ویرایش رزرو را ندارید."
+            }, status=403)
         return HttpResponseForbidden()
 
     reservation = get_object_or_404(Reservation, pk=pk)
@@ -640,6 +643,11 @@ def reservation_edit(request, pk):
     # Sellers cannot edit (manager-only operation)
     # Extra protection: sellers trying to tamper with URL
     if request.user.role == "SELLER":
+        if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            return JsonResponse({
+                "success": False,
+                "message": "شما مجوز ویرایش رزرو را ندارید."
+            }, status=403)
         return HttpResponseForbidden()
 
     locked_statuses = [
@@ -669,10 +677,14 @@ def reservation_edit(request, pk):
 
     if not form.is_valid():
         if request.headers.get("x-requested-with") == "XMLHttpRequest":
+            error_message = " ".join(
+                [str(e) for errors in form.errors.values() for e in errors]
+            )
             return JsonResponse({
                 "success": False,
-                "errors": form.errors
-            })
+                "errors": form.errors,
+                "message": error_message
+            }, status=400)
         return redirect("reservations:list")
 
     reservation = form.save(commit=False)
@@ -758,24 +770,17 @@ def reservation_cancel(request, pk):
             ReservationStatus.CANCELLED,
             request.user
         )
-        # Dual-write: create cancellation fee / refund transactions if applicable
         try:
-            # If there's a cancellation_fee set on reservation, create CANCELLATION_FEE transaction
-            if getattr(reservation, 'cancellation_fee', None):
-                TransactionService.create_cancellation_fee(
-                    reservation=reservation,
-                    amount=reservation.cancellation_fee,
-                    created_by=request.user,
-                    note='جریمه لغو رزرو ثبت شد'
-                )
-            # If there's a refunded_amount on reservation, create REFUND transaction
-            if getattr(reservation, 'refunded_amount', None) and reservation.refunded_amount > 0:
-                TransactionService.create_refund(
-                    reservation=reservation,
-                    amount=reservation.refunded_amount,
-                    created_by=request.user,
-                    note='بازپرداخت لغو رزرو ثبت شد'
-                )
+            CancellationService.create_cancellation_record(
+                reservation=reservation,
+                reason='',
+                created_by=request.user,
+                refund_amount=getattr(reservation, 'refunded_amount', 0) or 0,
+                penalty_amount=getattr(reservation, 'cancellation_fee', 0) or 0,
+                payment_method=reservation.payment_method,
+                external_reference=reservation.payment_tracking_code,
+                note='لغو رزرو ثبت شد'
+            )
         except Exception:
             # Non-fatal: allow cancellation to proceed and catch mismatches in reconciliation
             pass

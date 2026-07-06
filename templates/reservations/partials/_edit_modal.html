@@ -1,14 +1,14 @@
 {% load humanize %}
 {% load jformat %}
 <div class="modal fade" id="editReservationModal{{ reservation.id }}" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-fullscreen-md-down">
-    <div class="modal-content border-0 shadow">
-      <form method="post" action="{% url 'reservations:edit' reservation.pk %}" class="d-flex flex-column needs-validation" novalidate id="reservationEditForm{{ reservation.id }}">
+  <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
+    <div class="modal-content">
+      <form method="post" action="{% url 'reservations:edit' reservation.pk %}" class="h-100 d-flex flex-column needs-validation" novalidate id="reservationEditForm{{ reservation.id }}">
         {% csrf_token %}
 
         {% include 'partials/_modal_header.html' with title='ویرایش اطلاعات رزرو' %}
 
-        <div class="modal-body flex-grow-1 overflow-y-auto py-3">
+        <div class="modal-body py-3">
           <div class="alert alert-danger d-none js-form-error-summary" role="alert"></div>
           <div class="row g-3">
             <div class="col-12">
@@ -77,7 +77,7 @@
                     <div class="col-12 col-md-6">
                       <label for="id_discount_type_{{ reservation.id }}" class="form-label">نوع تخفیف</label>
                       <select id="id_discount_type_{{ reservation.id }}" name="discount_type" class="form-select">
-                        <option value="NONE" {% if reservation.discount_type == 'NONE' %}selected{% endif %}>بدون تخفیف</option>
+                        <option value="" {% if reservation.discount_type == 'NONE' %}selected{% endif %}>بدون تخفیف</option>
                         <option value="AMOUNT" {% if reservation.discount_type == 'AMOUNT' %}selected{% endif %}>مبلغ ثابت</option>
                         <option value="PERCENT" {% if reservation.discount_type == 'PERCENT' %}selected{% endif %}>درصد</option>
                       </select>

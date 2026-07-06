@@ -38,7 +38,7 @@ class TransactionService:
         return tx
 
     @staticmethod
-    def create_deposit(reservation, amount, created_by, payment_method=None, external_reference=None, note=None):
+    def create_deposit(reservation, amount, created_by, payment_method=None, external_reference=None, note=None, transaction_date=None):
         return TransactionService.create(
             reservation=reservation,
             transaction_type=Transaction.Type.DEPOSIT,
@@ -47,10 +47,11 @@ class TransactionService:
             payment_method=payment_method,
             external_reference=external_reference,
             note=note,
+            transaction_date=transaction_date,
         )
 
     @staticmethod
-    def create_final_payment(reservation, amount, created_by, payment_method=None, external_reference=None, note=None):
+    def create_final_payment(reservation, amount, created_by, payment_method=None, external_reference=None, note=None, transaction_date=None):
         return TransactionService.create(
             reservation=reservation,
             transaction_type=Transaction.Type.FINAL_PAYMENT,
@@ -59,10 +60,11 @@ class TransactionService:
             payment_method=payment_method,
             external_reference=external_reference,
             note=note,
+            transaction_date=transaction_date,
         )
 
     @staticmethod
-    def create_refund(reservation, amount, created_by, payment_method=None, external_reference=None, note=None, related_transaction=None):
+    def create_refund(reservation, amount, created_by, payment_method=None, external_reference=None, note=None, related_transaction=None, transaction_date=None):
         return TransactionService.create(
             reservation=reservation,
             transaction_type=Transaction.Type.REFUND,
@@ -72,20 +74,25 @@ class TransactionService:
             external_reference=external_reference,
             note=note,
             related_transaction=related_transaction,
+            transaction_date=transaction_date,
         )
 
     @staticmethod
-    def create_damage_charge(reservation, amount, created_by, note=None):
+    def create_damage_charge(reservation, amount, created_by, payment_method=None, external_reference=None, note=None, related_transaction=None, transaction_date=None):
         return TransactionService.create(
             reservation=reservation,
             transaction_type=Transaction.Type.DAMAGE_CHARGE,
             amount=amount,
             created_by=created_by,
+            payment_method=payment_method,
+            external_reference=external_reference,
             note=note,
+            related_transaction=related_transaction,
+            transaction_date=transaction_date,
         )
 
     @staticmethod
-    def create_damage_payment(reservation, amount, created_by, payment_method=None, external_reference=None, note=None, related_transaction=None):
+    def create_damage_payment(reservation, amount, created_by, payment_method=None, external_reference=None, note=None, related_transaction=None, transaction_date=None):
         return TransactionService.create(
             reservation=reservation,
             transaction_type=Transaction.Type.DAMAGE_PAYMENT,
@@ -95,16 +102,18 @@ class TransactionService:
             external_reference=external_reference,
             note=note,
             related_transaction=related_transaction,
+            transaction_date=transaction_date,
         )
 
     @staticmethod
-    def create_cancellation_fee(reservation, amount, created_by, note=None):
+    def create_cancellation_fee(reservation, amount, created_by, note=None, transaction_date=None):
         return TransactionService.create(
             reservation=reservation,
             transaction_type=Transaction.Type.CANCELLATION_FEE,
             amount=amount,
             created_by=created_by,
             note=note,
+            transaction_date=transaction_date,
         )
 
     @staticmethod

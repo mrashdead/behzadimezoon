@@ -67,6 +67,51 @@ class ReservationStatusTransitionTests(TestCase):
         response = self.client.post(returned_url)
         self.assertEqual(response.status_code, 403)
 
+    def test_manager_can_edit_reservation_via_ajax(self):
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=50000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        url = reverse('reservations:edit', args=[reservation.pk])
+        response = self.client.post(url, {
+            'dress': str(self.dress.pk),
+            'start_date': '1402/01/02',
+            'rental_days': '3',
+            'discount_type': '',
+            'discount_value': '0',
+            'payment_method': 'CASH',
+            'payment_tracking_code': 'UPDATED',
+            'guarantee1_type': 'CASH',
+            'guarantee1_tracking_code': 'G1',
+            'guarantee2_type': '',
+            'guarantee2_tracking_code': '',
+            'deposit_amount': '50000',
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(
+            response.content,
+            {'success': True, 'message': 'رزرو با موفقیت به‌روز شد.'}
+        )
+
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.payment_tracking_code, 'UPDATED')
+
     def test_manager_can_mark_delivered_and_returned(self):
         reservation = Reservation.objects.create(
             customer=self.customer,

@@ -1,172 +1,132 @@
+{% load humanize %}
 {% load jalali_tags %}
 {% load jformat %}
 
 <div class="modal fade" id="detailReservationModal{{ reservation.id }}" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
-    <div class="modal-content">
-      <div class="modal-header">
-        <h5 class="modal-title">جزئیات رزرو</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+  <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
+    <div class="modal-content border-0 shadow-sm">
+      <div class="modal-header border-bottom d-flex align-items-center justify-content-between">
+        <div>
+          <h5 class="modal-title mb-1">جزئیات رزرو</h5>
+          <p class="text-muted small mb-0">نمایش خلاصه اطلاعات رزرو، وضعیت مالی و ضمانت‌ها</p>
+        </div>
+        <button type="button" class="btn btn-outline-secondary btn-sm" data-bs-dismiss="modal" aria-label="بستن">بستن</button>
       </div>
-      <div class="modal-body">
+      <div class="modal-body py-3">
+        <div class="mb-4">
+          <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3">
+            {% include 'partials/_detail_card.html' with label='مشتری' value=reservation.customer %}
+            {% include 'partials/_detail_card.html' with label='لباس' value=reservation.dress %}
+            {% include 'partials/_detail_card.html' with label='وضعیت' value=reservation.get_status_display %}
+            {% include 'partials/_detail_card.html' with label='تعداد روز اجاره' value=reservation.rental_days %}
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          {% include 'partials/_detail_card.html' with label='تاریخ شروع اجاره' value=reservation.start_date|jformat:"%Y/%m/%d"|default:'-' %}
+          {% include 'partials/_detail_card.html' with label='تاریخ پایان اجاره' value=reservation.end_date|jformat:"%Y/%m/%d"|default:'-' %}
+          {% include 'partials/_detail_card.html' with label='مبلغ نهایی' value=reservation.final_price|intcomma|stringformat:'s'|add:' تومان' %}
+          {% include 'partials/_detail_card.html' with label='باقی مانده' value=reservation.remaining_amount|intcomma|stringformat:'s'|add:' تومان' %}
+        </div>
+
+        <div class="row g-3 mb-4">
+          {% include 'partials/_detail_card.html' with label='بیعانه' value=reservation.deposit_amount|intcomma|stringformat:'s'|add:' تومان' %}
+          {% include 'partials/_detail_card.html' with label='تخفیف' value=reservation.discount_amount|default:0|intcomma|stringformat:'s'|add:' تومان' %}
+          {% include 'partials/_detail_card.html' with label='روش پرداخت' value=reservation.get_payment_method_display %}
+          {% include 'partials/_detail_card.html' with label='کد رهگیری پرداخت' value=reservation.payment_tracking_code|default:'-' %}
+        </div>
+
+        <div class="row g-3 mb-4">
+          {% include 'partials/_detail_card.html' with label='نوع ضمانت اول' value=reservation.get_guarantee1_type_display|default:'-' %}
+          {% include 'partials/_detail_card.html' with label='کد رهگیری ضمانت اول' value=reservation.guarantee1_tracking_code|default:'-' %}
+          {% include 'partials/_detail_card.html' with label='نوع ضمانت دوم' value=reservation.get_guarantee2_type_display|default:'-' %}
+          {% include 'partials/_detail_card.html' with label='کد رهگیری ضمانت دوم' value=reservation.guarantee2_tracking_code|default:'-' %}
+        </div>
+
+        <div class="row g-3 mb-4">
+          {% include 'partials/_detail_card.html' with label='قیمت اجاره روزانه' value=reservation.rent_price|intcomma|stringformat:'s'|add:' تومان' %}
+          {% include 'partials/_detail_card.html' with label='پرداخت باقی‌مانده' value=reservation.remaining_payment_amount|default:0|intcomma|stringformat:'s'|add:' تومان' %}
+          {% include 'partials/_detail_card.html' with label='خسارت' value=reservation.damage_amount|default:'-'|intcomma|stringformat:'s'|add:' تومان' %}
+          {% include 'partials/_detail_card.html' with label='جریمه لغو' value=reservation.cancellation_fee|default:'-'|intcomma|stringformat:'s'|add:' تومان' %}
+        </div>
+
         <div class="row g-3">
-          <div class="col-md-6">
-            <div class="card shadow-none border h-100">
+          <div class="col-12 col-xl-8">
+            <div class="card shadow-sm border rounded-3 h-100">
+              <div class="card-header bg-body-tertiary border-bottom py-3 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">عملیات مالی رزرو</h6>
+                <span class="badge bg-info-subtle text-info">بارگذاری آنلاین</span>
+              </div>
               <div class="card-body">
-                <div class="small text-muted mb-1">مشتری</div>
-                <div class="fw-semibold text-body">{{ reservation.customer }}</div>
+                <p class="small text-muted mb-3">برای نمایش جزئیات پرداخت، تضمین و خرابی از خلاصه مالی استفاده کنید.</p>
+                <button id="loadFinancialBtn{{ reservation.id }}" class="btn btn-sm btn-outline-primary">بارگذاری خلاصه مالی</button>
+                <div class="mt-4" id="reservationFinancialContainer{{ reservation.id }}"></div>
               </div>
             </div>
           </div>
-          <div class="col-md-6">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">لباس</div>
-                <div class="fw-semibold text-body">{{ reservation.dress }}</div>
+
+          <div class="col-12 col-xl-4">
+            <div class="card shadow-sm border rounded-3 h-100">
+              <div class="card-header bg-body-tertiary border-bottom py-3 d-flex justify-content-between align-items-center">
+                <h6 class="mb-0">وضعیت سریع</h6>
+                <span class="badge bg-secondary-subtle text-secondary">اطلاعات</span>
               </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
               <div class="card-body">
-                <div class="small text-muted mb-1">تاریخ شروع اجاره</div>
-                <div class="fw-semibold text-body">{{ reservation.start_date|jformat:"%Y/%m/%d"|default:"-" }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">تاریخ پایان اجاره</div>
-                <div class="fw-semibold text-body">{{ reservation.end_date|jformat:"%Y/%m/%d"|default:"-" }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">تاریخ تحویل</div>
-                <div class="fw-semibold text-body">{{ reservation.delivery_date|jformat:"%Y/%m/%d"|default:"-" }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">تاریخ مراسم</div>
-                <div class="fw-semibold text-body">{{ reservation.event_date|jformat:"%Y/%m/%d"|default:"-" }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">وضعیت</div>
-                <div class="fw-semibold text-body">{{ reservation.get_status_display }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">هزینه اجاره</div>
-                <div class="fw-semibold text-body">{{ reservation.rent_price|default:"-" }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">بیعانه</div>
-                <div class="fw-semibold text-body">{{ reservation.deposit_amount|default:"-" }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">تخفیف</div>
-                <div class="fw-semibold text-body">{{ reservation.discount_amount|default:"-" }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">مبلغ نهایی</div>
-                <div class="fw-semibold text-body">{{ reservation.final_price|default:"-" }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">باقی مانده</div>
-                <div class="fw-semibold text-body">{{ reservation.remaining_amount|default:"-" }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">روش پرداخت</div>
-                <div class="fw-semibold text-body">{{ reservation.get_payment_method_display }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">کد رهگیری پرداخت</div>
-                <div class="fw-semibold text-body">{{ reservation.payment_tracking_code|default:"-" }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">نوع ضمانت اول</div>
-                <div class="fw-semibold text-body">{{ reservation.get_guarantee1_type_display|default:"-" }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">کد رهگیری ضمانت اول</div>
-                <div class="fw-semibold text-body">{{ reservation.guarantee1_tracking_code|default:"-" }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">نوع ضمانت دوم</div>
-                <div class="fw-semibold text-body">{{ reservation.get_guarantee2_type_display|default:"-" }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-md-4">
-            <div class="card shadow-none border h-100">
-              <div class="card-body">
-                <div class="small text-muted mb-1">کد رهگیری ضمانت دوم</div>
-                <div class="fw-semibold text-body">{{ reservation.guarantee2_tracking_code|default:"-" }}</div>
-              </div>
-            </div>
-          </div>
-          <div class="col-12">
-            <div class="card shadow-none border">
-              <div class="card-body">
-                <div class="small text-muted mb-1">یادداشت</div>
-                <div class="fw-semibold text-body">{{ reservation.notes|default:"-" }}</div>
+                <div class="d-flex flex-column gap-3">
+                  <div>
+                    <div class="small text-muted">رزرو شماره</div>
+                    <div class="fw-semibold">#{{ reservation.pk }}</div>
+                  </div>
+                  <div>
+                    <div class="small text-muted">کاربر ثبت‌کننده</div>
+                    <div class="fw-semibold">{{ reservation.created_by.get_full_name|default:'-' }}</div>
+                  </div>
+                  <div>
+                    <div class="small text-muted">وضعیت پرداخت</div>
+                    <div class="fw-semibold">{{ reservation.get_payment_status_display }}</div>
+                  </div>
+                  <div>
+                    <div class="small text-muted">تاریخ تحویل</div>
+                    <div class="fw-semibold">{{ reservation.delivery_date|jformat:"%Y/%m/%d"|default:'-' }}</div>
+                  </div>
+                  <div>
+                    <div class="small text-muted">آسیب لباس</div>
+                    <div class="fw-semibold">{{ reservation.item_damaged|yesno:"بله,خیر" }}</div>
+                  </div>
+                </div>
               </div>
             </div>
           </div>
         </div>
+
+        <div class="card shadow-sm border rounded-3 mb-3">
+          <div class="card-header bg-body-tertiary border-bottom py-3">
+            <h6 class="mb-0">یادداشت رزرو</h6>
+          </div>
+          <div class="card-body">
+            <div class="small text-muted mb-2">متن توضیحات ثبت‌شده برای این رزرو</div>
+            <div class="fw-semibold text-body white-space-pre-wrap">{{ reservation.notes|default:'-' }}</div>
+          </div>
+        </div>
       </div>
-      <div class="modal-footer">
+      <div class="modal-footer border-top">
         <button type="button" class="btn btn-light" data-bs-dismiss="modal">بستن</button>
       </div>
     </div>
   </div>
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+  const btn = document.getElementById('loadFinancialBtn{{ reservation.id }}');
+  if (!btn) return;
+  btn.addEventListener('click', function(){
+    const container = document.getElementById('reservationFinancialContainer{{ reservation.id }}');
+    if (!container) return;
+    fetch('{% url "financial:reservation_financial" reservation.pk %}')
+      .then(r => r.text())
+      .then(html => { container.innerHTML = html; })
+      .catch(() => { alert('خطا در بارگذاری خلاصه مالی'); });
+  });
+});
+</script>

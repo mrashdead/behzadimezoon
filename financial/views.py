@@ -26,6 +26,7 @@ class FinancialListView(TemplateView):
             'ledger_mode': self.request.GET.get('ledger', None),
         }
 
+        reporting = {}
         try:
             financial_ctx = DashboardService.get_financial_context(filters=params)
             totals = financial_ctx.get('totals', {})
@@ -33,6 +34,7 @@ class FinancialListView(TemplateView):
             recent_reservations = financial_ctx.get('recent_reservations', [])
             uses_transaction_ledger = financial_ctx.get('uses_transaction_ledger', False)
             open_reconciliation_issues = financial_ctx.get('open_reconciliation_issues', 0)
+            reporting = financial_ctx.get('reporting', {})
         except ProgrammingError:
             totals = {
                 'total_reservations': 0,
@@ -54,6 +56,7 @@ class FinancialListView(TemplateView):
             recent_reservations = Reservation.objects.none()
             uses_transaction_ledger = False
             open_reconciliation_issues = 0
+            reporting = {}
 
         context['page_title'] = 'مالی'
         context['totals'] = totals
@@ -61,6 +64,7 @@ class FinancialListView(TemplateView):
         context['recent_reservations'] = recent_reservations
         context['uses_transaction_ledger'] = uses_transaction_ledger
         context['open_reconciliation_issues'] = open_reconciliation_issues
+        context['reporting'] = reporting
         # sellers for filter dropdown
         context['sellers'] = User.objects.filter(role='SELLER')
         return context

@@ -1,6 +1,7 @@
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.conf import settings
+from django.utils import timezone
 from datetime import timedelta
 
 from django_jalali.db import models as jmodels
@@ -321,6 +322,37 @@ class Reservation(models.Model):
     )
 
     # -----------------------
+    # Snapshot Fields (for historical audit & immutability)
+    # -----------------------
+
+    dress_daily_price_snapshot = models.PositiveIntegerField(
+        null=True,
+        blank=True,
+        verbose_name="قیمت روزانه لباس در زمان رزرو (snapshot)",
+        help_text="Immutable snapshot of dress.daily_rent_price at time of reservation creation"
+    )
+
+    customer_phone_snapshot = models.CharField(
+        max_length=15,
+        blank=True,
+        verbose_name="شماره تماس عروس در زمان رزرو (snapshot)",
+        help_text="Snapshot of customer phone for historical audit"
+    )
+
+    financial_snapshot = models.JSONField(
+        null=True,
+        blank=True,
+        verbose_name="snapshot مالی رزرو",
+        help_text="JSON snapshot of financial state captured at key events (deposit, balance, return, etc.)"
+    )
+
+    total_cash_collected_snapshot = models.PositiveIntegerField(
+        default=0,
+        verbose_name="کل نقد دریافت شده (snapshot)",
+        help_text="Snapshot of total cash collected: deposit + remaining_payment - refunds"
+    )
+
+    # -----------------------
     # متدهای محاسباتی
     # -----------------------
 
@@ -436,6 +468,8 @@ class Reservation(models.Model):
         if self.dress:
             if self._state.adding or self.rent_price is None or self.rent_price == 0:
                 self.rent_price = self.dress.daily_rent_price
+                # Capture snapshot of dress price at creation time
+                self.dress_daily_price_snapshot = self.dress.daily_rent_price
             elif self.pk:
                 original = Reservation.objects.filter(pk=self.pk).values(
                     'dress_id', 'rental_days'
@@ -447,14 +481,84 @@ class Reservation(models.Model):
         # تاریخ مراسم از مشتری
         if self.customer and not self.event_date:
             self.event_date = getattr(self.customer, "ceremony_date", None)
+            # Capture snapshot of customer phone at creation time
+            if self._state.adding:
+                self.customer_phone_snapshot = getattr(self.customer, "bride_phone", "")
 
         self.calculate_dates()
         self.calculate_financials()
+        
+        # Update snapshot of collected cash
+        self.total_cash_collected_snapshot = self.total_received_amount()
+        
         self.full_clean()
 
         super().save(*args, **kwargs)
 
-    @property
+    # -----------------------
+    # Financial Query Methods
+    # -----------------------
+
+    def get_price_snapshot_for_audit(self):
+        """Return immutable pricing snapshot for audit trail."""
+        return {
+            'dress_id': self.dress_id,
+            'dress_daily_price_snapshot': self.dress_daily_price_snapshot,
+            'rent_price': self.rent_price,
+            'discount_type': self.discount_type,
+            'discount_value': self.discount_value,
+            'discount_amount': self.discount_amount,
+            'final_price': self.final_price,
+        }
+
+    def get_payment_snapshot_for_audit(self):
+        """Return immutable payment snapshot for audit trail."""
+        return {
+            'deposit_amount': self.deposit_amount,
+            'remaining_payment_amount': self.remaining_payment_amount,
+            'refunded_amount': self.refunded_amount,
+            'damage_amount': self.damage_amount,
+            'cancellation_fee': self.cancellation_fee,
+            'total_cash_collected': self.total_received_amount(),
+            'outstanding_balance': self.outstanding_balance,
+        }
+
+    def capture_financial_snapshot(self, event_type):
+        """Capture complete financial snapshot at key event."""
+        self.financial_snapshot = {
+            'event_type': event_type,
+            'captured_at': str(timezone.now()),
+            'status': self.status,
+            'payment_status': self.payment_status,
+            'pricing': self.get_price_snapshot_for_audit(),
+            'payments': self.get_payment_snapshot_for_audit(),
+        }
+
+    def is_fully_paid(self):
+        """Check if all amounts due (including damages) have been collected."""
+        total_due = self.final_price + (self.damage_amount or 0) + (self.cancellation_fee or 0)
+        total_collected = self.total_received_amount()
+        return total_collected >= total_due
+
+    def is_partially_paid(self):
+        """Check if some payment has been received but not all."""
+        collected = self.total_received_amount()
+        return 0 < collected < (self.final_price + (self.damage_amount or 0))
+
+    def is_unpaid(self):
+        """Check if no payment has been received."""
+        return self.total_received_amount() == 0
+
+    def calculate_remaining_due(self):
+        """Calculate total amount still owed."""
+        total_due = self.final_price + (self.damage_amount or 0) + (self.cancellation_fee or 0)
+        total_collected = self.total_received_amount()
+        remaining = total_due - total_collected
+        return max(remaining, 0)
+
+    # -----------------------
+    # Allowable Transitions
+    # -----------------------
     def allowed_transitions(self):
         return ReservationStateMachine.TRANSITIONS.get(self.status, [])
 

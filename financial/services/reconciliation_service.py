@@ -33,9 +33,16 @@ class ReconciliationService:
             total_refund=Sum(Case(When(type=Transaction.Type.REFUND, then='amount'), default=Value(0), output_field=BigIntegerField())),
             total_damage_charge=Sum(Case(When(type=Transaction.Type.DAMAGE_CHARGE, then='amount'), default=Value(0), output_field=BigIntegerField())),
             total_damage_payment=Sum(Case(When(type=Transaction.Type.DAMAGE_PAYMENT, then='amount'), default=Value(0), output_field=BigIntegerField())),
+            total_adjustment=Sum(Case(When(type=Transaction.Type.ADJUSTMENT, then='amount'), default=Value(0), output_field=BigIntegerField())),
         )
 
-        expected_cash = (transactions.get('total_deposit') or 0) + (transactions.get('total_final_payment') or 0) + (transactions.get('total_damage_payment') or 0) - (transactions.get('total_refund') or 0)
+        expected_cash = (
+            (transactions.get('total_deposit') or 0)
+            + (transactions.get('total_final_payment') or 0)
+            + (transactions.get('total_damage_payment') or 0)
+            + (transactions.get('total_adjustment') or 0)
+            - (transactions.get('total_refund') or 0)
+        )
         reservation_cash = (reservation.deposit_amount or 0) + (reservation.remaining_payment_amount or 0) - (reservation.refunded_amount or 0)
         cash_difference = expected_cash - reservation_cash
         action = ReconciliationService._action_for_difference(cash_difference)

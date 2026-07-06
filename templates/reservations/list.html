@@ -11,12 +11,13 @@
   <div class="app-page-head d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
     <div>
       <h6 class="mb-0">لیست رزروها</h6>
+      <p class="small text-muted mb-0">مدیریت رزروها، بررسی وضعیت و انجام عملیات سریع در همان صفحه.</p>
     </div>
-    <div class="d-flex gap-2">
+    <div class="d-flex gap-2 align-items-center">
       {% if can_create_reservation %}
       <button
         type="button"
-        class="btn btn-primary"
+        class="btn btn-primary btn-sm"
         data-bs-toggle="modal"
         data-bs-target="#createReservationModal"
       >
@@ -24,7 +25,7 @@
         رزرو جدید
       </button>
       {% endif %}
-      <a href="{% url 'reservations:archive' %}" class="btn btn-outline-secondary">
+      <a href="{% url 'reservations:archive' %}" class="btn btn-outline-secondary btn-sm">
         <i class="fi fi-rr-archive me-1"></i>
         آرشیو رزروها
       </a>
@@ -32,9 +33,9 @@
   </div>
 
   <div class="card border-0 shadow-sm customer-list-card">
-    <div class="card-body">
+    <div class="card-body p-0">
       <div class="table-responsive customer-table-wrap">
-        <table class="table table-sm table-row-rounded data-row-checkbox align-middle mb-0 customer-mobile-table">
+        <table class="table table-sm table-row-rounded table-hover align-middle mb-0 customer-mobile-table">
           <thead class="table-light">
             <tr>
               <th>مشتری</th>
