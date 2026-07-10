@@ -14,23 +14,7 @@
         {% include 'partials/_stat_card.html' with icon='fi-rr-person-dress' label='تعداد محصولات' value=dresses_count badge_type='info' badge_text='لباس' %}
         {% include 'partials/_stat_card.html' with icon='fi-rr-calendar' label='رزروهای فعال' value=active_reservations_count badge_type='warning' badge_text='رزرو' %}
         {% include 'partials/_stat_card.html' with icon='fi-rr-coins' label='درآمد کل (نقدی)' value=totals.total_cash_inflow badge_type='primary' badge_text='تومان' %}
-        {% include 'partials/_stat_card.html' with icon='fi-rr-coins' label='درآمد تعهدی' value=totals.total_revenue badge_type='primary' badge_text='تومان' %}
-    </div>
-
-    <div class="mb-4 d-flex flex-wrap gap-2 align-items-center">
-        <a href="{% url 'financial:list' %}" class="btn btn-outline-primary">صفحه مالی</a>
-        <a href="{% url 'financial:transactions' %}" class="btn btn-outline-secondary">تراکنش‌ها</a>
-    </div>
-
-    <div class="mb-4 d-flex flex-wrap gap-2 align-items-center">
-        {% if uses_transaction_ledger %}
-            <span class="badge bg-success-subtle text-success align-self-center">حالت دفتر تراکنش‌محور فعال است</span>
-        {% else %}
-            <span class="badge bg-warning-subtle text-warning align-self-center">بر اساس مقادیر رزرو عمل می‌کند</span>
-        {% endif %}
-        {% if open_reconciliation_issues > 0 %}
-            <span class="badge bg-danger-subtle text-danger align-self-center">{{ open_reconciliation_issues }} اختلاف تسویه باز</span>
-        {% endif %}
+        {# درآمد تعهدی حذف شد - درخواست کاربر #}
     </div>
 
     <div class="row mt-3">
@@ -58,7 +42,7 @@
                                 <tr>
                                     <td>{% if tx.reservation %}#{{ tx.reservation.id }}{% else %}-{% endif %}</td>
                                     <td>{{ tx.get_type_display }}</td>
-                                    <td>{{ tx.amount|intcomma }}</td>
+                                    <td>{{ tx.amount|ir_currency }}</td>
                                     <td>{{ tx.transaction_date|jformat:"%Y/%m/%d %H:%M" }}</td>
                                 </tr>
                                 {% empty %}
@@ -125,4 +109,5 @@
 {% block extra_js %}
 
 {% endblock %}
+
 

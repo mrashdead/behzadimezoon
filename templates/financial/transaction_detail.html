@@ -41,7 +41,7 @@
       </div>
       <div class="col-12 col-md-6">
         <div class="mb-3">
-          <strong>مبلغ:</strong> {{ transaction.amount|intcomma }} تومان
+          <strong>مبلغ:</strong> {{ transaction.amount|ir_currency }} تومان
         </div>
         <div class="mb-3">
           <strong>روش پرداخت:</strong> {{ transaction.get_payment_method_display|default:transaction.payment_method }}</n>

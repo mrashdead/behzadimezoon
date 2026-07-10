@@ -46,7 +46,7 @@
             <tr>
                 <td>{{ tx.transaction_date|jformat:"%Y/%m/%d %H:%M" }}</td>
                 <td>{{ tx.get_type_display }}</td>
-                <td>{{ tx.amount|intcomma }} تومان</td>
+                <td>{{ tx.amount|ir_currency }} تومان</td>
                 <td>{% if tx.reservation %}#{{ tx.reservation.pk }}{% else %}-{% endif %}</td>
                 <td>{% if tx.created_by %}{{ tx.created_by.get_full_name }}{% else %}-{% endif %}</td>
                 <td>{{ tx.description }}</td>
@@ -86,3 +86,4 @@
 {% endif %}
 
 {% endblock %}
+

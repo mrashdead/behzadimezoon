@@ -17,7 +17,7 @@
 
             <div class="col-md-6">
               <label for="edit_price_{{ dress.id }}" class="form-label">قیمت اجاره روزانه (تومان)</label>
-              <input type="text" name="daily_rent_price" id="edit_price_{{ dress.id }}" class="form-control money-input" value="{{ dress.daily_rent_price|intcomma }}" required />
+              <input type="text" name="daily_rent_price" id="edit_price_{{ dress.id }}" class="form-control money-input" value="{{ dress.daily_rent_price|ir_currency }}" required />
             </div>
           </div>
         </div>
@@ -27,4 +27,5 @@
     </div>
   </div>
 </div>
+
 

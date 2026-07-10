@@ -84,6 +84,7 @@ TEMPLATES = [
             ],
             'builtins': [
                 'django_jalali.templatetags.jformat',
+                'core.templatetags.number_filters',
             ],
         },
     },

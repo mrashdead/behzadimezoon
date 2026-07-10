@@ -29,7 +29,7 @@
             <div class="border rounded p-3 h-100">
               <div class="text-muted small mb-1">قیمت اجاره روزانه</div>
               <div class="fw-semibold">
-                {{ dress.daily_rent_price|intcomma|default:"-" }} تومان
+                {{ dress.daily_rent_price|ir_currency|default:"-" }} تومان
               </div>
             </div>
           </div>
@@ -60,3 +60,4 @@
     </div>
   </div>
 </div>
+

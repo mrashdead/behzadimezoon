@@ -47,15 +47,15 @@
               <td data-label="لباس">{{ reservation.dress }}</td>
               <td data-label="شروع اجاره">{{ reservation.start_date|jformat:"%Y/%m/%d" }}</td>
               <td data-label="پایان اجاره">{{ reservation.end_date|jformat:"%Y/%m/%d" }}</td>
-              <td data-label="مبلغ نهایی">{{ reservation.final_price|intcomma }} تومان</td>
-              <td data-label="بیعانه">{{ reservation.deposit_amount|intcomma }} تومان</td>
-              <td data-label="باقی مانده">{{ reservation.remaining_amount|intcomma }} تومان</td>
+              <td data-label="مبلغ نهایی">{{ reservation.final_price|ir_currency }} تومان</td>
+              <td data-label="بیعانه">{{ reservation.deposit_amount|ir_currency }} تومان</td>
+              <td data-label="باقی مانده">{{ reservation.remaining_amount|ir_currency }} تومان</td>
               <td data-label="عودت/خسارت">
                 {% if reservation.refunded_amount > 0 %}
-                  <span class="text-info">عودت {{ reservation.refunded_amount|intcomma }} تومان</span><br>
+                  <span class="text-info">عودت {{ reservation.refunded_amount|ir_currency }} تومان</span><br>
                 {% endif %}
                 {% if reservation.damage_amount > 0 %}
-                  <span class="text-danger">خسارت {{ reservation.damage_amount|intcomma }} تومان</span>
+                  <span class="text-danger">خسارت {{ reservation.damage_amount|ir_currency }} تومان</span>
                 {% endif %}
                 {% if reservation.refunded_amount == 0 and reservation.damage_amount == 0 %}
                   <span class="text-muted">—</span>
@@ -152,3 +152,4 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 {% endblock %}
+

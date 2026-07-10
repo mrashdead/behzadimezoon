@@ -70,7 +70,7 @@
           </td>
           <td data-label="قیمت اجاره روزانه">
             {% if dress.daily_rent_price is not None %}
-            <span class="number-display fw-semibold" data-value="{{ dress.daily_rent_price }}">{{ dress.daily_rent_price|intcomma }}</span>
+            <span class="number-display fw-semibold" data-value="{{ dress.daily_rent_price }}">{{ dress.daily_rent_price|ir_currency }}</span>
             <span class="text-muted">تومان</span>
             {% else %}
             <span class="text-muted">-</span>
@@ -175,3 +175,4 @@
   {% include 'partials/pagination.html' %}
   </form>
 </div>
+

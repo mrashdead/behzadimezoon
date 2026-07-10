@@ -17,7 +17,7 @@
   </div>
   <div class="d-flex gap-2">
     <a href="{% url 'financial:list' %}" class="btn btn-outline-secondary">بازگشت</a>
-    <a href="{% url 'financial:export_excel' %}" class="btn btn-outline-primary">خروجی اکسل</a>
+    <a href="#" class="btn btn-outline-primary" data-action-disabled="true" aria-disabled="true" tabindex="-1" style="opacity: 0.65; cursor: not-allowed;" onclick="event.preventDefault(); event.stopPropagation(); window.alert('موقتا غیر فعال'); return false;">خروجی اکسل</a>
   </div>
 </div>
 
@@ -26,7 +26,7 @@
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body">
         <div class="small text-muted">درآمد کل</div>
-        <div class="h4 fw-bold">{{ totals.total_revenue|default:0|intcomma }} تومان</div>
+        <div class="h4 fw-bold">{{ totals.total_revenue|default:0|ir_currency }} تومان</div>
       </div>
     </div>
   </div>
@@ -34,7 +34,7 @@
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body">
         <div class="small text-muted">هزینه کل</div>
-        <div class="h4 fw-bold">{{ totals.total_expenses|default:0|intcomma }} تومان</div>
+        <div class="h4 fw-bold">{{ totals.total_expenses|default:0|ir_currency }} تومان</div>
       </div>
     </div>
   </div>
@@ -42,7 +42,7 @@
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body">
         <div class="small text-muted">سود خالص</div>
-        <div class="h4 fw-bold">{{ totals.net_profit|default:0|intcomma }} تومان</div>
+        <div class="h4 fw-bold">{{ totals.net_profit|default:0|ir_currency }} تومان</div>
       </div>
     </div>
   </div>
@@ -50,7 +50,7 @@
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body">
         <div class="small text-muted">جریان نقدی</div>
-        <div class="h4 fw-bold">{{ totals.total_cash_inflow|default:0|intcomma }} تومان</div>
+        <div class="h4 fw-bold">{{ totals.total_cash_inflow|default:0|ir_currency }} تومان</div>
       </div>
     </div>
   </div>
@@ -58,7 +58,7 @@
     <div class="card border-0 shadow-sm h-100">
       <div class="card-body">
         <div class="small text-muted">جمع درآمدهای جانبی</div>
-        <div class="h4 fw-bold">{{ totals.total_additional_fee_revenue|default:0|intcomma }} تومان</div>
+        <div class="h4 fw-bold">{{ totals.total_additional_fee_revenue|default:0|ir_currency }} تومان</div>
       </div>
     </div>
   </div>
@@ -121,7 +121,7 @@
                 <tr>
                   <td>{{ tx.transaction_date|jformat:"%Y/%m/%d" }}</td>
                   <td>{{ tx.get_transaction_type_display }}</td>
-                  <td class="text-end">{{ tx.amount|intcomma }} تومان</td>
+                  <td class="text-end">{{ tx.amount|ir_currency }} تومان</td>
                 </tr>
               {% empty %}
                 <tr>
@@ -154,7 +154,7 @@
                 <tr>
                   <td>#{{ reservation.pk }}</td>
                   <td>{{ reservation.customer }}</td>
-                  <td class="text-end">{{ reservation.amount_remaining|intcomma }} تومان</td>
+                  <td class="text-end">{{ reservation.amount_remaining|ir_currency }} تومان</td>
                 </tr>
               {% empty %}
                 <tr>

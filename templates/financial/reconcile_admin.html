@@ -70,13 +70,13 @@
             {% for item in problems %}
               <tr>
                 <td>#{{ item.reservation_id }}</td>
-                <td class="text-end">{{ item.expected_cash_from_tx|intcomma }} تومان</td>
-                <td class="text-end">{{ item.reservation_cash_recorded|intcomma }} تومان</td>
+                <td class="text-end">{{ item.expected_cash_from_tx|ir_currency }} تومان</td>
+                <td class="text-end">{{ item.reservation_cash_recorded|ir_currency }} تومان</td>
                 <td class="text-end">
                   {% if item.cash_difference > 0 %}
-                    <span class="text-danger">+{{ item.cash_difference|intcomma }} تومان</span>
+                    <span class="text-danger">+{{ item.cash_difference|ir_currency }} تومان</span>
                   {% elif item.cash_difference < 0 %}
-                    <span class="text-success">{{ item.cash_difference|intcomma }} تومان</span>
+                    <span class="text-success">{{ item.cash_difference|ir_currency }} تومان</span>
                   {% else %}
                     <span class="text-muted">۰</span>
                   {% endif %}
@@ -98,3 +98,4 @@
 </div>
 
 {% endblock %}
+

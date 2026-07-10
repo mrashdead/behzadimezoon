@@ -25,13 +25,13 @@
         <div class="row g-3 mb-4">
           {% include 'partials/_detail_card.html' with label='تاریخ شروع اجاره' value=reservation.start_date|jformat:"%Y/%m/%d"|default:'-' %}
           {% include 'partials/_detail_card.html' with label='تاریخ پایان اجاره' value=reservation.end_date|jformat:"%Y/%m/%d"|default:'-' %}
-          {% include 'partials/_detail_card.html' with label='مبلغ نهایی' value=reservation.final_price|intcomma|stringformat:'s'|add:' تومان' %}
+          {% include 'partials/_detail_card.html' with label='مبلغ نهایی' value=reservation.final_price|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
           {% include 'partials/_detail_card.html' with label='نام خیاط' value=reservation.tailor_name|default:'-' %}
         </div>
 
         <div class="row g-3 mb-4">
-          {% include 'partials/_detail_card.html' with label='بیعانه' value=reservation.deposit_amount|intcomma|stringformat:'s'|add:' تومان' %}
-          {% include 'partials/_detail_card.html' with label='تخفیف' value=reservation.discount_amount|default:0|intcomma|stringformat:'s'|add:' تومان' %}
+          {% include 'partials/_detail_card.html' with label='بیعانه' value=reservation.deposit_amount|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
+          {% include 'partials/_detail_card.html' with label='تخفیف' value=reservation.discount_amount|default:0|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
           {% include 'partials/_detail_card.html' with label='روش پرداخت' value=reservation.get_payment_method_display %}
           {% include 'partials/_detail_card.html' with label='کد رهگیری پرداخت' value=reservation.payment_tracking_code|default:'-' %}
         </div>
@@ -46,16 +46,16 @@
         </div>
 
         <div class="row g-3 mb-4">
-          {% include 'partials/_detail_card.html' with label='قیمت اجاره روزانه' value=reservation.rent_price|intcomma|stringformat:'s'|add:' تومان' %}
-          {% include 'partials/_detail_card.html' with label='پرداخت باقی‌مانده' value=reservation.remaining_payment_amount|default:0|intcomma|stringformat:'s'|add:' تومان' %}
-          {% include 'partials/_detail_card.html' with label='خسارت' value=reservation.damage_amount|default:'-'|intcomma|stringformat:'s'|add:' تومان' %}
-          {% include 'partials/_detail_card.html' with label='جریمه لغو' value=reservation.cancellation_fee|default:'-'|intcomma|stringformat:'s'|add:' تومان' %}
+          {% include 'partials/_detail_card.html' with label='قیمت اجاره روزانه' value=reservation.rent_price|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
+          {% include 'partials/_detail_card.html' with label='پرداخت باقی‌مانده' value=reservation.remaining_payment_amount|default:0|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
+          {% include 'partials/_detail_card.html' with label='خسارت' value=reservation.damage_amount|default:0|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
+          {% include 'partials/_detail_card.html' with label='جریمه لغو' value=reservation.cancellation_fee|default:0|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
         </div>
 
         <div class="card shadow-sm border rounded-3 mb-4">
           <div class="card-header bg-body-tertiary border-bottom py-3 d-flex justify-content-between align-items-center">
             <h6 class="mb-0">هزینه‌های جانبی رزرو</h6>
-            <span class="badge bg-warning-subtle text-warning">{{ reservation.total_additional_fees|default:0|intcomma }} تومان</span>
+            <span class="badge bg-warning-subtle text-warning">{{ reservation.total_additional_fees|default:0|ir_currency }} تومان</span>
           </div>
           <div class="card-body">
             {% if reservation.active_additional_fees %}
@@ -73,7 +73,7 @@
                     {% for fee in reservation.active_additional_fees %}
                       <tr>
                         <td>{{ fee.title }}</td>
-                        <td class="text-end">{{ fee.amount|intcomma }} تومان</td>
+                        <td class="text-end">{{ fee.amount|ir_currency }} تومان</td>
                         <td>{{ fee.notes|default:'-' }}</td>
                         <td>{{ fee.created_at|jformat:"%Y/%m/%d %H:%M" }}</td>
                       </tr>

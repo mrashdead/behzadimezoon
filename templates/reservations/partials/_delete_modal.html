@@ -16,26 +16,27 @@
         <div class="modal-body">
           {% if 'CANCELLED' in reservation.allowed_transitions %}
           <p class="mb-2">این رزرو از لیست فعال خارج می‌شود و وضعیت آن به «لغو» تغییر می‌کند.</p>
+          <p class="text-muted small mb-3">اگر رزرو قبل از تحویل لباس لغو شده و برای این لغو، خسارت یا جریمه‌ای برای رزرو در نظر گرفته می‌شود، می‌توانید در بخش زیر آن را ثبت کنید.</p>
           <div class="mb-3">
             <div class="form-check form-switch">
               <input class="form-check-input" type="checkbox" name="item_damaged" value="on" id="id_item_damaged_{{ reservation.id }}">
-              <label class="form-check-label" for="id_item_damaged_{{ reservation.id }}">آیا لباس آسیب‌دیده است؟</label>
+              <label class="form-check-label" for="id_item_damaged_{{ reservation.id }}">آیا برای این رزرو خسارت یا جریمه ثبت شود؟</label>
             </div>
           </div>
 
           <div class="damage-details d-none">
             <div class="mb-3">
-              <label class="form-label" for="id_damage_amount_{{ reservation.id }}">مبلغ خسارت (تومان)</label>
+              <label class="form-label" for="id_damage_amount_{{ reservation.id }}">مبلغ خسارت / جریمه رزرو (تومان)</label>
               <input type="text" name="damage_amount" id="id_damage_amount_{{ reservation.id }}" class="form-control money-input" placeholder="0">
             </div>
             <div class="mb-3">
-              <label class="form-label" for="id_damage_notes_{{ reservation.id }}">توضیحات خسارت</label>
-              <textarea name="damage_notes" id="id_damage_notes_{{ reservation.id }}" rows="2" class="form-control" placeholder="اختیاری"></textarea>
+              <label class="form-label" for="id_damage_notes_{{ reservation.id }}">توضیحات خسارت / جریمه</label>
+              <textarea name="damage_notes" id="id_damage_notes_{{ reservation.id }}" rows="2" class="form-control" placeholder="دلیل یا توضیح ثبت خسارت/جریمه"></textarea>
             </div>
           </div>
 
           <div class="alert alert-info mb-3" role="alert">
-            در صورت وجود خسارت، مبلغ و توضیحات آن را وارد کنید.
+            در صورت وجود خسارت یا جریمه برای رزرو لغو‌شده، مبلغ و توضیحات آن را وارد کنید. این اطلاعات در ثبت مالی رزرو ذخیره می‌شود.
           </div>
           {% elif 'ARCHIVED' in reservation.allowed_transitions %}
           <p class="mb-2">این رزرو از لیست فعال خارج می‌شود و برای حفظ سوابق مالی به آرشیو منتقل خواهد شد.</p>
@@ -44,7 +45,7 @@
           {% endif %}
 
           {% if reservation.deposit_amount > 0 or reservation.remaining_payment_amount > 0 or reservation.refunded_amount > 0 or reservation.damage_amount > 0 %}
-          <p class="small text-muted">رزروهای دارای پرداخت، عودت وجه یا خسارت به‌صورت دائمی حذف نمی‌شوند و فقط آرشیو می‌شوند.</p>
+          <p class="small text-muted">رزروهای دارای پرداخت، عودت وجه یا خسارت/جریمه در این مرحله فقط لغو یا آرشیو می‌شوند و سوابق مالی آن‌ها حفظ می‌گردد.</p>
           {% endif %}
         </div>
 

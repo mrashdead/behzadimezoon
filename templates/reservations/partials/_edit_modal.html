@@ -60,7 +60,7 @@
                     </div>
                     <div class="col-12 col-md-6">
                       <label class="form-label">هزینه اجاره</label>
-                      <input type="text" class="form-control money-input" value="{{ reservation.rent_price|intcomma }}" readonly>
+                      <input type="text" class="form-control money-input" value="{{ reservation.rent_price|ir_currency }}" readonly>
                     </div>
                   </div>
                 </div>
@@ -101,7 +101,7 @@
                         id="id_deposit_amount_{{ reservation.id }}"
                         name="deposit_amount"
                         class="form-control money-input"
-                        value="{{ reservation.deposit_amount|intcomma }}"
+                        value="{{ reservation.deposit_amount|ir_currency }}"
                         min="0"
                         required
                       />
@@ -229,15 +229,15 @@
                   <div class="row g-3">
                     <div class="col-12 col-md-4">
                       <label class="form-label">مبلغ تخفیف</label>
-                      <input type="text" class="form-control money-input" value="{{ reservation.discount_amount|intcomma }}" readonly>
+                      <input type="text" class="form-control money-input" value="{{ reservation.discount_amount|ir_currency }}" readonly>
                     </div>
                     <div class="col-12 col-md-4">
                       <label class="form-label">مبلغ نهایی</label>
-                      <input type="text" class="form-control money-input" value="{{ reservation.final_price|intcomma }}" readonly>
+                      <input type="text" class="form-control money-input" value="{{ reservation.final_price|ir_currency }}" readonly>
                     </div>
                     <div class="col-12 col-md-4">
                       <label class="form-label">باقی‌مانده</label>
-                      <input type="text" class="form-control money-input" value="{{ reservation.remaining_amount|intcomma }}" readonly>
+                      <input type="text" class="form-control money-input" value="{{ reservation.remaining_amount|ir_currency }}" readonly>
                     </div>
                   </div>
                 </div>
@@ -314,3 +314,4 @@
   });
 })();
 </script>
+

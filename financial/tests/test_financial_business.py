@@ -1,9 +1,11 @@
 import json
+from io import BytesIO
 
 from django.core.exceptions import ValidationError
 from django.db.utils import OperationalError
 from django.test import RequestFactory, TestCase
 from django.urls import reverse
+from openpyxl import load_workbook
 
 import jdatetime
 
@@ -148,6 +150,75 @@ class FinancialBusinessTests(TestCase):
         context = DashboardService.get_financial_context(filters={})
 
         self.assertEqual(context['totals']['total_additional_fee_revenue'], 20000)
+
+    def test_excel_export_contains_only_requested_report_fields(self):
+        self.create_reservation(
+            final_price=100000,
+            remaining_amount=100000,
+            payment_status=Reservation.PAYMENT_PARTIAL,
+            payment_method='CASH',
+            payment_tracking_code='TK-1',
+            remaining_payment_method=PaymentMethod.POS,
+            remaining_payment_tracking_code='TK-2',
+            remaining_paid_at=jdatetime.datetime(1402, 1, 2, 10, 0),
+            rent_price=100000,
+            discount_type='AMOUNT',
+            discount_value=10000,
+            discount_amount=10000,
+            deposit_amount=50000,
+            refunded_amount=5000,
+            cancellation_fee=7000,
+        )
+
+        self.client.login(username='seller1', password='pw')
+        response = self.client.get(reverse('financial:export_excel'))
+
+        self.assertEqual(response.status_code, 200)
+        workbook = load_workbook(filename=BytesIO(response.content), read_only=True, data_only=True)
+        worksheet = workbook.active
+        headers = [cell.value for cell in next(worksheet.iter_rows(min_row=1, max_row=1))]
+
+        expected_headers = [
+            'شناسه رزرو',
+            'ثبت کننده',
+            'ویرایش کننده',
+            'آرشیو کننده',
+            'مشتری',
+            'نام عروس',
+            'نام خانوادگی عروس',
+            'تلفن عروس',
+            'تاریخ مراسم مشتری',
+            'نحوه آشنایی',
+            'کد لباس',
+            'قیمت روزانه لباس',
+            'تاریخ شروع',
+            'تاریخ پایان',
+            'تاریخ تحویل',
+            'تاریخ مراسم',
+            'روزهای اجاره',
+            'وضعیت رزرو',
+            'وضعیت قبلی',
+            'وضعیت پرداخت',
+            'روش پرداخت',
+            'کد رهگیری پرداخت',
+            'روش پرداخت باقی‌مانده',
+            'کد رهگیری پرداخت باقی‌مانده',
+            'تاریخ پرداخت باقی‌مانده',
+            'هزینه اجاره',
+            'نوع تخفیف',
+            'میزان تخفیف',
+            'مبلغ تخفیف',
+            'مبلغ نهایی',
+            'بیعانه',
+            'باقی‌مانده',
+            'جمع هزینه‌های جانبی',
+            'جزئیات هزینه‌های جانبی',
+            'مبلغ مرجوعی',
+            'هزینه لغو',
+            'آسیب؟',
+        ]
+
+        self.assertEqual(headers, expected_headers)
 
     def test_penalty_payments_are_recorded_and_counted_as_revenue(self):
         reservation = self.create_reservation(final_price=100000, remaining_amount=100000)

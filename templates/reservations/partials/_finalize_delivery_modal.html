@@ -36,7 +36,7 @@
                   <span class="text-muted">هزینه اجاره:</span>
                 </div>
                 <div class="col-6 text-end">
-                  <strong>{{ reservation.rent_price|intcomma }} تومان</strong>
+                  <strong>{{ reservation.rent_price|ir_currency }} تومان</strong>
                 </div>
               </div>
               {% if reservation.discount_amount > 0 %}
@@ -45,7 +45,7 @@
                   <span class="text-muted">تخفیف:</span>
                 </div>
                 <div class="col-6 text-end">
-                  <strong class="text-danger">-{{ reservation.discount_amount|intcomma }} تومان</strong>
+                  <strong class="text-danger">-{{ reservation.discount_amount|ir_currency }} تومان</strong>
                 </div>
               </div>
               {% endif %}
@@ -55,7 +55,7 @@
                   <span class="text-muted">قیمت نهایی:</span>
                 </div>
                 <div class="col-6 text-end">
-                  <strong class="text-success">{{ reservation.final_price|intcomma }} تومان</strong>
+                  <strong class="text-success">{{ reservation.final_price|ir_currency }} تومان</strong>
                 </div>
               </div>
               <div class="row mb-2">
@@ -63,7 +63,7 @@
                   <span class="text-muted">بیعانه دریافت‌شده:</span>
                 </div>
                 <div class="col-6 text-end">
-                  <strong>{{ reservation.deposit_amount|intcomma }} تومان</strong>
+                  <strong>{{ reservation.deposit_amount|ir_currency }} تومان</strong>
                 </div>
               </div>
               <hr class="my-2">
@@ -73,7 +73,7 @@
                 </div>
                 <div class="col-6 text-end">
                   <strong class="{% if reservation.remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}" id="baseRemainingAmount{{ reservation.id }}">
-                    {{ reservation.remaining_amount|intcomma }} تومان
+                    {{ reservation.remaining_amount|ir_currency }} تومان
                   </strong>
                 </div>
               </div>
@@ -106,7 +106,7 @@
                         {% endif %}
                       </div>
                       <div class="d-flex align-items-center gap-2 text-nowrap ms-2">
-                        <strong>{{ fee.amount|intcomma }} تومان</strong>
+                        <strong>{{ fee.amount|ir_currency }} تومان</strong>
                         <button type="button" class="btn btn-sm btn-outline-danger fee-delete-btn" data-action="delete-fee" data-fee-id="{{ fee.id }}" aria-label="حذف هزینه">×</button>
                       </div>
                     </div>
@@ -124,8 +124,8 @@
                 <div class="row g-3">
                   <div class="col-md-6">
                     <label class="form-label">عنوان هزینه جانبی</label>
-                    <input type="text" class="form-control fee-title-input" placeholder="مثل: هزینه اتوکشی، تعمیر..." maxlength="100">
-                    <small class="form-text text-muted">پیشنهادات: هزینه اتوکشی، تعمیر، لکه‌بری، بسته‌بندی، ارسال</small>
+                    <input type="text" class="form-control fee-title-input" placeholder="تاج ، ..." maxlength="100">
+                    <small class="form-text text-muted">پیشنهادات: تاج، تور، خشکشویی، بسته‌بندی، ارسال</small>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">مبلغ هزینه</label>
@@ -154,7 +154,7 @@
                     مجموع هزینه‌های جانبی:
                   </div>
                   <div class="col-6 text-end">
-                    <span id="totalFeesAmount{{ reservation.id }}">{{ reservation.total_additional_fees|intcomma }} تومان</span>
+                    <span id="totalFeesAmount{{ reservation.id }}">{{ reservation.total_additional_fees|ir_currency }} تومان</span>
                   </div>
                 </div>
               </div>
@@ -170,7 +170,7 @@
                 </div>
                 <div class="col-6 text-end">
                   <strong class="display-6 text-primary" id="finalRemainingAmount{{ reservation.id }}">
-                    {{ reservation.remaining_amount_with_fees|intcomma }} تومان
+                    {{ reservation.remaining_amount_with_fees|ir_currency }} تومان
                   </strong>
                 </div>
               </div>
@@ -190,8 +190,8 @@
                 <div class="row g-3">
                   <div class="col-12">
                     <label class="form-label">مبلغ پرداخت باقی‌مانده</label>
-                    <input type="text" name="remaining_payment_amount" class="form-control money-input" id="paymentAmount{{ reservation.id }}" value="{{ reservation.remaining_amount_with_fees|intcomma }}">
-                    <small class="form-text text-muted">مبلغ باید برابر با <strong id="requiredPaymentAmount{{ reservation.id }}">{{ reservation.remaining_amount_with_fees|intcomma }}</strong> تومان باشد</small>
+                    <input type="text" name="remaining_payment_amount" class="form-control money-input" id="paymentAmount{{ reservation.id }}" value="{{ reservation.remaining_amount_with_fees|ir_currency }}">
+                    <small class="form-text text-muted">مبلغ باید برابر با <strong id="requiredPaymentAmount{{ reservation.id }}">{{ reservation.remaining_amount_with_fees|ir_currency }}</strong> تومان باشد</small>
                   </div>
                   <div class="col-md-6">
                     <label class="form-label">روش پرداخت</label>
@@ -213,7 +213,7 @@
             <div class="alert alert-warning mb-0" role="alert">
               <i class="fi fi-rr-info me-2"></i>
               <strong>توجه:</strong> قبل از تحویل، اطلاعات پرداخت باقی‌مانده را ثبت کنید. <br>
-              <span class="small">باقی‌مانده نهایی: <strong id="alertRemainingAmount{{ reservation.id }}">{{ reservation.remaining_amount_with_fees|intcomma }} تومان</strong></span>
+              <span class="small">باقی‌مانده نهایی: <strong id="alertRemainingAmount{{ reservation.id }}">{{ reservation.remaining_amount_with_fees|ir_currency }} تومان</strong></span>
             </div>
           </div>
 
@@ -664,5 +664,6 @@
     </div>
   </div>
 </div>
+
 
 

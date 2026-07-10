@@ -4,18 +4,18 @@
 {% block title %}نمایه کاربری{% endblock %}
 
 {% block content %}
-<div class="row">
+<div class="row g-4 align-items-start">
   <!-- Sidebar -->
   <div class="col-xxl-4 col-xl-5">
-    <div class="card overflow-hidden shadow-sm border-0">
-      <div class="card-body text-center">
+    <div class="card overflow-hidden shadow-sm border-0 rounded-4">
+      <div class="card-body p-4 p-xl-5 text-center">
         <!-- User Avatar -->
         <div class="avatar avatar-lg rounded-circle bg-primary-subtle text-primary mx-auto mb-3" style="width: 80px; height: 80px; display: flex; align-items: center; justify-content: center;">
           <i class="fi fi-rr-circle-user" style="font-size: 2rem;"></i>
         </div>
 
         <!-- User Name -->
-        <h5 class="mb-1">
+        <h5 class="mb-2 fw-bold text-dark">
           {% if user.first_name or user.last_name %}
             {{ user.first_name }} {{ user.last_name }}
           {% else %}
@@ -31,33 +31,33 @@
         <hr class="my-4" />
 
         <!-- User Info Grid -->
-        <div class="text-start">
-          <div class="mb-3">
+        <div class="text-start mt-2">
+          <div class="mb-3 p-3 rounded-3 bg-light-subtle border border-light-subtle">
             <small class="text-muted d-block mb-1">نام کاربری</small>
             <strong class="text-body">{{ user.username }}</strong>
           </div>
 
-          <div class="mb-3">
+          <div class="mb-3 p-3 rounded-3 bg-light-subtle border border-light-subtle">
             <small class="text-muted d-block mb-1">ایمیل</small>
             <strong class="text-body">{{ user.email|default:"ثبت نشده" }}</strong>
           </div>
 
-          <div class="mb-3">
+          <div class="mb-3 p-3 rounded-3 bg-light-subtle border border-light-subtle">
             <small class="text-muted d-block mb-1">نام</small>
             <strong class="text-body">{{ user.first_name|default:"ثبت نشده" }}</strong>
           </div>
 
-          <div class="mb-3">
+          <div class="mb-3 p-3 rounded-3 bg-light-subtle border border-light-subtle">
             <small class="text-muted d-block mb-1">نام خانوادگی</small>
             <strong class="text-body">{{ user.last_name|default:"ثبت نشده" }}</strong>
           </div>
 
-          <div class="mb-3">
+          <div class="mb-3 p-3 rounded-3 bg-light-subtle border border-light-subtle">
             <small class="text-muted d-block mb-1">نقش کاربری</small>
             <strong class="text-body">{{ user.get_role_display }}</strong>
           </div>
 
-          <div class="mb-0">
+          <div class="mb-0 p-3 rounded-3 bg-light-subtle border border-light-subtle">
             <small class="text-muted d-block mb-1">وضعیت حساب</small>
             {% if user.is_active %}
               <span class="badge bg-success-subtle text-success">
@@ -90,13 +90,13 @@
     {% endif %}
 
     <!-- Profile Edit Form -->
-    <div class="card shadow-sm border-0 mb-4">
-      <div class="card-header d-flex align-items-center justify-content-between border-bottom py-3">
-        <h5 class="card-title mb-0">تنظیمات حساب کاربری</h5>
+    <div class="card shadow-sm border-0 rounded-4 mb-4">
+      <div class="card-header d-flex align-items-center justify-content-between border-0 bg-body py-3 px-4">
+        <h5 class="card-title mb-0 fw-bold">تنظیمات حساب کاربری</h5>
         <span class="badge bg-light text-dark">ویرایش اطلاعات</span>
       </div>
 
-      <div class="card-body">
+      <div class="card-body p-4">
         <form method="post" novalidate>
           {% csrf_token %}
 
@@ -160,10 +160,10 @@
               <i class="fi fi-rr-check me-2"></i>
               ذخیره تغییرات
             </button>
-            <a href="{% url 'accounts:settings' %}" class="btn btn-outline-secondary">
+            <button type="button" class="btn btn-outline-secondary" disabled aria-disabled="true">
               <i class="fi fi-rr-sliders me-2"></i>
               تنظیمات بیشتر
-            </a>
+            </button>
             <a href="{% url 'accounts:change_password' %}" class="btn btn-outline-warning">
               <i class="fi fi-rr-lock me-2"></i>
               تغییر رمز عبور
@@ -181,9 +181,9 @@
 
     <!-- Leaves Section -->
     {% if user.role == 'SELLER' %}
-      <div class="card shadow-sm border-0 mb-4">
-        <div class="card-header d-flex justify-content-between align-items-center border-bottom py-3">
-          <h5 class="card-title mb-0">درخواست مرخصی</h5>
+      <div class="card shadow-sm border-0 rounded-4 mb-4">
+        <div class="card-header d-flex justify-content-between align-items-center border-0 bg-body py-3 px-4">
+          <h5 class="card-title mb-0 fw-bold">درخواست مرخصی</h5>
           <div class="d-flex gap-2 flex-wrap">
             <a href="{% url 'leaves:leave-create' %}" class="btn btn-sm btn-primary">
               <i class="fi fi-rr-plus me-1"></i>
@@ -206,9 +206,9 @@
 
     <!-- Admin Section -->
     {% if user.is_staff or user.is_superuser %}
-      <div class="card shadow-sm border-0">
-        <div class="card-header d-flex justify-content-between align-items-center border-bottom py-3">
-          <h5 class="card-title mb-0">بخش مدیریتی</h5>
+      <div class="card shadow-sm border-0 rounded-4">
+        <div class="card-header d-flex justify-content-between align-items-center border-0 bg-body py-3 px-4">
+          <h5 class="card-title mb-0 fw-bold">بخش مدیریتی</h5>
           <div class="d-flex gap-2 flex-wrap">
             <a href="{% url 'accounts:user-list' %}" class="btn btn-sm btn-primary">
               <i class="fi fi-rr-users me-1"></i>

@@ -1,28 +1,542 @@
-{% extends 'base.html' %} {% block content %}
-<body>
+{% extends 'base.html' %}
+{% load humanize %}
+{% load static %}
 
-    <div class="container">
-      <div class="maintenance-wrapper text-center">
-        <div class="maintenance-status">
-          درحال
-          <br />
-          ساخت و ساز
-        </div>
-        <h2 class="maintenance-heading text-primary mb-3">
-          این صفحه در دست ساخت است. ما به زودی زنده خواهیم بود.
-        </h2>
-        <p class="maintenance-text mb-4 maxw-md-500px mx-auto">
-          وب سایت ما در حال ساخت است، اما ما آماده راه اندازی هستیم! سورپرایز
-          ویژه فقط برای مشترکین ما
-        </p>
-        <a
-          class="btn btn-primary waves-effect waves-light"
-          href="{% url 'dashboard:index' %}"
-        >
-          <i class="fi fi-rr-arrow-small-right scale-4x me-1"> </i>
-          بازگشت به داشبورد
-        </a>
+{% block title %}{{ page_title }}{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'dashboard:index' %}">داشبورد</a></li>
+<li class="breadcrumb-item active" aria-current="page">{{ page_title }}</li>
+{% endblock %}
+
+{% block content %}
+<style>
+  .report-panel { border: 0; border-radius: 1rem; box-shadow: 0 0.15rem 0.9rem rgba(15, 23, 42, 0.06); }
+  .report-kpi { border-radius: 1rem; border: 1px solid rgba(148, 163, 184, 0.18); background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); }
+
+  .report-table thead th { font-size: 0.78rem; letter-spacing: 0.01em; color: #64748b; font-weight: 700; }
+  .report-empty { padding: 1rem; border-radius: 0.8rem; background: #f8fafc; color: #64748b; text-align: center; }
+</style>
+
+<div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
+  <div>
+    <h1 class="h4 mb-2">خلاصه عملکرد و گزارش‌های مدیریتی</h1>
+    <p class="text-muted mb-0">نمایی سریع از وضعیت رزروها، درآمد، مانده‌ها و تحلیل‌های مالی در یک بازه زمانی مشخص.</p>
+  </div>
+  <div class="d-flex flex-wrap gap-2">
+    <a class="btn btn-outline-secondary btn-sm" href="#" data-action-disabled="true" aria-disabled="true" tabindex="-1" style="opacity: 0.65; cursor: not-allowed;" onclick="event.preventDefault(); event.stopPropagation(); window.alert('موقتا غیر فعال'); return false;">دانلود اکسل</a>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm rounded-4 mb-4 report-panel">
+  <div class="card-body">
+    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
+      <div>
+        <h5 class="mb-1">فیلتر گزارش</h5>
+        <p class="text-muted small mb-0">بازه زمانی، فروشنده، مشتری، لباس و وضعیت رزرو را برای دیدن داده‌های دقیق انتخاب کنید.</p>
+      </div>
+      <div class="d-flex flex-wrap gap-2">
+        <a class="btn btn-sm btn-outline-secondary" href="{{ reset_url }}">پاک‌کردن فیلترها</a>
+        <button class="btn btn-sm btn-outline-primary" type="button" disabled>فیلترهای ذخیره‌شده</button>
       </div>
     </div>
-</body>
+
+    <form method="get" class="row g-3 mt-2 align-items-end" id="reportFilterForm">
+      <input type="hidden" name="date_from" id="dateFromHidden" value="{{ date_from_value }}">
+      <input type="hidden" name="date_to" id="dateToHidden" value="{{ date_to_value }}">
+
+      <div class="col-md-4">
+        <label class="form-label small text-muted">بازه زمانی</label>
+        <input type="text" class="form-control form-control-sm p-date-range" id="dateRangeInput" placeholder="از تاریخ - تا تاریخ" autocomplete="off">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small text-muted">فروشنده</label>
+        <select class="form-select form-select-sm" name="seller_id">
+          <option value="">همه</option>
+          {% for seller in sellers %}
+          <option value="{{ seller.id }}" {% if filters.seller_id == seller.id|stringformat:'s' %}selected{% endif %}>{{ seller.get_full_name|default:seller.username }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small text-muted">مشتری</label>
+        <select class="form-select form-select-sm" name="customer_id">
+          <option value="">همه</option>
+          {% for customer in customers %}
+          <option value="{{ customer.id }}" {% if filters.customer_id == customer.id|stringformat:'s' %}selected{% endif %}>{{ customer }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small text-muted">لباس</label>
+        <select class="form-select form-select-sm" name="dress_id">
+          <option value="">همه</option>
+          {% for dress in dresses %}
+          <option value="{{ dress.id }}" {% if filters.dress_id == dress.id|stringformat:'s' %}selected{% endif %}>{{ dress.code }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small text-muted">وضعیت رزرو</label>
+        <select class="form-select form-select-sm" name="status">
+          <option value="">همه</option>
+          {% for key, label in statuses %}
+          <option value="{{ key }}" {% if filters.status == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-2">
+        <label class="form-label small text-muted">روش پرداخت</label>
+        <select class="form-select form-select-sm" name="payment_method">
+          <option value="">همه</option>
+          {% for key, label in payment_methods %}
+          <option value="{{ key }}" {% if filters.payment_method == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-4">
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-primary btn-sm" type="submit">اعمال فیلتر</button>
+          <a class="btn btn-outline-secondary btn-sm" href="{{ reset_url }}">بازنشانی فیلتر</a>
+        </div>
+      </div>
+    </form>
+
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      {% for preset in date_presets %}
+      <a class="btn btn-sm btn-light" href="{{ preset.url }}">{{ preset.label }}</a>
+      {% endfor %}
+    </div>
+
+    {% if active_filter_labels %}
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      {% for label in active_filter_labels %}
+      <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">{{ label }}</span>
+      {% endfor %}
+    </div>
+    {% endif %}
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-xl-2 col-md-4 col-sm-6">
+    <div class="card border-0 h-100 rounded-4 report-kpi">
+      <div class="card-body bg-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div class="avatar avatar-sm bg-primary-subtle text-primary-emphasis rounded-circle">
+            <i class="fi fi-rr-file-chart-line"></i>
+          </div>
+          <span class="small text-muted">این ماه</span>
+        </div>
+        <div class="text-muted small">درآمد این ماه</div>
+        <div class="h5 fw-bold mt-2">{{ summary.month_revenue|ir_currency }} تومان</div>
+        <div class="small text-success mt-1">{{ summary.period_label }}</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-2 col-md-4 col-sm-6">
+    <div class="card border-0 h-100 rounded-4 report-kpi">
+      <div class="card-body bg-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div class="avatar avatar-sm bg-success-subtle text-success-emphasis rounded-circle">
+            <i class="fi fi-rr-shopping-bag"></i>
+          </div>
+          <span class="small text-muted">در جریان</span>
+        </div>
+        <div class="text-muted small">رزروهای فعال</div>
+        <div class="h5 fw-bold mt-2">{{ summary.active_reservations|ir_currency }}</div>
+        <div class="small text-muted mt-1">رزروهای قطعی، تحویل‌داده‌شده و آماده</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-2 col-md-4 col-sm-6">
+    <div class="card border-0 h-100 rounded-4 report-kpi">
+      <div class="card-body bg-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div class="avatar avatar-sm bg-warning-subtle text-warning-emphasis rounded-circle">
+            <i class="fi fi-rr-exclamation"></i>
+          </div>
+          <span class="small text-muted">نرخ لغو</span>
+        </div>
+        <div class="text-muted small">لغوها</div>
+        <div class="h5 fw-bold mt-2">{{ summary.cancelled_reservations|ir_currency }}</div>
+        <div class="small text-muted mt-1">نرخ لغو: {{ analysis.cancellation_rate|floatformat:1 }}٪</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-2 col-md-4 col-sm-6">
+    <div class="card border-0 h-100 rounded-4 report-kpi">
+      <div class="card-body bg-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div class="avatar avatar-sm bg-danger-subtle text-danger-emphasis rounded-circle">
+            <i class="fi fi-rr-undo"></i>
+          </div>
+          <span class="small text-muted">بازپرداخت</span>
+        </div>
+        <div class="text-muted small">بازپرداخت‌های ثبت‌شده</div>
+        <div class="h5 fw-bold mt-2">{{ summary.refund_cases|ir_currency }}</div>
+        <div class="small text-muted mt-1">{{ summary.refund_amount|ir_currency }} تومان</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-2 col-md-4 col-sm-6">
+    <div class="card border-0 h-100 rounded-4 report-kpi">
+      <div class="card-body bg-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div class="avatar avatar-sm bg-purple-subtle text-purple-emphasis rounded-circle">
+            <i class="fi fi-ss-siren-on"></i>
+          </div>
+          <span class="small text-muted">خسارت و جریمه</span>
+        </div>
+        <div class="text-muted small">خسارت و جریمه</div>
+        <div class="h5 fw-bold mt-2">{{ summary.damage_penalty_total|ir_currency }} تومان</div>
+        <div class="small text-muted mt-1">جمع خسارت و جریمه‌های ثبت‌شده</div>
+      </div>
+    </div>
+  </div>
+  <div class="col-xl-2 col-md-4 col-sm-6">
+    <div class="card border-0 h-100 rounded-4 report-kpi">
+      <div class="card-body bg-body">
+        <div class="d-flex justify-content-between align-items-start mb-3">
+          <div class="avatar avatar-sm bg-info-subtle text-info-emphasis rounded-circle">
+            <i class="fi fi-rr-star"></i>
+          </div>
+          <span class="small text-muted">پرفروش</span>
+        </div>
+        <div class="text-muted small">پرفروش‌ترین لباس و مشتری</div>
+        <div class="h6 fw-bold mt-2">{{ summary.top_dress_label }}</div>
+        <div class="small text-muted mt-1">{{ summary.top_customer_label }}</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-8">
+    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
+      <div class="card-header bg-body border-bottom py-3">
+        <div class="d-flex justify-content-between align-items-center">
+          <div>
+            <h6 class="mb-0">روند درآمد و رزرو</h6>
+            <div class="small text-muted">نمودار روزانه‌ی درآمد و تعداد رزروهای ثبت‌شده در بازه انتخابی.</div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body bg-body">
+        <div id="reportsTrendChart" style="min-height:320px"></div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-4">
+    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
+      <div class="card-header bg-body border-bottom py-3">
+        <h6 class="mb-0">وضعیت رزروها در بازه انتخابی</h6>
+        <div class="small text-muted">جمع‌بندی کوتاه از روند لغو، خسارت و میانگین‌های مرتبط.</div>
+      </div>
+      <div class="card-body bg-body">
+        <ul class="list-group list-group-flush">
+          <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+            <span>لغوها</span>
+            <span class="fw-bold">{{ analysis.cancellation_trend }}</span>
+          </li>
+          <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+            <span>خسارت‌ها</span>
+            <span class="fw-bold">{{ analysis.damage_trend }}</span>
+          </li>
+          <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+            <span>میانگین بازپرداخت</span>
+            <span class="fw-bold">{{ analysis.avg_refund|ir_currency }} تومان</span>
+          </li>
+          <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
+            <span>میانگین جریمه</span>
+            <span class="fw-bold">{{ analysis.avg_penalty|ir_currency }} تومان</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
+      <div class="card-header bg-body border-bottom py-3 d-flex justify-content-between align-items-center">
+        <div>
+          <h6 class="mb-0">ترکیب درآمد، وصولی و مانده</h6>
+          <div class="small text-muted">مروری بر جریان نقدی، بازپرداخت‌ها و مانده‌ی قابل دریافت.</div>
+        </div>
+      </div>
+      <div class="card-body bg-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0">
+            <thead class="table-light">
+              <tr>
+                <th>شاخص</th>
+                <th class="text-end">مقدار</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in financial_rows %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ row.label }}</div>
+                  <div class="small text-muted">{{ row.hint }}</div>
+                </td>
+                <td class="text-end fw-semibold">{{ row.value|ir_currency }} تومان</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="2" class="text-center text-muted py-4">داده‌ای برای نمایش وجود ندارد.</td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
+      <div class="card-header bg-body border-bottom py-3 d-flex justify-content-between align-items-center">
+        <div>
+          <h6 class="mb-0">مشتریان پرتکرار</h6>
+          <div class="small text-muted">مشتری‌هایی که بیشترین تعداد رزرو را در این بازه داشته‌اند.</div>
+        </div>
+      </div>
+      <div class="card-body bg-body p-0">
+        <div class="list-group list-group-flush">
+          {% for customer in repeat_customers %}
+          <div class="list-group-item d-flex justify-content-between align-items-start">
+            <div>
+              <div class="fw-semibold">{{ customer.customer__bride_first_name }} {{ customer.customer__bride_last_name }}</div>
+              <div class="small text-muted">{{ customer.reservation_count }} رزرو · {{ customer.total_revenue|ir_currency }} تومان</div>
+            </div>
+            <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">{{ customer.reservation_count }} بار</span>
+          </div>
+          {% empty %}
+          <div class="list-group-item"><div class="report-empty">مشتری پرتکراری در این بازه ثبت نشده است.</div></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3 mb-4">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
+      <div class="card-header bg-body border-bottom py-3 d-flex justify-content-between align-items-start">
+        <div>
+          <h6 class="mb-0">لباس‌های پرفروش</h6>
+          <div class="small text-muted">بر اساس تعداد رزرو و درآمد ایجادشده در بازه انتخابی.</div>
+        </div>
+        <span class="badge rounded-pill bg-light text-muted">Top 8</span>
+      </div>
+      <div class="card-body bg-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0 table-hover report-table">
+            <thead class="table-light">
+              <tr>
+                <th>نام لباس</th>
+                <th class="text-end">تعداد رزرو</th>
+                <th class="text-end">درآمد ثبت‌شده</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for dress in top_dresses %}
+              <tr>
+                <td>
+                  <div class="fw-semibold">{{ dress.dress__code }}</div>
+                  <div class="small text-muted">{{ dress.reservation_count }} رزرو در این بازه</div>
+                </td>
+                <td class="text-end">{{ dress.reservation_count }}</td>
+                <td class="text-end">{{ dress.total_revenue|ir_currency }} تومان</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="3" class="text-center text-muted py-4"><div class="report-empty">در این بازه لباسی پرفروش ثبت نشده است.</div></td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
+      <div class="card-header bg-body border-bottom py-3">
+        <h6 class="mb-0">عملکرد فروشندگان</h6>
+        <div class="small text-muted">مقایسه‌ی رزرو، درآمد و لغوهای هر فروشنده در بازه انتخابی.</div>
+      </div>
+      <div class="card-body bg-body p-0">
+        <div class="table-responsive">
+          <table class="table table-sm align-middle mb-0 report-table">
+            <thead class="table-light">
+              <tr>
+                <th>نام فروشنده</th>
+                <th class="text-end">تعداد رزرو</th>
+                <th class="text-end">درآمد</th>
+                <th class="text-end">لغو</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in employee_rows %}
+              <tr>
+                <td>{{ row.created_by__username }}</td>
+                <td class="text-end">{{ row.reservation_count }}</td>
+                <td class="text-end">{{ row.total_revenue|ir_currency }} تومان</td>
+                <td class="text-end">{{ row.cancelled_count }}</td>
+              </tr>
+              {% empty %}
+              <tr><td colspan="4" class="text-center text-muted py-4"><div class="report-empty">برای مقایسه‌ی فروشندگان داده‌ای موجود نیست.</div></td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="row g-3">
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
+      <div class="card-header bg-body border-bottom py-3">
+        <h6 class="mb-0">تحلیل خسارت</h6>
+        <div class="small text-muted">جزئیات مبلغ و وضعیت وصول خسارت‌های ثبت‌شده.</div>
+      </div>
+      <div class="card-body bg-body p-0">
+        <div class="list-group list-group-flush">
+          {% for damage in damage_records %}
+          <div class="list-group-item d-flex justify-content-between align-items-start">
+            <div>
+              <div class="fw-semibold">{{ damage.customer }} · {{ damage.dress.code|default:'—' }}</div>
+              <div class="small text-muted">{{ damage.damage_type }}</div>
+            </div>
+            <div class="text-end">
+              <div class="fw-semibold">{{ damage.amount|ir_currency }} تومان</div>
+              <span class="badge rounded-pill {% if damage.collected %}bg-success-subtle text-success-emphasis{% else %}bg-warning-subtle text-warning-emphasis{% endif %}">{% if damage.collected %}وصول شده{% else %}در انتظار{% endif %}</span>
+            </div>
+          </div>
+          {% empty %}
+          <div class="list-group-item"><div class="report-empty">در این بازه خسارتی ثبت نشده است.</div></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="col-lg-6">
+    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
+      <div class="card-header bg-body border-bottom py-3">
+        <h6 class="mb-0">تحلیل لغو و بازپرداخت</h6>
+        <div class="small text-muted">جزییات مربوط به لغو رزرو، مبلغ بازپرداخت و جریمه‌های اعمال‌شده.</div>
+      </div>
+      <div class="card-body bg-body p-0">
+        <div class="list-group list-group-flush">
+          {% for item in cancellation_records %}
+          <div class="list-group-item d-flex justify-content-between align-items-start">
+            <div>
+              <div class="fw-semibold">رزرو #{{ item.reservation_id }}</div>
+              <div class="small text-muted">{{ item.reason|default:'بدون توضیح' }}</div>
+            </div>
+            <div class="text-end">
+              <div class="fw-semibold">{{ item.refund_amount|default:0|ir_currency }} تومان</div>
+              <div class="small text-muted">جریمه: {{ item.penalty_amount|default:0|ir_currency }}</div>
+            </div>
+          </div>
+          {% empty %}
+          <div class="list-group-item"><div class="report-empty">رکورد لغوی در این بازه ثبت نشده است.</div></div>
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+{{ trend_labels|json_script:"trend-labels" }}
+{{ trend_revenue|json_script:"trend-revenue" }}
+{{ trend_reservations|json_script:"trend-reservations" }}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const labels = JSON.parse(document.getElementById('trend-labels').textContent);
+    const revenueSeries = JSON.parse(document.getElementById('trend-revenue').textContent);
+    const reservationSeries = JSON.parse(document.getElementById('trend-reservations').textContent);
+
+    const options = {
+      chart: {
+        height: 320,
+        type: 'line',
+        toolbar: { show: false },
+        zoom: { enabled: false },
+      },
+      series: [
+        { name: 'درآمد', data: revenueSeries },
+        { name: 'رزروها', data: reservationSeries },
+      ],
+      xaxis: { categories: labels },
+      stroke: { curve: 'smooth', width: [3, 2] },
+      yaxis: [{
+        labels: {
+          formatter: function (value) {
+            return value.toLocaleString('fa-IR');
+          }
+        }
+      }],
+      tooltip: {
+        y: {
+          formatter: function (value) {
+            return value.toLocaleString('fa-IR');
+          }
+        }
+      },
+      colors: ['#4f46e5', '#14b8a6'],
+    };
+
+    if (typeof ApexCharts !== 'undefined') {
+      const chart = new ApexCharts(document.querySelector('#reportsTrendChart'), options);
+      chart.render();
+    }
+
+    // Initialize date range picker
+    const dateRangeInput = document.getElementById('dateRangeInput');
+    const dateFromHidden = document.getElementById('dateFromHidden');
+    const dateToHidden = document.getElementById('dateToHidden');
+    const reportFilterForm = document.getElementById('reportFilterForm');
+
+    if (dateRangeInput) {
+      // Build initial value from hidden inputs
+      const dateFrom = dateFromHidden?.value;
+      const dateTo = dateToHidden?.value;
+      if (dateFrom && dateTo) {
+        dateRangeInput.value = dateFrom + ' - ' + dateTo;
+      }
+
+      // Initialize Persian date range picker
+      $(dateRangeInput).persianDatepicker({
+        format: "YYYY/MM/DD",
+        autoClose: false,
+        range: true,
+        onSelect: function(dates) {
+          if (dates && dates.length >= 2) {
+            dateFromHidden.value = dates[0];
+            dateToHidden.value = dates[1];
+          }
+        }
+      });
+    }
+
+    // Handle form submission to ensure dates are populated
+    if (reportFilterForm) {
+      reportFilterForm.addEventListener('submit', function(e) {
+        const dateRange = dateRangeInput?.value || '';
+        if (dateRange && dateRange.includes(' - ')) {
+          const parts = dateRange.split(' - ');
+          if (parts.length === 2) {
+            dateFromHidden.value = parts[0].trim();
+            dateToHidden.value = parts[1].trim();
+          }
+        }
+      });
+    }
+  });
+</script>
 {% endblock %}

@@ -8,7 +8,7 @@
         <div class="card shadow-sm border rounded-3 h-100">
           <div class="card-body text-center py-3">
             <div class="small text-muted">بهای پایه</div>
-            <div class="h5 mb-0">{{ reservation.rent_price|intcomma }} تومان</div>
+            <div class="h5 mb-0">{{ reservation.rent_price|ir_currency }} تومان</div>
           </div>
         </div>
       </div>
@@ -16,7 +16,7 @@
         <div class="card shadow-sm border rounded-3 h-100">
           <div class="card-body text-center py-3">
             <div class="small text-muted">تخفیف</div>
-            <div class="h5 mb-0">{{ reservation.discount_amount|default:0|intcomma }} تومان</div>
+            <div class="h5 mb-0">{{ reservation.discount_amount|default:0|ir_currency }} تومان</div>
           </div>
         </div>
       </div>
@@ -24,7 +24,7 @@
         <div class="card shadow-sm border rounded-3 h-100">
           <div class="card-body text-center py-3">
             <div class="small text-muted">قیمت نهایی</div>
-            <div class="h5 mb-0">{{ totals.final_price|intcomma }} تومان</div>
+            <div class="h5 mb-0">{{ totals.final_price|ir_currency }} تومان</div>
           </div>
         </div>
       </div>
@@ -32,7 +32,7 @@
         <div class="card shadow-sm border rounded-3 h-100">
           <div class="card-body text-center py-3">
             <div class="small text-muted">دریافتی تا کنون</div>
-            <div class="h5 mb-0">{{ totals.total_received|intcomma }} تومان</div>
+            <div class="h5 mb-0">{{ totals.total_received|ir_currency }} تومان</div>
           </div>
         </div>
       </div>
@@ -40,7 +40,7 @@
         <div class="card shadow-sm border rounded-3 h-100">
           <div class="card-body text-center py-3">
             <div class="small text-muted">درآمدهای جانبی</div>
-            <div class="h5 mb-0">{{ totals.additional_fees|default:0|intcomma }} تومان</div>
+            <div class="h5 mb-0">{{ totals.additional_fees|default:0|ir_currency }} تومان</div>
           </div>
         </div>
       </div>
@@ -69,7 +69,7 @@
                     <tr>
                       <td>{{ tx.transaction_date|jformat:"%Y/%m/%d %H:%M" }}</td>
                       <td>{{ tx.get_type_display }}</td>
-                      <td class="text-end">{{ tx.amount|intcomma }} تومان</td>
+                      <td class="text-end">{{ tx.amount|ir_currency }} تومان</td>
                       <td>{{ tx.created_by.get_full_name }}</td>
                       <td>{{ tx.description }}</td>
                     </tr>
@@ -104,7 +104,7 @@
                     <tr>
                       <td>{{ g.tracking_code }}</td>
                       <td>{{ g.guarantee_type }}</td>
-                      <td class="text-end">{{ g.estimated_value|default:0|intcomma }} تومان</td>
+                      <td class="text-end">{{ g.estimated_value|default:0|ir_currency }} تومان</td>
                       <td>{{ g.get_status_display|default:g.status }}</td>
                     </tr>
                   {% empty %}
@@ -138,7 +138,7 @@
                     <tr>
                       <td>{{ d.detected_at|jformat:"%Y/%m/%d %H:%M" }}</td>
                       <td>{{ d.damage_type }}</td>
-                      <td class="text-end">{{ d.amount|default:0|intcomma }} تومان</td>
+                      <td class="text-end">{{ d.amount|default:0|ir_currency }} تومان</td>
                       <td>{% if d.collected %}<span class="badge bg-success-subtle text-success">پرداخت شد</span>{% else %}<span class="badge bg-danger-subtle text-danger">پرداخت نشده</span>{% endif %}</td>
                     </tr>
                   {% empty %}
@@ -159,7 +159,7 @@
           <div class="card-body">
             <div class="d-flex justify-content-between align-items-center mb-3">
               <div class="text-muted small">جمع کل هزینه‌های جانبی ثبت‌شده برای این رزرو</div>
-              <div class="fw-bold">{{ totals.additional_fees|default:0|intcomma }} تومان</div>
+              <div class="fw-bold">{{ totals.additional_fees|default:0|ir_currency }} تومان</div>
             </div>
             {% if additional_fee_items %}
               <div class="table-responsive mb-0">
@@ -176,7 +176,7 @@
                     {% for fee in additional_fee_items %}
                       <tr>
                         <td>{{ fee.title }}</td>
-                        <td class="text-end">{{ fee.amount|intcomma }} تومان</td>
+                        <td class="text-end">{{ fee.amount|ir_currency }} تومان</td>
                         <td>{{ fee.notes|default:'-' }}</td>
                         <td>{{ fee.created_at|jformat:"%Y/%m/%d %H:%M" }}</td>
                       </tr>
@@ -208,15 +208,15 @@
                     <div class="row gy-2 mb-3">
                       <div class="col-6">
                         <div class="small text-muted">مبلغ کل جریمه</div>
-                        <div class="fw-semibold">{{ reservation.cancellation_fee|default:0|intcomma }} تومان</div>
+                        <div class="fw-semibold">{{ reservation.cancellation_fee|default:0|ir_currency }} تومان</div>
                       </div>
                       <div class="col-6">
                         <div class="small text-muted">پرداخت‌شده</div>
-                        <div class="fw-semibold">{{ reservation.cancellation_fee_paid_amount|default:0|intcomma }} تومان</div>
+                        <div class="fw-semibold">{{ reservation.cancellation_fee_paid_amount|default:0|ir_currency }} تومان</div>
                       </div>
                       <div class="col-6">
                         <div class="small text-muted">مانده تا پرداخت</div>
-                        <div class="fw-semibold">{{ cancellation_remaining|default:0|intcomma }} تومان</div>
+                        <div class="fw-semibold">{{ cancellation_remaining|default:0|ir_currency }} تومان</div>
                       </div>
                       <div class="col-6">
                         <div class="small text-muted">روش پرداخت</div>
@@ -230,7 +230,7 @@
                       {% endif %}
                     </div>
                     {% if cancellation_remaining|default:0 > 0 %}
-                      <button type="button" class="btn btn-sm btn-outline-danger w-100 open-penalty-form" data-reservation-id="{{ reservation.pk }}" data-penalty-type="CANCELLATION" data-remaining-amount="{{ cancellation_remaining|default:0 }}">
+                      <button type="button" class="btn btn-sm btn-outline-danger w-100 open-penalty-form temporarily-disabled-action" data-reservation-id="{{ reservation.pk }}" data-penalty-type="CANCELLATION" data-remaining-amount="{{ cancellation_remaining|default:0 }}" data-action-disabled="true" aria-disabled="true" tabindex="-1" style="opacity: 0.65; cursor: not-allowed;">
                         <i class="fi fi-rr-plus me-2"></i>پرداخت مانده جریمه لغو
                       </button>
                     {% else %}
@@ -250,15 +250,15 @@
                     <div class="row gy-2 mb-3">
                       <div class="col-6">
                         <div class="small text-muted">مبلغ کل جریمه</div>
-                        <div class="fw-semibold">{{ reservation.damage_amount|default:0|intcomma }} تومان</div>
+                        <div class="fw-semibold">{{ reservation.damage_amount|default:0|ir_currency }} تومان</div>
                       </div>
                       <div class="col-6">
                         <div class="small text-muted">پرداخت‌شده</div>
-                        <div class="fw-semibold">{{ reservation.damage_fee_paid_amount|default:0|intcomma }} تومان</div>
+                        <div class="fw-semibold">{{ reservation.damage_fee_paid_amount|default:0|ir_currency }} تومان</div>
                       </div>
                       <div class="col-6">
                         <div class="small text-muted">مانده تا پرداخت</div>
-                        <div class="fw-semibold">{{ damage_remaining|default:0|intcomma }} تومان</div>
+                        <div class="fw-semibold">{{ damage_remaining|default:0|ir_currency }} تومان</div>
                       </div>
                       <div class="col-6">
                         <div class="small text-muted">روش پرداخت</div>
@@ -272,7 +272,7 @@
                       {% endif %}
                     </div>
                     {% if damage_remaining|default:0 > 0 %}
-                      <button type="button" class="btn btn-sm btn-outline-warning w-100 open-penalty-form" data-reservation-id="{{ reservation.pk }}" data-penalty-type="DAMAGE" data-remaining-amount="{{ damage_remaining|default:0 }}">
+                      <button type="button" class="btn btn-sm btn-outline-warning w-100 open-penalty-form temporarily-disabled-action" data-reservation-id="{{ reservation.pk }}" data-penalty-type="DAMAGE" data-remaining-amount="{{ damage_remaining|default:0 }}" data-action-disabled="true" aria-disabled="true" tabindex="-1" style="opacity: 0.65; cursor: not-allowed;">
                         <i class="fi fi-rr-plus me-2"></i>پرداخت مانده جریمه خسارت
                       </button>
                     {% else %}
@@ -295,14 +295,14 @@
             {% if cancellation %}
               <div class="row gy-2 mb-4">
                 <div class="col-12 col-md-4"><strong>تاریخ لغو:</strong> {{ cancellation.cancelled_at|jformat:"%Y/%m/%d %H:%M" }}</div>
-                <div class="col-12 col-md-4"><strong>بازپرداخت:</strong> {{ cancellation.refund_amount|default:0|intcomma }} تومان</div>
-                <div class="col-12 col-md-4"><strong>جریمه:</strong> {{ cancellation.penalty_amount|default:0|intcomma }} تومان</div>
+                <div class="col-12 col-md-4"><strong>بازپرداخت:</strong> {{ cancellation.refund_amount|default:0|ir_currency }} تومان</div>
+                <div class="col-12 col-md-4"><strong>جریمه:</strong> {{ cancellation.penalty_amount|default:0|ir_currency }} تومان</div>
               </div>
               <div class="d-grid gap-2 d-sm-flex">
-                <button type="button" class="btn btn-sm btn-outline-primary open-damage-form" data-reservation-id="{{ reservation.pk }}" data-form-type="damage">
+                <button type="button" class="btn btn-sm btn-outline-primary open-damage-form temporarily-disabled-action" data-reservation-id="{{ reservation.pk }}" data-form-type="damage" data-action-disabled="true" aria-disabled="true" tabindex="-1" style="opacity: 0.65; cursor: not-allowed;">
                   <i class="fi fi-rr-plus me-2"></i>ثبت خسارت
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-success open-refund-form" data-reservation-id="{{ reservation.pk }}" data-form-type="refund">
+                <button type="button" class="btn btn-sm btn-outline-success open-refund-form temporarily-disabled-action" data-reservation-id="{{ reservation.pk }}" data-form-type="refund" data-action-disabled="true" aria-disabled="true" tabindex="-1" style="opacity: 0.65; cursor: not-allowed;">
                   <i class="fi fi-rr-undo me-2"></i>ثبت بازگشت وجه
                 </button>
               </div>
@@ -505,6 +505,14 @@
     input.addEventListener('blur', applyFormat);
   }
 
+  function showInactiveActionMessage(){
+    window.alert('موقتا غیر فعال');
+  }
+
+  function isTemporarilyDisabledAction(button){
+    return !!(button && (button.dataset.actionDisabled === 'true' || button.classList.contains('temporarily-disabled-action')));
+  }
+
   function renderFormErrors(form, errors){
     for (const [field, msgs] of Object.entries(errors)){
       const input = form.querySelector(`[name="${field}"]`);
@@ -571,6 +579,13 @@
       }
     };
     const handleDamageClick = function(e){
+      const button = e.currentTarget;
+      if (isTemporarilyDisabledAction(button)) {
+        e.preventDefault();
+        e.stopPropagation();
+        showInactiveActionMessage();
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       const damageModal = document.getElementById('damageModal');
@@ -598,9 +613,15 @@
       }
     };
     const handlePenaltyClick = function(e){
+      const button = e.currentTarget;
+      if (isTemporarilyDisabledAction(button)) {
+        e.preventDefault();
+        e.stopPropagation();
+        showInactiveActionMessage();
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
-      const button = e.currentTarget;
       const penaltyModal = document.getElementById('penaltyPaymentModal');
       if (penaltyModal) {
         const typeSelect = document.getElementById('penaltyType');
@@ -638,6 +659,13 @@
       }
     };
     const handleRefundClick = function(e){
+      const button = e.currentTarget;
+      if (isTemporarilyDisabledAction(button)) {
+        e.preventDefault();
+        e.stopPropagation();
+        showInactiveActionMessage();
+        return;
+      }
       e.preventDefault();
       e.stopPropagation();
       const refundModal = document.getElementById('refundModal');
@@ -735,3 +763,4 @@
 })();
 </script>
 {% endblock %}
+
