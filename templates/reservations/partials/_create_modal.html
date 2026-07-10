@@ -149,7 +149,6 @@
                       <select name="payment_method" class="form-control" required>
                         <option value="">انتخاب کنید</option>
                         <option value="CASH">نقدی</option>
-                        <option value="CARD">کارت به کارت</option>
                         <option value="TRANSFER">انتقال بانکی</option>
                         <option value="POS">کارتخوان</option>
                       </select>
@@ -189,6 +188,19 @@
                   </div>
                 </div>
 
+                <div class="col-md-6" id="guarantee1PayeeWrapper">
+                  <div class="row align-items-center mb-3">
+                    <label class="col-sm-3 text-sm-end col-form-label">
+                      در وجه ضمانت اول
+                      <span class="text-danger" id="guarantee1PayeeRequired" style="display: none;">*</span>
+                    </label>
+                    <div class="col-sm-9">
+                      <input type="text" name="guarantee1_payee" class="form-control" placeholder="نام گیرنده/سازمان" data-guarantee-payee>
+                      <small class="form-text text-muted">الزامی است اگر نوع ضمانت اول "چک" باشد</small>
+                    </div>
+                  </div>
+                </div>
+
                 <div class="col-md-6">
                   <div class="row align-items-center mb-3">
                     <label class="col-sm-3 text-sm-end col-form-label">نوع ضمانت دوم</label>
@@ -209,6 +221,19 @@
                     <label class="col-sm-3 text-sm-end col-form-label">کد رهگیری ضمانت دوم</label>
                     <div class="col-sm-9">
                       <input type="text" name="guarantee2_tracking_code" class="form-control">
+                    </div>
+                  </div>
+                </div>
+
+                <div class="col-md-6" id="guarantee2PayeeWrapper">
+                  <div class="row align-items-center mb-3">
+                    <label class="col-sm-3 text-sm-end col-form-label">
+                      در وجه ضمانت دوم
+                      <span class="text-danger" id="guarantee2PayeeRequired" style="display: none;">*</span>
+                    </label>
+                    <div class="col-sm-9">
+                      <input type="text" name="guarantee2_payee" class="form-control" placeholder="نام گیرنده/سازمان" data-guarantee-payee>
+                      <small class="form-text text-muted">الزامی است اگر نوع ضمانت دوم "چک" باشد</small>
                     </div>
                   </div>
                 </div>
@@ -239,7 +264,7 @@
                   <div class="row align-items-center mb-3">
                     <label class="col-sm-3 text-sm-end col-form-label">مقدار تخفیف</label>
                     <div class="col-sm-9">
-                      <input type="number" name="discount_value" class="form-control" min="0" value="0">
+                      <input type="text" name="discount_value" class="form-control money-input" value="0" placeholder="0">
                     </div>
                   </div>
                 </div>
@@ -274,4 +299,66 @@
     </div>
   </div>
 </div>
+
+<script>
+(function () {
+  function setupGuaranteePayeeVisibility() {
+    const guarantee1Select = document.querySelector('select[name="guarantee1_type"]');
+    const guarantee2Select = document.querySelector('select[name="guarantee2_type"]');
+
+    const guarantee1Input = document.querySelector('input[name="guarantee1_payee"]');
+    const guarantee2Input = document.querySelector('input[name="guarantee2_payee"]');
+
+    const guarantee1RequiredIcon = document.querySelector('#guarantee1PayeeRequired');
+    const guarantee2RequiredIcon = document.querySelector('#guarantee2PayeeRequired');
+
+    function updateGuaranteeRequirement(select, input, requiredIcon) {
+      if (!select || !input) return;
+
+      const isCheck = select.value === 'CHECK';
+      input.required = isCheck;
+
+      if (requiredIcon) {
+        requiredIcon.style.display = isCheck ? 'inline' : 'none';
+      }
+
+      if (!isCheck) {
+        input.value = '';
+        input.classList.remove('is-invalid');
+      }
+    }
+
+    // Initial setup
+    updateGuaranteeRequirement(guarantee1Select, guarantee1Input, guarantee1RequiredIcon);
+    updateGuaranteeRequirement(guarantee2Select, guarantee2Input, guarantee2RequiredIcon);
+
+    // Bind change events
+    if (guarantee1Select) {
+      guarantee1Select.addEventListener('change', function () {
+        updateGuaranteeRequirement(this, guarantee1Input, guarantee1RequiredIcon);
+      });
+    }
+
+    if (guarantee2Select) {
+      guarantee2Select.addEventListener('change', function () {
+        updateGuaranteeRequirement(this, guarantee2Input, guarantee2RequiredIcon);
+      });
+    }
+  }
+
+  // Setup when DOM ready
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupGuaranteePayeeVisibility);
+  } else {
+    setupGuaranteePayeeVisibility();
+  }
+
+  // Re-setup when modal is shown
+  document.addEventListener('shown.bs.modal', function (event) {
+    if (event.target && event.target.id === 'createReservationStep2Modal') {
+      setupGuaranteePayeeVisibility();
+    }
+  });
+})();
+</script>
 

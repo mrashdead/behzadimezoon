@@ -4,9 +4,11 @@ import jdatetime
 
 from accounts.models import User
 from customers.models import Customer
+from financial.models import CancellationRecord, DamageRecord
 from products.models import Dress
-from reservations.models import Reservation
+from reservations.models import Reservation, AdditionalFee
 from reservations.constants import ReservationStatus
+from reservations.forms import ReservationStepTwoForm, RemainingPaymentForm
 
 
 def create_user(username, role, password='password123'):
@@ -15,6 +17,42 @@ def create_user(username, role, password='password123'):
         extra_fields['is_superuser'] = True
         extra_fields['is_staff'] = True
     return User.objects.create_user(username=username, password=password, **extra_fields)
+
+
+class ReservationFormBehaviorTests(TestCase):
+
+    def test_step_two_form_normalizes_formatted_discount_and_deposit_values(self):
+        form = ReservationStepTwoForm(data={
+            'payment_method': 'CASH',
+            'payment_tracking_code': 'PAY-1',
+            'guarantee1_type': 'CASH',
+            'guarantee1_tracking_code': 'G1',
+            'guarantee2_type': '',
+            'guarantee2_tracking_code': '',
+            'deposit_amount': '۱٬۰۰۰',
+            'discount_type': 'AMOUNT',
+            'discount_value': '۲٬۵۰۰',
+        }, rent_price=100000)
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['deposit_amount'], 1000)
+        self.assertEqual(form.cleaned_data['discount_value'], 2500)
+
+    def test_step_two_form_requires_payee_when_check_guarantee_selected(self):
+        form = ReservationStepTwoForm(data={
+            'payment_method': 'CASH',
+            'payment_tracking_code': 'PAY-2',
+            'guarantee1_type': 'CHECK',
+            'guarantee1_tracking_code': 'G1',
+            'guarantee2_type': '',
+            'guarantee2_tracking_code': '',
+            'deposit_amount': '5000',
+            'discount_type': 'NONE',
+            'discount_value': '0',
+        }, rent_price=100000)
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('guarantee1_payee', form.errors)
 
 
 class ReservationStatusTransitionTests(TestCase):
@@ -67,6 +105,38 @@ class ReservationStatusTransitionTests(TestCase):
         response = self.client.post(returned_url)
         self.assertEqual(response.status_code, 403)
 
+    def test_create_reservation_with_full_deposit_succeeds(self):
+        self.client.login(username='manager_user', password='password123')
+        self.client.session['reservation_step1'] = {
+            'customer_id': self.customer.id,
+            'dress_id': self.dress.id,
+            'start_date': '1402/01/01',
+            'rental_days': 3,
+            'rent_price': self.dress.daily_rent_price,
+        }
+        self.client.session.save()
+
+        response = self.client.post(
+            reverse('reservations:create'),
+            {
+                'payment_method': 'CASH',
+                'payment_tracking_code': 'PAY-INITIAL',
+                'guarantee1_type': 'CASH',
+                'guarantee1_tracking_code': 'G1',
+                'guarantee2_type': '',
+                'guarantee2_tracking_code': '',
+                'guarantee2_payee': '',
+                'deposit_amount': str(self.dress.daily_rent_price),
+                'discount_type': 'NONE',
+                'discount_value': '0',
+            },
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'], response.json())
+        self.assertTrue(Reservation.objects.filter(created_by=self.manager).exists())
+
     def test_manager_can_edit_reservation_via_ajax(self):
         reservation = Reservation.objects.create(
             customer=self.customer,
@@ -109,8 +179,44 @@ class ReservationStatusTransitionTests(TestCase):
             {'success': True, 'message': 'رزرو با موفقیت به‌روز شد.'}
         )
 
+    def test_manager_can_cancel_reservation_with_damage_details(self):
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=0,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=100000,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        cancel_url = reverse('reservations:cancel_action', args=[reservation.pk])
+        response = self.client.post(cancel_url, {
+            'reason': 'لغو با خسارت',
+            'refund_amount': '0',
+            'penalty_amount': '0',
+            'item_damaged': 'on',
+            'damage_amount': '150000',
+            'damage_notes': 'پارگی بزرگ در آستین',
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
         reservation.refresh_from_db()
-        self.assertEqual(reservation.payment_tracking_code, 'UPDATED')
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(reservation.status, ReservationStatus.CANCELLED)
+        self.assertTrue(reservation.item_damaged)
+        self.assertEqual(reservation.damage_amount, 150000)
+        self.assertEqual(reservation.damage_notes, 'پارگی بزرگ در آستین')
+        self.assertTrue(CancellationRecord.objects.filter(reservation=reservation).exists())
+        self.assertTrue(DamageRecord.objects.filter(reservation=reservation, amount=150000).exists())
 
     def test_manager_can_mark_delivered_and_returned(self):
         reservation = Reservation.objects.create(
@@ -215,6 +321,22 @@ class ReservationStatusTransitionTests(TestCase):
         )
 
         self.assertTrue(is_available)
+
+    def test_check_availability_accepts_post_payload_from_reservation_form(self):
+        self.client.login(username='manager_user', password='password123')
+        response = self.client.post(
+            reverse('reservations:check_availability'),
+            {
+                'customer_id': str(self.customer.pk),
+                'dress_id': str(self.dress.pk),
+                'start_date': '1402/01/02',
+                'rental_days': '3',
+            },
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
 
     def test_get_blocking_statuses_excludes_returned(self):
         from reservations.services.availability_service import ReservationAvailabilityService
@@ -891,6 +1013,93 @@ class ReservationStatusTransitionTests(TestCase):
 class RemainingPaymentTests(TestCase):
     """Tests for remaining payment at delivery feature"""
 
+    def test_additional_fee_can_be_deleted_and_updates_remaining_amount(self):
+        """Test that deleting an additional fee soft-deletes it and updates the remaining amount."""
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=50000,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+        fee = AdditionalFee.objects.create(
+            reservation=reservation,
+            title='هزینه تعمیر',
+            amount=15000,
+            notes='تست',
+            created_by=self.manager,
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        finalize_url = reverse('reservations:finalize_delivery', args=[reservation.pk])
+
+        response = self.client.post(finalize_url, {
+            'action': 'delete_fee',
+            'fee_id': fee.id,
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['new_remaining'], 50000)
+        self.assertEqual(data['total_fees'], 0)
+        fee.refresh_from_db()
+        self.assertTrue(fee.is_deleted)
+
+    def test_finalize_delivery_saves_tailor_name(self):
+        """Test that tailor name is persisted when delivery is finalized."""
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=100000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager,
+            tailor_name='آرمان'
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        finalize_url = reverse('reservations:finalize_delivery', args=[reservation.pk])
+
+        response = self.client.post(finalize_url, {
+            'tailor_name': 'آرمان',
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(response.status_code, 200)
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.tailor_name, 'آرمان')
+        self.assertEqual(reservation.status, ReservationStatus.DELIVERED)
+
+    def test_remaining_payment_form_accepts_persian_amount_with_supported_method(self):
+        form = RemainingPaymentForm(data={
+            'remaining_payment_amount': '۵۰٬۰۰۰',
+            'remaining_payment_method': 'CASH',
+            'remaining_payment_tracking_code': 'REC001',
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['remaining_payment_amount'], 50000)
+        self.assertEqual(form.cleaned_data['remaining_payment_method'], 'CASH')
+
     @classmethod
     def setUpTestData(cls):
         cls.customer = Customer.objects.create(
@@ -1079,6 +1288,42 @@ class RemainingPaymentTests(TestCase):
 
         reservation.refresh_from_db()
         self.assertEqual(reservation.status, ReservationStatus.DELIVERED)
+
+    def test_additional_fee_can_be_added_for_already_settled_reservation(self):
+        """Test that adding an additional fee works when the reservation is already settled."""
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=100000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        finalize_url = reverse('reservations:finalize_delivery', args=[reservation.pk])
+
+        response = self.client.post(finalize_url, {
+            'action': 'add_fee',
+            'title': 'هزینه تاج',
+            'amount': '3000000',
+            'notes': 'تست',
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(response.status_code, 200)
+        data = response.json()
+        self.assertTrue(data['success'])
+        self.assertEqual(data['new_remaining'], 3000000)
+        self.assertEqual(reservation.additional_fees.count(), 1)
 
     def test_permission_check_on_remaining_payment(self):
         """Test that only authorized users can register remaining payment"""

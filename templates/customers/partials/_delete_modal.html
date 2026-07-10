@@ -1,7 +1,7 @@
 <div class="modal fade" id="deleteCustomerModal{{ customer.id }}" tabindex="-1" aria-hidden="true">
     <div class="modal-dialog modal-dialog-centered">
         <div class="modal-content">
-            <form method="post" action="{% url 'customers:delete' customer.id %}">
+            <form method="post" action="{% url 'customers:delete' customer.id %}" class="no-ajax">
                 {% csrf_token %}
 
                 {% include 'partials/_modal_header.html' with title='حذف مشتری' %}

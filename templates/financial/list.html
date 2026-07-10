@@ -10,45 +10,39 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-3 mb-4">
+<div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-2 mb-3">
   <div>
-    <h1 class="h4 mb-2">داشبورد مالی</h1>
-    <p class="text-muted mb-0">این صفحه برای مشاهده خلاصه مالی و تاریخچه پرداخت‌ها طراحی شده است. عملکردهای ثبت و اصلاح مالی در این بخش غیرفعال شده‌اند.</p>
-<div class="row g-3 mb-4">
+    <h1 class="h4 mb-1">داشبورد مالی</h1>
+    <p class="text-muted small mb-0">خلاصه مالی و گزارش درآمد</p>
+  </div>
+</div>
+
+<div class="row g-2 mb-4">
   {% include 'partials/_stat_card.html' with icon='fi-rr-chart-histogram' label='تعداد رزروها' value=totals.total_reservations badge_type='primary' badge_text='کل' %}
   {% include 'partials/_stat_card.html' with icon='fi-rr-coins' label='درآمد نهایی' value=totals.total_revenue badge_type='success' badge_text='تومان' %}
   {% include 'partials/_stat_card.html' with icon='fi-rr-bank' label='بیعانه جمع' value=totals.total_deposit badge_type='info' badge_text='تومان' %}
   {% include 'partials/_stat_card.html' with icon='fi-br-money-transfer-coin-arrow' label='باقی مانده' value=totals.total_remaining badge_type='danger' badge_text='تومان' %}
-</div>
 
-<div class="row g-3 mb-4">
   {% include 'partials/_stat_card.html' with icon='fi-rr-wallet' label='جریان نقدی' value=totals.total_cash_inflow badge_type='success' badge_text='تومان' %}
-  {% include 'partials/_stat_card.html' with icon='fi-rr-percent' label='مبلغ تخفیف' value=totals.total_discounts badge_type='secondary' badge_text='تومان' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-percent' label='تخفیف' value=totals.total_discounts badge_type='secondary' badge_text='تومان' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-plus-circle' label='جمع کل درآمدهای جانبی' value=totals.total_additional_fee_revenue badge_type='warning' badge_text='تومان' %}
   {% include 'partials/_stat_card.html' with icon='fi-rr-money-bills' label='بازپرداخت‌ها' value=totals.total_refunded badge_type='warning' badge_text='تومان' %}
-  {% include 'partials/_stat_card.html' with icon='fi-rr-briefcase' label='ارزش ناخالص رزرو' value=reporting.reservation_summary.total_gross_reservation_value badge_type='info' badge_text='تومان' %}
-</div>
-
-<div class="row g-3 mb-4">
-  {% include 'partials/_stat_card.html' with icon='fi-rr-ban' label='رزروهای لغو شده' value=cancelled_totals.total_cancelled_reservations badge_type='danger' badge_text='عدد' %}
-  {% include 'partials/_stat_card.html' with icon='fi-rr-wallet' label='مبالغ دریافت شده از لغو شده‌ها' value=cancelled_totals.cancelled_received_amount badge_type='warning' badge_text='تومان' %}
-  {% include 'partials/_stat_card.html' with icon='fi-rr-money-bills' label='خسارت‌های دریافت شده (کل)' value=totals.total_damage_received badge_type='warning' badge_text='تومان' %}
   <div class="col-xxl-3 col-sm-6">
     <div class="card h-100 border-0 shadow-sm">
       <div class="card-body d-flex flex-column justify-content-between">
         <div>
-          <div class="d-flex align-items-center gap-3 mb-3">
-            <div class="avatar bg-info-subtle rounded-circle text-info" style="width: 50px; height: 50px; display:flex; align-items:center; justify-content:center; font-size:24px;">
+          <div class="d-flex align-items-center gap-2 mb-2">
+            <div class="avatar bg-info-subtle rounded-circle text-info" style="width: 44px; height: 44px; display:flex; align-items:center; justify-content:center; font-size:18px;">
               <i class="fi fi-rr-file-check"></i>
             </div>
             <div>
-              <span class="fw-semibold text-muted d-block">وضعیت تسویه</span>
-              <h4 class="fw-bold mb-0">{{ open_reconciliation_issues }} اختلاف باز</h4>
+              <span class="fw-semibold text-muted d-block small">اختلاف‌های باز</span>
+              <h5 class="fw-bold mb-0">{{ open_reconciliation_issues }}</h5>
             </div>
           </div>
-          <p class="text-muted small mb-0">پیوند سریع برای رسیدگی به اختلاف‌های مالی.</p>
         </div>
-        <div class="mt-4 d-grid gap-2">
-          <a href="{% url 'financial:transactions' %}" class="btn btn-sm btn-outline-primary">لیست تراکنش‌ها</a>
+        <div class="mt-2 d-grid gap-2">
+          <a href="{% url 'financial:transactions' %}" class="btn btn-sm btn-outline-primary">تراکنش‌ها</a>
         </div>
       </div>
     </div>
@@ -56,68 +50,65 @@
 </div>
 
 <div class="card border-0 shadow-sm mb-4">
-  <div class="card-header bg-body-tertiary border-bottom py-3 d-flex flex-wrap gap-3 align-items-center justify-content-between">
-    <div>
-      <h6 class="card-title mb-0">فیلترهای گزارش</h6>
-      <p class="text-muted small mb-0">محدوده تاریخ، فروشنده و حالت دفتر تراکنش را برای محدود کردن نتایج انتخاب کنید.</p>
-    </div>
+  <div class="card-header bg-body-tertiary border-bottom py-3 d-flex flex-wrap gap-2 align-items-center justify-content-between">
+    <h6 class="card-title mb-0 small">فیلترهای گزارش</h6>
   </div>
-  <div class="card-body">
+  <div class="card-body py-3">
     <form id="financialFilters" method="get" class="row g-3 align-items-end">
-      <div class="col-sm-6 col-md-3">
+      <div class="col-12 col-sm-6 col-lg-3">
         <label class="form-label small mb-1" for="dateFrom">از تاریخ</label>
-        <input type="date" id="dateFrom" name="date_from" class="form-control form-control-sm" value="{{ request.GET.date_from }}">
+        <div class="position-relative">
+          <input type="text" id="dateFrom" name="date_from" class="form-control form-control-sm p-date-only" value="{{ request.GET.date_from }}" autocomplete="off" placeholder="انتخاب تاریخ">
+          <i class="fi fi-rr-calendar position-absolute top-50 end-0 translate-middle-y me-3 text-muted"></i>
+        </div>
       </div>
-      <div class="col-sm-6 col-md-3">
+      <div class="col-12 col-sm-6 col-lg-3">
         <label class="form-label small mb-1" for="dateTo">تا تاریخ</label>
-        <input type="date" id="dateTo" name="date_to" class="form-control form-control-sm" value="{{ request.GET.date_to }}">
+        <div class="position-relative">
+          <input type="text" id="dateTo" name="date_to" class="form-control form-control-sm p-date-only" value="{{ request.GET.date_to }}" autocomplete="off" placeholder="انتخاب تاریخ">
+          <i class="fi fi-rr-calendar position-absolute top-50 end-0 translate-middle-y me-3 text-muted"></i>
+        </div>
       </div>
-      <div class="col-sm-6 col-md-3">
+      <div class="col-12 col-sm-6 col-lg-3">
         <label class="form-label small mb-1" for="sellerSelect">فروشنده</label>
         <select id="sellerSelect" name="seller" class="form-select form-select-sm">
-          <option value="">همه فروشنده‌ها</option>
+          <option value="">همه</option>
           {% for s in sellers %}
             <option value="{{ s.pk }}" {% if request.GET.seller == s.pk|stringformat:"s" %}selected{% endif %}>{{ s.get_full_name }}</option>
           {% endfor %}
         </select>
       </div>
-      <div class="col-sm-6 col-md-2">
-        <div class="form-check form-switch mt-3">
-          <input class="form-check-input" type="checkbox" name="ledger" id="ledgerToggle" {% if uses_transaction_ledger %}checked{% endif %} value="1">
-          <label class="form-check-label small" for="ledgerToggle">دفتر تراکنش</label>
-        </div>
-      </div>
-      <div class="col-sm-12 col-md-1 d-grid">
-        <button type="submit" class="btn btn-primary btn-sm">اعمال</button>
-      </div>
-      <div class="col-sm-12 col-md-3 d-grid">
-        <a id="exportCsvBtn" href="{% url 'financial:export_csv' %}?{% if request.GET %}{{ request.GET.urlencode }}{% endif %}" class="btn btn-sm btn-outline-secondary">خروجی CSV</a>
+      <div class="col-12 col-sm-6 col-lg-3 d-flex justify-content-end align-items-end gap-2">
+        <button type="button" id="clearFiltersBtn" class="btn btn-outline-secondary btn-sm px-3">حذف فیلتر</button>
+        <button type="submit" class="btn btn-primary btn-sm px-3">اعمال</button>
+        <button id="exportExcelBtn" type="button" class="btn btn-sm btn-outline-secondary px-3">خروجی اکسل</button>
       </div>
     </form>
   </div>
 </div>
 
-<div class="card border-0 shadow-sm">
-  <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between border-0 pb-0">
+<div class="card overflow-hidden shadow-sm border-0">
+  <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between border-bottom py-3">
     <div>
-      <h6 class="card-title mb-0"><i class="fi fi-rr-list me-2"></i>آخرین رزروها</h6>
+      <h6 class="card-title mb-1"><i class="fi fi-rr-list me-2"></i>رزروها</h6>
+      <p class="text-muted small mb-0">خلاصه مالی رزروها و دسترسی سریع به جزئیات</p>
     </div>
-    <span class="text-muted small">نمایش {{ recent_reservations|length }} رزرو</span>
+    <span class="badge bg-light text-muted">{{ recent_reservations|length }} رزرو</span>
   </div>
-  <div class="card-body px-1 pt-2 pb-2">
+  <div class="card-body p-3 p-lg-4">
     {% if recent_reservations %}
       <div class="table-responsive">
-        <table class="table table-sm table-row-rounded align-middle mb-0">
+        <table class="table table-bordered align-middle mb-0" style="font-size:13px;">
           <thead class="table-light">
             <tr>
-              <th class="minw-120px">رزرو</th>
-              <th class="minw-170px">مشتری</th>
-              <th class="minw-140px">لباس</th>
+              <th class="minw-90px">رزرو</th>
+              <th class="minw-220px">مشتری</th>
+              <th class="minw-180px">لباس</th>
               <th class="minw-120px">شروع</th>
-              <th class="minw-90px">روز</th>
-              <th class="minw-180px text-end">مبالغ</th>
-              <th class="minw-130px">وضعیت</th>
-              <th class="text-center">اقدام</th>
+              <th class="minw-100px">روز</th>
+              <th class="text-end minw-220px">مبالغ</th>
+              <th class="minw-140px">وضعیت</th>
+              <th class="text-center minw-100px">اقدام</th>
             </tr>
           </thead>
           <tbody>
@@ -131,21 +122,25 @@
                 </td>
                 <td>
                   <div class="d-flex flex-column gap-1">
-                    <span>{{ item.customer }}</span>
+                    <span class="fw-semibold">{{ item.customer }}</span>
                     {% if item.item_damaged %}
                       <span class="badge bg-danger-subtle text-danger">خسارت</span>
                     {% endif %}
                   </div>
                 </td>
-                <td>{{ item.dress }}</td>
+                <td>
+                  <span class="fw-semibold">{{ item.dress }}</span>
+                </td>
                 <td>
                   {% if item.start_date %}
-                    {{ item.start_date|jformat:"%Y/%m/%d" }}
+                    <span class="text-muted">{{ item.start_date|jformat:"%Y/%m/%d" }}</span>
                   {% else %}
-                    —
+                    <span class="text-muted">—</span>
                   {% endif %}
                 </td>
-                <td>{{ item.rental_days }} روز</td>
+                <td>
+                  <span class="text-muted">{{ item.rental_days }} روز</span>
+                </td>
                 <td class="text-end">
                   <div class="d-flex flex-column align-items-end gap-1">
                     <div><small class="text-muted">نهایی</small> <span class="fw-semibold">{{ item.final_price|intcomma }} تومان</span></div>
@@ -157,7 +152,7 @@
                   {% if item.status == 'CONFIRMED' %}
                     <span class="badge bg-info-subtle text-info">قطعی</span>
                   {% elif item.status == 'DELIVERED' %}
-                    <span class="badge bg-success-subtle text-success">تحویل شده</span>
+                    <span class="badge bg-success-subtle text-success">تکمیل شده</span>
                   {% elif item.status == 'RETURNED' %}
                     <span class="badge bg-warning-subtle text-warning">بازگشت شده</span>
                   {% elif item.status == 'LAUNDRY' %}
@@ -171,6 +166,24 @@
                   {% else %}
                     <span class="badge bg-light-subtle text-dark">نامشخص</span>
                   {% endif %}
+                </td>
+                <td>
+                  <div class="d-flex flex-column gap-1">
+                    {% if item.item_damaged %}
+                      <span class="badge bg-danger-subtle text-danger">خسارت دیده شده</span>
+                    {% endif %}
+                    <small class="text-muted">
+                      نهایی: {{ item.final_price|default:0|intcomma }} تومان ·
+                      بیعانه: {{ item.deposit_amount|default:0|intcomma }} تومان ·
+                      باقی: {{ item.remaining_amount|default:0|intcomma }} تومان
+                    </small>
+                    {% if item.cancellation_fee|default:0 > 0 %}
+                      <small class="text-muted">جریمه لغو: {{ item.cancellation_fee|default:0|intcomma }} تومان</small>
+                    {% endif %}
+                    {% if item.damage_amount|default:0 > 0 %}
+                      <small class="text-muted">جریمه خسارت: {{ item.damage_amount|default:0|intcomma }} تومان</small>
+                    {% endif %}
+                  </div>
                 </td>
                 <td class="text-center">
                   <button type="button" class="btn btn-sm btn-outline-secondary open-financial-modal" data-url="{% url 'financial:reservation_financial' item.pk %}">خلاصه</button>
@@ -208,6 +221,83 @@
 <script>
 document.addEventListener('DOMContentLoaded', function(){
   const financialModal = document.getElementById('financialModal');
+  const financialFilters = document.getElementById('financialFilters');
+
+  function buildFinancialQueryString() {
+    const params = new URLSearchParams();
+    const dateFrom = document.getElementById('dateFrom');
+    const dateTo = document.getElementById('dateTo');
+    const seller = document.getElementById('sellerSelect');
+
+    if (dateFrom && dateFrom.value) {
+      params.set('date_from', dateFrom.value);
+    }
+    if (dateTo && dateTo.value) {
+      params.set('date_to', dateTo.value);
+    }
+    if (seller && seller.value) {
+      params.set('seller', seller.value);
+    }
+
+    return params.toString();
+  }
+
+  if (financialFilters) {
+    financialFilters.addEventListener('submit', function (event) {
+      const dateFrom = document.getElementById('dateFrom');
+      const dateTo = document.getElementById('dateTo');
+      const seller = document.getElementById('sellerSelect');
+
+      if (dateFrom) {
+        dateFrom.value = dateFrom.value || '';
+      }
+      if (dateTo) {
+        dateTo.value = dateTo.value || '';
+      }
+      if (seller && !seller.value) {
+        seller.value = '';
+      }
+    });
+
+    const exportBtn = document.getElementById('exportExcelBtn');
+    if (exportBtn) {
+      exportBtn.addEventListener('click', function (event) {
+        event.preventDefault();
+        const query = buildFinancialQueryString();
+        const url = '{% url "financial:export_excel" %}' + (query ? `?${query}` : '');
+        window.location.href = url;
+      });
+    }
+
+    const clearFiltersBtn = document.getElementById('clearFiltersBtn');
+    if (clearFiltersBtn) {
+      clearFiltersBtn.addEventListener('click', function () {
+        const dateFrom = document.getElementById('dateFrom');
+        const dateTo = document.getElementById('dateTo');
+        const seller = document.getElementById('sellerSelect');
+
+        if (dateFrom) dateFrom.value = '';
+        if (dateTo) dateTo.value = '';
+        if (seller) seller.value = '';
+
+        window.location.href = '{% url "financial:dashboard" %}';
+      });
+    }
+  }
+
+  if (window.flatpickr) {
+    flatpickr('#dateFrom, #dateTo', {
+      locale: 'fa',
+      dateFormat: 'Y/m/d',
+      altInput: false,
+      allowInput: true,
+      onChange: function (selectedDates, dateStr, instance) {
+        if (instance.element) {
+          instance.element.value = dateStr;
+        }
+      }
+    });
+  }
   if (financialModal) {
     financialModal.addEventListener('show.bs.modal', function(){
       this.setAttribute('aria-hidden', 'false');
@@ -225,8 +315,6 @@ document.addEventListener('DOMContentLoaded', function(){
           if (instance) {
             instance.dispose();
           }
-          // Remove backdrop for this modal
-          document.querySelectorAll('.modal-backdrop').forEach(bd => bd.remove());
           m.remove();
         });
         // Clear all event listeners by cloning and replacing
@@ -235,12 +323,11 @@ document.addEventListener('DOMContentLoaded', function(){
         newBody.innerHTML = '<div class="d-flex justify-content-center py-5"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
         body.parentNode.replaceChild(newBody, body);
       }
-      
-      // Remove any leftover backdrops
-      setTimeout(() => {
-        document.querySelectorAll('.modal-backdrop').forEach(bd => bd.remove());
-        document.body.classList.remove('modal-open');
-      }, 100);
+
+      // Remove all backdrops and restore scroll
+      document.querySelectorAll('.modal-backdrop').forEach(bd => bd.remove());
+      document.body.classList.remove('modal-open');
+      document.body.style.overflow = '';
     });
   }
 });

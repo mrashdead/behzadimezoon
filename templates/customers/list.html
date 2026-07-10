@@ -6,64 +6,70 @@
 
 {% block content %}
 <div class="container-fluid">
-  <div class="app-page-head d-flex flex-wrap gap-2 align-items-center justify-content-between">
-    <div class="clearfix"></div>
 
-    <div>
-      {% if can_create_customer %}
-      <button
-        type="button"
-        class="btn btn-primary"
-        data-bs-toggle="modal"
-        data-bs-target="#createCustomerModal"
-      >
-        <i class="fi fi-rr-plus me-1"></i>
-        مشتری جدید
-      </button>
-      {% endif %}
-    </div>
-  </div>
 
   <div class="card overflow-hidden shadow-sm border-0">
     <div class="card-header d-flex flex-wrap gap-3 align-items-center justify-content-between border-bottom py-3">
-      <h6 class="card-title mb-0">لیست مشتریان</h6>
+      <div>
+        <h6 class="card-title mb-1"> لیست مشتریان</h6>
+        <p class="text-muted small mb-0">جستجو، مشاهده اطلاعات و مدیریت مشتری‌ها در یک نگاه</p>
+      </div>
+      {% if search_query %}
+      <span class="badge bg-primary-subtle text-primary">جستجوی: {{ search_query }}</span>
+      {% endif %}
+      {% if can_create_customer %}
+              <button
+                type="button"
+                class="btn btn-primary"
+                data-bs-toggle="modal"
+                data-bs-target="#createCustomerModal"
+              >
+                <i class="fi fi-rr-plus me-1"></i>
+                افزودن مشتری
+              </button>
+              {% endif %}
     </div>
 
-    <div class="card-body">
-      <!-- Search Section -->
-      <div class="mb-3 pb-3 border-bottom">
-        <form method="GET" action="{% url 'customers:list' %}" class="row align-items-center" id="searchForm" data-live-search-form data-live-search-target="#customerListContent">
-          <div class="col-md-9">
-            <div class="row align-items-center">
-              <label class="col-sm-3 text-sm-end col-form-label">جستجو</label>
-              <div class="col-sm-9 position-relative">
-                <input
-                  type="text"
-                  name="search"
-                  class="form-control"
-                  placeholder="نام عروس، نام داماد، شماره تماس..."
-                  value="{{ search_query }}"
-                  autocomplete="off"
-                />
-                <button type="button" class="btn btn-icon btn-sm btn-outline-secondary live-search-clear position-absolute end-0 top-50 translate-middle-y me-2 d-none">
-                  <i class="fi fi-rr-delete"></i>
-                </button>
-              </div>
+    <div class="card-body p-3 p-lg-4">
+      <div class="border rounded-4 p-3 mb-4 bg-light-subtle">
+        <form method="GET" action="{% url 'customers:list' %}" class="row g-3 align-items-end" id="searchForm" data-live-search-form data-live-search-target="#customerListContent">
+          <div class="col-lg-8">
+            <label class="form-label small fw-semibold text-muted mb-2">جستجو در مشتریان</label>
+            <div class="position-relative">
+              <i class="fi fi-rr-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+              <input
+                type="text"
+                name="search"
+                class="form-control ps-5"
+                placeholder="نام عروس، نام داماد، شماره تماس..."
+                value="{{ search_query }}"
+                autocomplete="off"
+              />
+              <button type="button" class="btn btn-icon btn-sm btn-outline-secondary live-search-clear position-absolute end-0 top-50 translate-middle-y me-2 d-none">
+                <i class="fi fi-rr-delete"></i>
+              </button>
             </div>
           </div>
-          <div class="col-md-3 d-flex gap-2 justify-content-end">
-            <button type="submit" class="btn btn-primary btn-sm">
-              <i class="fi fi-rr-search me-1"></i>
-              جستجو
-            </button>
-            {% if search_query %}
-            <a href="{% url 'customers:list' %}" class="btn btn-secondary btn-sm">
-              <i class="fi fi-rr-delete me-1"></i>
-              پاک کردن
-            </a>
-            {% endif %}
+          <div class="col-lg-4">
+            <div class="d-flex flex-wrap gap-2">
+
+              <button type="submit" class="btn btn-outline-primary">
+                <i class="fi fi-rr-search me-1"></i>
+                جستجو
+              </button>
+              <button type="submit" name="show_with_reservations" value="1" class="btn btn-outline-warning" data-active="{{ show_with_reservations|yesno:'1,0' }}">
+                <i class="fi fi-rr-clock me-1"></i>
+                نمایش مشتریان دارای رزرو فعال
+              </button>
+              {% if search_query or show_with_reservations %}
+              <a href="{% url 'customers:list' %}" class="btn btn-outline-secondary">
+                <i class="fi fi-rr-refresh me-1"></i>
+                پاک کردن
+              </a>
+              {% endif %}
+            </div>
           </div>
-          <div class="col-12 mt-2">
+          <div class="col-12">
             <small class="text-muted live-search-status">{% if search_query %}نتایج جستجو برای: <strong>{{ search_query }}</strong>{% endif %}</small>
           </div>
         </form>
@@ -71,7 +77,7 @@
 
       {% include 'customers/partials/_list_results.html' %}
     </div>
-</div>
+  </div>
 </div>
 
 {% for customer in customers %}
@@ -89,4 +95,31 @@
 {% if can_create_customer %}
   {% include 'customers/partials/_create_modal.html' %}
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    function toggleHowToKnowDetail(select, detailInput) {
+      const shouldShow = select && (select.value === 'سالن زیبایی' || select.value === 'سایر');
+      if (detailInput) {
+        detailInput.closest('.col-md-6').style.display = shouldShow ? '' : 'none';
+        if (!shouldShow) {
+          detailInput.value = '';
+        }
+      }
+    }
+
+    document.querySelectorAll('[id^="id_how_to_know"]').forEach(function (select) {
+      if (!select.id.includes('detail')) {
+        const baseId = select.id.replace('id_how_to_know', 'id_how_to_know_detail');
+        const detailInput = document.getElementById(baseId) || document.querySelector(`[name="how_to_know_detail"]`);
+        toggleHowToKnowDetail(select, detailInput);
+        select.addEventListener('change', function () {
+          toggleHowToKnowDetail(select, detailInput);
+        });
+      }
+    });
+  });
+</script>
 {% endblock %}

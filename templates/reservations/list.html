@@ -8,52 +8,144 @@
 
 {% block content %}
 <div class="container-fluid">
-  <div class="app-page-head d-flex flex-wrap gap-2 align-items-center justify-content-between mb-3">
-    <div>
-      <h6 class="mb-0">لیست رزروها</h6>
-      <p class="small text-muted mb-0">مدیریت رزروها، بررسی وضعیت و انجام عملیات سریع در همان صفحه.</p>
+  <div class="card overflow-hidden shadow-sm border-0">
+    <div class="card-header d-flex flex-wrap gap-3 align-items-center justify-content-between border-bottom py-3">
+      <div>
+        <h6 class="card-title mb-1">لیست رزروها</h6>
+        <p class="text-muted small mb-0">مدیریت رزروها، بررسی وضعیت و انجام عملیات سریع در همان صفحه.</p>
+      </div>
+      <div class="d-flex gap-2 align-items-center">
+        {% if can_create_reservation %}
+        <button
+          type="button"
+          class="btn btn-primary btn-sm"
+          data-bs-toggle="modal"
+          data-bs-target="#createReservationModal"
+        >
+          <i class="fi fi-rr-plus me-1"></i>
+          رزرو جدید
+        </button>
+        {% endif %}
+        <a href="{% url 'reservations:archive' %}" class="btn btn-outline-secondary btn-sm">
+          <i class="fi fi-rr-archive me-1"></i>
+          آرشیو رزروها
+        </a>
+      </div>
     </div>
-    <div class="d-flex gap-2 align-items-center">
-      {% if can_create_reservation %}
-      <button
-        type="button"
-        class="btn btn-primary btn-sm"
-        data-bs-toggle="modal"
-        data-bs-target="#createReservationModal"
-      >
-        <i class="fi fi-rr-plus me-1"></i>
-        رزرو جدید
-      </button>
-      {% endif %}
-      <a href="{% url 'reservations:archive' %}" class="btn btn-outline-secondary btn-sm">
-        <i class="fi fi-rr-archive me-1"></i>
-        آرشیو رزروها
-      </a>
-    </div>
-  </div>
 
-  <div class="card border-0 shadow-sm customer-list-card">
-    <div class="card-body p-0">
-      <div class="table-responsive customer-table-wrap">
-        <table class="table table-sm table-row-rounded table-hover align-middle mb-0 customer-mobile-table">
+    <div class="card-body p-3 p-lg-4">
+      <div class="border rounded-4 p-3 mb-4 bg-light-subtle">
+        <form method="GET" action="{% url 'reservations:list' %}" class="row g-3 align-items-end" id="searchForm">
+          <div class="col-lg-8">
+            <label class="form-label small fw-semibold text-muted mb-2">جستجو در رزروها</label>
+            <div class="position-relative">
+              <i class="fi fi-rr-search position-absolute top-50 start-0 translate-middle-y ms-3 text-muted"></i>
+              <input
+                type="text"
+                name="search"
+                class="form-control ps-5"
+                placeholder="نام مشتری، کد لباس یا شناسه رزرو..."
+                value="{{ search_query }}"
+                autocomplete="off"
+              />
+            </div>
+          </div>
+          <div class="col-lg-4">
+            <div class="d-flex flex-wrap gap-2">
+              <button type="submit" class="btn btn-outline-primary">
+                <i class="fi fi-rr-search me-1"></i>
+                جستجو
+              </button>
+              {% if search_query %}
+              <a href="{% url 'reservations:list' %}" class="btn btn-outline-secondary">
+                <i class="fi fi-rr-refresh me-1"></i>
+                پاک کردن
+              </a>
+              {% endif %}
+            </div>
+          </div>
+          <div class="col-12">
+            <small class="text-muted live-search-status">{% if search_query %}نتایج جستجو برای: <strong>{{ search_query }}</strong>{% endif %}</small>
+          </div>
+        </form>
+      </div>
+      <div class="table-responsive">
+        <table class="table table-bordered align-middle mb-0" id="dt_ReservationList">
           <thead class="table-light">
             <tr>
-              <th>مشتری</th>
-              <th>لباس</th>
-              <th>شروع اجاره</th>
-              <th>پایان اجاره</th>
-              <th>وضعیت</th>
-              <th class="text-end">عملیات</th>
+              <th class="minw-120px">ردیف</th>
+              <th class="minw-220px">
+                <a href="?sort=customer&order={% if sort == 'customer' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
+                  مشتری
+                  {% if sort == 'customer' %}
+                    <i class="fi fi-rr-arrow-{% if order == 'asc' %}up{% else %}down{% endif %}"></i>
+                  {% else %}
+                    <i class="fi fi-rr-sort-alt"></i>
+                  {% endif %}
+                </a>
+              </th>
+              <th class="minw-220px">
+                <a href="?sort=dress&order={% if sort == 'dress' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
+                  لباس
+                  {% if sort == 'dress' %}
+                    <i class="fi fi-rr-arrow-{% if order == 'asc' %}up{% else %}down{% endif %}"></i>
+                  {% else %}
+                    <i class="fi fi-rr-sort-alt"></i>
+                  {% endif %}
+                </a>
+              </th>
+              <th class="minw-140px">
+                <a href="?sort=start_date&order={% if sort == 'start_date' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
+                  شروع اجاره
+                  {% if sort == 'start_date' %}
+                    <i class="fi fi-rr-arrow-{% if order == 'asc' %}up{% else %}down{% endif %}"></i>
+                  {% else %}
+                    <i class="fi fi-rr-sort-alt"></i>
+                  {% endif %}
+                </a>
+              </th>
+              <th class="minw-140px">
+                <a href="?sort=end_date&order={% if sort == 'end_date' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
+                  پایان اجاره
+                  {% if sort == 'end_date' %}
+                    <i class="fi fi-rr-arrow-{% if order == 'asc' %}up{% else %}down{% endif %}"></i>
+                  {% else %}
+                    <i class="fi fi-rr-sort-alt"></i>
+                  {% endif %}
+                </a>
+              </th>
+              <th class="minw-160px">
+                <a href="?sort=status&order={% if sort == 'status' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
+                  وضعیت
+                  {% if sort == 'status' %}
+                    <i class="fi fi-rr-arrow-{% if order == 'asc' %}up{% else %}down{% endif %}"></i>
+                  {% else %}
+                    <i class="fi fi-rr-sort-alt"></i>
+                  {% endif %}
+                </a>
+              </th>
+              <th class="text-end minw-220px">عملیات</th>
             </tr>
           </thead>
           <tbody>
 
 {% for reservation in reservations %}
             <tr>
-              <td data-label="مشتری">{{ reservation.customer }}</td>
-              <td data-label="لباس">{{ reservation.dress }}</td>
-              <td data-label="شروع اجاره">{{ reservation.start_date|jformat:"%Y/%m/%d" }}</td>
-              <td data-label="پایان اجاره">{{ reservation.end_date|jformat:"%Y/%m/%d" }}</td>
+              <td data-label="ردیف">
+                <span class="badge bg-light text-muted border fw-semibold">{{ page_obj.start_index|add:forloop.counter0 }}</span>
+              </td>
+              <td data-label="مشتری">
+                <div class="fw-semibold">{{ reservation.customer }}</div>
+              </td>
+              <td data-label="لباس">
+                <div class="fw-semibold">{{ reservation.dress }}</div>
+              </td>
+              <td data-label="شروع اجاره">
+                <span class="text-muted">{{ reservation.start_date|jformat:"%Y/%m/%d" }}</span>
+              </td>
+              <td data-label="پایان اجاره">
+                <span class="text-muted">{{ reservation.end_date|jformat:"%Y/%m/%d" }}</span>
+              </td>
               <td data-label="وضعیت">
                 {% if reservation.status == 'CONFIRMED' %}
                   <span class="badge bg-info-subtle text-info">{{ reservation.get_status_display }}</span>
@@ -76,9 +168,9 @@
                 {% endif %}
               </td>
               <td data-label="عملیات" class="text-end">
-                <div class="d-none d-md-flex justify-content-end gap-2 flex-wrap table-actions">
+                <div class="d-none d-md-inline-flex justify-content-end gap-2 flex-wrap table-actions">
                   <button
-                    class="btn btn-subtle-secondary btn-sm btn-shadow btn-icon waves-effect me-1"
+                    class="btn btn-subtle-secondary btn-sm btn-shadow btn-icon waves-effect"
                     type="button"
                     data-bs-toggle="modal"
                     data-bs-target="#detailReservationModal{{ reservation.id }}"
@@ -89,7 +181,7 @@
                   {% if can_change_reservation_status and 'DELIVERED' in reservation.allowed_transitions %}
                   <button
                     type="button"
-                    class="btn btn-subtle-success btn-sm btn-shadow btn-icon waves-effect me-1"
+                    class="btn btn-subtle-success btn-sm btn-shadow btn-icon waves-effect"
                     data-bs-toggle="modal"
                     data-bs-target="#finalizeDeliveryModal{{ reservation.id }}"
                     title="تایید تحویل"
@@ -100,7 +192,7 @@
                   {% if can_change_reservation_status and 'RETURNED' in reservation.allowed_transitions %}
                   <button
                     type="button"
-                    class="btn btn-subtle-info btn-sm btn-shadow btn-icon waves-effect me-1"
+                    class="btn btn-subtle-info btn-sm btn-shadow btn-icon waves-effect"
                     data-bs-toggle="modal"
                     data-bs-target="#damageReturnModal{{ reservation.id }}"
                     title="بازگشت از مشتری"
@@ -109,7 +201,7 @@
                   </button>
                   {% endif %}
                   {% if can_change_reservation_status and 'LAUNDRY' in reservation.allowed_transitions %}
-                  <form method="post" action="{% url 'reservations:laundry' reservation.pk %}" class="d-inline me-1">
+                  <form method="post" action="{% url 'reservations:laundry' reservation.pk %}" class="d-inline">
                     {% csrf_token %}
                     <button
                       type="submit"
@@ -121,7 +213,7 @@
                   </form>
                   {% endif %}
                   {% if can_change_reservation_status and 'READY' in reservation.allowed_transitions %}
-                  <form method="post" action="{% url 'reservations:ready' reservation.pk %}" class="d-inline me-1">
+                  <form method="post" action="{% url 'reservations:ready' reservation.pk %}" class="d-inline">
                     {% csrf_token %}
                     <button
                       type="submit"
@@ -135,7 +227,7 @@
                   {% if can_edit_reservation and reservation.status != 'DELIVERED' and reservation.status != 'RETURNED' and reservation.status != 'LAUNDRY' and reservation.status != 'READY' and reservation.status != 'CANCELLED' %}
                   <button
                     type="button"
-                    class="btn btn-subtle-primary btn-sm btn-shadow btn-icon waves-effect me-1"
+                    class="btn btn-subtle-primary btn-sm btn-shadow btn-icon waves-effect"
                     data-bs-toggle="modal"
                     data-bs-target="#editReservationModal{{ reservation.id }}"
                     title="ویرایش"
@@ -146,7 +238,7 @@
                   {% if can_delete_reservation and 'CANCELLED' in reservation.allowed_transitions %}
                   <button
                     type="button"
-                    class="btn btn-subtle-warning btn-sm btn-shadow btn-icon waves-effect me-1"
+                    class="btn btn-subtle-warning btn-sm btn-shadow btn-icon waves-effect"
                     data-bs-toggle="modal"
                     data-bs-target="#deleteReservationModal{{ reservation.id }}"
                     title="لغو"
@@ -156,7 +248,7 @@
                   {% elif can_delete_reservation and 'ARCHIVED' in reservation.allowed_transitions %}
                   <button
                     type="button"
-                    class="btn btn-subtle-danger btn-sm btn-shadow btn-icon waves-effect me-1"
+                    class="btn btn-subtle-danger btn-sm btn-shadow btn-icon waves-effect"
                     data-bs-toggle="modal"
                     data-bs-target="#deleteReservationModal{{ reservation.id }}"
                     title="آرشیو"
@@ -251,7 +343,7 @@
             </tr>
             {% empty %}
               <tr>
-                <td colspan="6" class="text-center py-4">هیچ رزروی ثبت نشده است.</td>
+                <td colspan="7" class="text-center py-4 text-muted">هیچ رزروی ثبت نشده است.</td>
               </tr>
             {% endfor %}
           </tbody>

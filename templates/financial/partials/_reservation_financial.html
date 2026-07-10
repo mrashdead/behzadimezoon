@@ -36,6 +36,14 @@
           </div>
         </div>
       </div>
+      <div class="col-6 col-xl-3">
+        <div class="card shadow-sm border rounded-3 h-100">
+          <div class="card-body text-center py-3">
+            <div class="small text-muted">درآمدهای جانبی</div>
+            <div class="h5 mb-0">{{ totals.additional_fees|default:0|intcomma }} تومان</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="row gy-4">
@@ -138,6 +146,141 @@
                   {% endfor %}
                 </tbody>
               </table>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="card shadow-sm border rounded-3">
+          <div class="card-header bg-body-tertiary border-bottom py-3">
+            <h6 class="mb-0">هزینه‌های جانبی</h6>
+          </div>
+          <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+              <div class="text-muted small">جمع کل هزینه‌های جانبی ثبت‌شده برای این رزرو</div>
+              <div class="fw-bold">{{ totals.additional_fees|default:0|intcomma }} تومان</div>
+            </div>
+            {% if additional_fee_items %}
+              <div class="table-responsive mb-0">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>عنوان</th>
+                      <th>مبلغ</th>
+                      <th>توضیحات</th>
+                      <th>تاریخ ثبت</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for fee in additional_fee_items %}
+                      <tr>
+                        <td>{{ fee.title }}</td>
+                        <td class="text-end">{{ fee.amount|intcomma }} تومان</td>
+                        <td>{{ fee.notes|default:'-' }}</td>
+                        <td>{{ fee.created_at|jformat:"%Y/%m/%d %H:%M" }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                </table>
+              </div>
+            {% else %}
+              <div class="text-muted">هزینه جانبی‌ای برای این رزرو ثبت نشده است.</div>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12">
+        <div class="card shadow-sm border rounded-3">
+          <div class="card-header bg-body-tertiary border-bottom py-3">
+            <h6 class="mb-0">اطلاعات مالی و جریمه‌ها</h6>
+          </div>
+          <div class="card-body">
+            <div class="row gy-3 mb-4">
+              <!-- Cancellation Fee Section -->
+              <div class="col-12 col-xl-6">
+                <div class="card border">
+                  <div class="card-header bg-light border-bottom py-2">
+                    <h6 class="mb-0 small text-danger">جریمه لغو</h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="row gy-2 mb-3">
+                      <div class="col-6">
+                        <div class="small text-muted">مبلغ کل جریمه</div>
+                        <div class="fw-semibold">{{ reservation.cancellation_fee|default:0|intcomma }} تومان</div>
+                      </div>
+                      <div class="col-6">
+                        <div class="small text-muted">پرداخت‌شده</div>
+                        <div class="fw-semibold">{{ reservation.cancellation_fee_paid_amount|default:0|intcomma }} تومان</div>
+                      </div>
+                      <div class="col-6">
+                        <div class="small text-muted">مانده تا پرداخت</div>
+                        <div class="fw-semibold">{{ cancellation_remaining|default:0|intcomma }} تومان</div>
+                      </div>
+                      <div class="col-6">
+                        <div class="small text-muted">روش پرداخت</div>
+                        <div class="fw-semibold">{{ reservation.cancellation_fee_payment_method|default:'-' }}</div>
+                      </div>
+                      {% if reservation.cancellation_fee_tracking_code %}
+                      <div class="col-12">
+                        <div class="small text-muted">کد رهگیری</div>
+                        <div class="fw-semibold text-truncate">{{ reservation.cancellation_fee_tracking_code }}</div>
+                      </div>
+                      {% endif %}
+                    </div>
+                    {% if cancellation_remaining|default:0 > 0 %}
+                      <button type="button" class="btn btn-sm btn-outline-danger w-100 open-penalty-form" data-reservation-id="{{ reservation.pk }}" data-penalty-type="CANCELLATION" data-remaining-amount="{{ cancellation_remaining|default:0 }}">
+                        <i class="fi fi-rr-plus me-2"></i>پرداخت مانده جریمه لغو
+                      </button>
+                    {% else %}
+                      <div class="text-muted small">جریمه لغو برای این رزرو تسویه شده است.</div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
+
+              <!-- Damage Fee Section -->
+              <div class="col-12 col-xl-6">
+                <div class="card border">
+                  <div class="card-header bg-light border-bottom py-2">
+                    <h6 class="mb-0 small text-warning">جریمه خسارت</h6>
+                  </div>
+                  <div class="card-body">
+                    <div class="row gy-2 mb-3">
+                      <div class="col-6">
+                        <div class="small text-muted">مبلغ کل جریمه</div>
+                        <div class="fw-semibold">{{ reservation.damage_amount|default:0|intcomma }} تومان</div>
+                      </div>
+                      <div class="col-6">
+                        <div class="small text-muted">پرداخت‌شده</div>
+                        <div class="fw-semibold">{{ reservation.damage_fee_paid_amount|default:0|intcomma }} تومان</div>
+                      </div>
+                      <div class="col-6">
+                        <div class="small text-muted">مانده تا پرداخت</div>
+                        <div class="fw-semibold">{{ damage_remaining|default:0|intcomma }} تومان</div>
+                      </div>
+                      <div class="col-6">
+                        <div class="small text-muted">روش پرداخت</div>
+                        <div class="fw-semibold">{{ reservation.damage_fee_payment_method|default:'-' }}</div>
+                      </div>
+                      {% if reservation.damage_fee_tracking_code %}
+                      <div class="col-12">
+                        <div class="small text-muted">کد رهگیری</div>
+                        <div class="fw-semibold text-truncate">{{ reservation.damage_fee_tracking_code }}</div>
+                      </div>
+                      {% endif %}
+                    </div>
+                    {% if damage_remaining|default:0 > 0 %}
+                      <button type="button" class="btn btn-sm btn-outline-warning w-100 open-penalty-form" data-reservation-id="{{ reservation.pk }}" data-penalty-type="DAMAGE" data-remaining-amount="{{ damage_remaining|default:0 }}">
+                        <i class="fi fi-rr-plus me-2"></i>پرداخت مانده جریمه خسارت
+                      </button>
+                    {% else %}
+                      <div class="text-muted small">جریمه خسارت برای این رزرو تسویه شده است.</div>
+                    {% endif %}
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -250,13 +393,59 @@
           </div>
         </div>
       </div>
+
+      <!-- Penalty Payment Modal -->
+      <div class="modal fade" id="penaltyPaymentModal" tabindex="-1" aria-hidden="true">
+        <div class="modal-dialog modal-dialog-centered">
+          <div class="modal-content">
+            <div class="modal-header">
+              <h5 class="modal-title">پرداخت جریمه</h5>
+              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <form id="penaltyPaymentForm" method="post" action="{% url 'reservations:penalty_payment' reservation.pk %}">
+              {% csrf_token %}
+              <div class="modal-body">
+                <div class="mb-3">
+                  <label for="penaltyType" class="form-label">نوع جریمه</label>
+                  <select class="form-select" id="penaltyType" name="penalty_type" required>
+                    <option value="">انتخاب کنید</option>
+                    <option value="CANCELLATION">جریمه لغو</option>
+                    <option value="DAMAGE">جریمه خسارت</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="penaltyAmount" class="form-label">مبلغ پرداخت (تومان)</label>
+                  <input type="text" class="form-control money-input" id="penaltyAmount" name="penalty_amount" inputmode="numeric" min="0" required>
+                </div>
+                <div class="mb-3">
+                  <label for="penaltyPaymentMethod" class="form-label">روش پرداخت</label>
+                  <select class="form-select" id="penaltyPaymentMethod" name="penalty_payment_method" required>
+                    <option value="">انتخاب کنید</option>
+                    <option value="CASH">نقد</option>
+                    <option value="TRANSFER">انتقال بانکی</option>
+                    <option value="POS">کارتخوان</option>
+                  </select>
+                </div>
+                <div class="mb-3">
+                  <label for="penaltyPaymentRef" class="form-label">کد رهگیری پرداخت</label>
+                  <input type="text" class="form-control" id="penaltyPaymentRef" name="penalty_payment_tracking_code" required>
+                </div>
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                <button type="submit" class="btn btn-success">ثبت پرداخت جریمه</button>
+              </div>
+            </form>
+          </div>
+        </div>
+      </div>
     </div>
   </div>
 </div>
 
 {% block extra_js %}
 <script>
-document.addEventListener('DOMContentLoaded', function(){
+(function(){
   // Toast container
   let toastContainer = document.getElementById('financeToastContainer');
   if (!toastContainer) {
@@ -297,6 +486,23 @@ document.addEventListener('DOMContentLoaded', function(){
   function clearFormErrors(form){
     form.querySelectorAll('.is-invalid').forEach(el=>el.classList.remove('is-invalid'));
     form.querySelectorAll('.invalid-feedback').forEach(el=>el.remove());
+  }
+
+  function formatMoneyValue(value){
+    const persianDigits = {'۰':'0','۱':'1','۲':'2','۳':'3','۴':'4','۵':'5','۶':'6','۷':'7','۸':'8','۹':'9','٠':'0','١':'1','٢':'2','٣':'3','٤':'4','٥':'5','٦':'6','٧':'7','٨':'8','٩':'9'};
+    const normalized = String(value ?? '').replace(/[۰-۹٠-٩]/g, ch => persianDigits[ch] || ch);
+    const digits = normalized.replace(/[^\d]/g, '');
+    if (!digits) return '';
+    return Number(digits).toLocaleString('en-US');
+  }
+
+  function bindMoneyInput(input){
+    if (!input || input.dataset.moneyBound === '1') return;
+    input.dataset.moneyBound = '1';
+    const applyFormat = () => { input.value = formatMoneyValue(input.value); };
+    input.addEventListener('focus', () => { input.value = String(input.value || '').replace(/,/g, ''); });
+    input.addEventListener('input', () => { input.value = formatMoneyValue(input.value); });
+    input.addEventListener('blur', applyFormat);
   }
 
   function renderFormErrors(form, errors){
@@ -353,10 +559,12 @@ document.addEventListener('DOMContentLoaded', function(){
   (function initDamageBtn() {
     let maxAttempts = 0;
     const checkDamageBtn = () => {
-      const damageBtn = document.querySelector('.open-damage-form');
-      if (damageBtn) {
-        damageBtn.removeEventListener('click', handleDamageClick);
-        damageBtn.addEventListener('click', handleDamageClick);
+      const damageBtns = document.querySelectorAll('.open-damage-form');
+      if (damageBtns.length) {
+        damageBtns.forEach(btn => {
+          btn.removeEventListener('click', handleDamageClick);
+          btn.addEventListener('click', handleDamageClick);
+        });
       } else if (maxAttempts < 5) {
         maxAttempts++;
         setTimeout(checkDamageBtn, 100);
@@ -374,14 +582,56 @@ document.addEventListener('DOMContentLoaded', function(){
     checkDamageBtn();
   })();
 
+  // Penalty form button
+  (function initPenaltyBtn() {
+    let maxAttempts = 0;
+    const checkPenaltyBtn = () => {
+      const penaltyBtns = document.querySelectorAll('.open-penalty-form');
+      if (penaltyBtns.length) {
+        penaltyBtns.forEach(btn => {
+          btn.removeEventListener('click', handlePenaltyClick);
+          btn.addEventListener('click', handlePenaltyClick);
+        });
+      } else if (maxAttempts < 5) {
+        maxAttempts++;
+        setTimeout(checkPenaltyBtn, 100);
+      }
+    };
+    const handlePenaltyClick = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      const button = e.currentTarget;
+      const penaltyModal = document.getElementById('penaltyPaymentModal');
+      if (penaltyModal) {
+        const typeSelect = document.getElementById('penaltyType');
+        const amountInput = document.getElementById('penaltyAmount');
+        if (typeSelect && button.dataset.penaltyType) {
+          typeSelect.value = button.dataset.penaltyType;
+        }
+        if (amountInput) {
+          const remainingAmount = Number(button.dataset.remainingAmount || 0);
+          amountInput.value = remainingAmount > 0 ? formatMoneyValue(remainingAmount) : '';
+          amountInput.dataset.maxAmount = remainingAmount > 0 ? String(remainingAmount) : '';
+          amountInput.setAttribute('max', remainingAmount > 0 ? remainingAmount : '');
+          bindMoneyInput(amountInput);
+        }
+        const modal = new bootstrap.Modal(penaltyModal);
+        modal.show();
+      }
+    };
+    checkPenaltyBtn();
+  })();
+
   // Refund form button
   (function initRefundBtn() {
     let maxAttempts = 0;
     const checkRefundBtn = () => {
-      const refundBtn = document.querySelector('.open-refund-form');
-      if (refundBtn) {
-        refundBtn.removeEventListener('click', handleRefundClick);
-        refundBtn.addEventListener('click', handleRefundClick);
+      const refundBtns = document.querySelectorAll('.open-refund-form');
+      if (refundBtns.length) {
+        refundBtns.forEach(btn => {
+          btn.removeEventListener('click', handleRefundClick);
+          btn.addEventListener('click', handleRefundClick);
+        });
       } else if (maxAttempts < 5) {
         maxAttempts++;
         setTimeout(checkRefundBtn, 100);
@@ -424,6 +674,40 @@ document.addEventListener('DOMContentLoaded', function(){
     checkDamageForm();
   })();
 
+  // Penalty form submit
+  (function initPenaltyForm() {
+    let maxAttempts = 0;
+    const checkPenaltyForm = () => {
+      const penaltyForm = document.getElementById('penaltyPaymentForm');
+      if (penaltyForm) {
+        penaltyForm.removeEventListener('submit', handlePenaltySubmit);
+        penaltyForm.addEventListener('submit', handlePenaltySubmit);
+      } else if (maxAttempts < 5) {
+        maxAttempts++;
+        setTimeout(checkPenaltyForm, 100);
+      }
+    };
+    const handlePenaltySubmit = function(e){
+      e.preventDefault();
+      e.stopPropagation();
+      const amountInput = this.querySelector('#penaltyAmount');
+      const maxAmount = Number(amountInput?.dataset.maxAmount || 0);
+      const enteredAmount = Number(String(amountInput?.value || '').replace(/,/g, '').replace(/[^\d]/g, '')) || 0;
+      if (maxAmount > 0 && enteredAmount > maxAmount) {
+        showToast('مبلغ پرداخت نمی‌تواند از مانده جریمه بیشتر باشد.', 'danger');
+        if (amountInput) { amountInput.classList.add('is-invalid'); }
+        return;
+      }
+      if (amountInput) { amountInput.classList.remove('is-invalid'); }
+      submitFormAjax(this, ()=>{
+        const modal = bootstrap.Modal.getInstance(document.getElementById('penaltyPaymentModal'));
+        if (modal) modal.hide();
+        setTimeout(refreshFinancialPartial, 800);
+      });
+    };
+    checkPenaltyForm();
+  })();
+
   // Refund form submit
   (function initRefundForm() {
     let maxAttempts = 0;
@@ -448,6 +732,6 @@ document.addEventListener('DOMContentLoaded', function(){
     };
     checkRefundForm();
   })();
-});
+})();
 </script>
 {% endblock %}

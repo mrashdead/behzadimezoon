@@ -1,4 +1,8 @@
+import time
+
 from django.contrib.auth.decorators import login_required
+from django.core.exceptions import ValidationError
+from django.db.utils import OperationalError
 from django.http import JsonResponse
 from django.shortcuts import get_object_or_404, render
 from django.views.decorators.http import require_POST
@@ -37,7 +41,10 @@ def reservation_financial_view(request, pk):
         'final_price': reservation.final_price or 0,
         'deposit': reservation.deposit_amount or 0,
         'remaining': reservation.remaining_amount or 0,
+        'additional_fees': reservation.total_additional_fees(),
     }
+    cancellation_remaining = max((reservation.cancellation_fee or 0) - (reservation.cancellation_fee_paid_amount or 0), 0)
+    damage_remaining = max((reservation.damage_amount or 0) - (reservation.damage_fee_paid_amount or 0), 0)
 
     return render(request, 'financial/partials/_reservation_financial.html', {
         'reservation': reservation,
@@ -50,6 +57,9 @@ def reservation_financial_view(request, pk):
         'damage_form': DamageForm(),
         'transaction_form': TransactionForm(),
         'cancellation_form': CancellationForm(),
+        'additional_fee_items': reservation.active_additional_fees().order_by('-created_at'),
+        'cancellation_remaining': cancellation_remaining,
+        'damage_remaining': damage_remaining,
     })
 
 
@@ -104,14 +114,17 @@ def add_damage_view(request, pk):
         return JsonResponse({'error': form.errors}, status=400)
 
     data = form.cleaned_data
-    dr = DamageService.record_damage(
-        reservation=reservation,
-        customer=reservation.customer,
-        damage_type=data['damage_type'],
-        amount=data.get('amount'),
-        description=data.get('description'),
-        created_by=request.user
-    )
+    try:
+        dr = DamageService.record_damage(
+            reservation=reservation,
+            customer=reservation.customer,
+            damage_type=data['damage_type'],
+            amount=data.get('amount'),
+            description=data.get('description'),
+            created_by=request.user
+        )
+    except ValidationError as exc:
+        return JsonResponse({'error': {'amount': [str(exc)]}}, status=400)
     return JsonResponse({'result': 'ok', 'damage_id': dr.pk, 'message': 'خسارت ثبت شد.'})
 
 
@@ -134,38 +147,53 @@ def create_transaction_view(request, pk):
     external = data.get('external_reference')
     note = data.get('note')
 
-    # Map to service helpers
-    if tx_type == 'DEPOSIT':
-        tx = PaymentService.record_deposit(
-            reservation=reservation,
-            amount=amount,
-            created_by=request.user,
-            payment_method=payment_method,
-            external_reference=external,
-            note=note
-        )
-    elif tx_type == 'FINAL_PAYMENT':
-        tx = PaymentService.record_balance_payment(
-            reservation=reservation,
-            amount=amount,
-            created_by=request.user,
-            payment_method=payment_method,
-            external_reference=external,
-            note=note
-        )
-    elif tx_type == 'REFUND':
-        tx = RefundService.record_refund(
-            reservation=reservation,
-            amount=amount,
-            created_by=request.user,
-            payment_method=payment_method,
-            external_reference=external,
-            note=note
-        )
-    else:
-        tx = TransactionService.create(reservation=reservation, transaction_type=tx_type, amount=amount, created_by=request.user, payment_method=payment_method, external_reference=external, note=note)
+    try:
+        for attempt in range(3):
+            try:
+                if tx_type == 'DEPOSIT':
+                    tx = PaymentService.record_deposit(
+                        reservation=reservation,
+                        amount=amount,
+                        created_by=request.user,
+                        payment_method=payment_method,
+                        external_reference=external,
+                        note=note
+                    )
+                elif tx_type == 'FINAL_PAYMENT':
+                    tx = PaymentService.record_balance_payment(
+                        reservation=reservation,
+                        amount=amount,
+                        created_by=request.user,
+                        payment_method=payment_method,
+                        external_reference=external,
+                        note=note
+                    )
+                elif tx_type == 'REFUND':
+                    tx = RefundService.record_refund(
+                        reservation=reservation,
+                        amount=amount,
+                        created_by=request.user,
+                        payment_method=payment_method,
+                        external_reference=external,
+                        note=note
+                    )
+                else:
+                    tx = TransactionService.create(reservation=reservation, transaction_type=tx_type, amount=amount, created_by=request.user, payment_method=payment_method, external_reference=external, note=note)
 
-    return JsonResponse({'result': 'ok', 'transaction_id': tx.pk, 'message': 'تراکنش با موفقیت ثبت شد.'})
+                return JsonResponse({'result': 'ok', 'transaction_id': tx.pk, 'message': 'تراکنش با موفقیت ثبت شد.'})
+            except OperationalError as exc:
+                if 'locked' not in str(exc).lower() or attempt == 2:
+                    raise
+                time.sleep(0.25)
+    except ValidationError as exc:
+        message = exc.message if hasattr(exc, 'message') and exc.message else None
+        if not message and getattr(exc, 'messages', None):
+            message = exc.messages[0]
+        if not message:
+            message = str(exc)
+        return JsonResponse({'error': message}, status=400)
+    except OperationalError:
+        return JsonResponse({'error': 'ثبت تراکنش به دلیل قفل موقت دیتابیس انجام نشد. لطفاً دوباره تلاش کنید.'}, status=500)
 
 
 @login_required
@@ -193,15 +221,18 @@ def cancel_reservation_flow(request, pk):
 
     # Create cancellation record and related transaction entries
     if cr.refund_amount or cr.penalty_amount:
-        CancellationService.create_cancellation_record(
-            reservation=reservation,
-            reason=cr.reason,
-            created_by=request.user,
-            refund_amount=cr.refund_amount or 0,
-            penalty_amount=cr.penalty_amount or 0,
-            payment_method=None,
-            external_reference=None,
-            note=cr.notes or 'لغو رزرو ثبت شد'
-        )
+        try:
+            CancellationService.create_cancellation_record(
+                reservation=reservation,
+                reason=cr.reason,
+                created_by=request.user,
+                refund_amount=cr.refund_amount or 0,
+                penalty_amount=cr.penalty_amount or 0,
+                payment_method=None,
+                external_reference=None,
+                note=cr.notes or 'لغو رزرو ثبت شد'
+            )
+        except ValidationError as exc:
+            return JsonResponse({'error': {'refund_amount': [str(exc)]}}, status=400)
 
     return JsonResponse({'result': 'ok', 'cancellation_id': cr.pk, 'message': 'لغو رزرو ثبت شد.'})

@@ -66,7 +66,7 @@
               </td>
               <td data-label="عملیات" class="text-end">
                 {% if can_restore_reservation %}
-                <form method="post" action="{% url 'reservations:restore' reservation.pk %}" class="d-inline" title="بازگردانی رزرو آرشیو شده">
+                <form method="post" action="{% url 'reservations:restore' reservation.pk %}" class="d-inline archive-action-form" data-action="restore" title="بازگردانی رزرو آرشیو شده">
                   {% csrf_token %}
                   <button type="submit" class="btn btn-subtle-primary btn-sm btn-shadow btn-icon waves-effect" aria-label="بازگردانی رزرو آرشیو شده">
                     <i class="fi fi-rr-rotate-left"></i>
@@ -74,7 +74,7 @@
                 </form>
                 {% endif %}
                 {% if request.user.is_superuser %}
-                <form method="post" action="{% url 'reservations:delete_permanent' reservation.pk %}" class="d-inline" title="حذف کامل رزرو (فقط سوپر‌یوزر)">
+                <form method="post" action="{% url 'reservations:delete_permanent' reservation.pk %}" class="d-inline archive-action-form" data-action="delete" title="حذف کامل رزرو (فقط سوپر‌یوزر)">
                   {% csrf_token %}
                   <button type="submit" class="btn btn-subtle-danger btn-sm btn-shadow btn-icon waves-effect" aria-label="حذف کامل رزرو">
                     <i class="fi fi-rr-trash"></i>
@@ -98,4 +98,57 @@
 
   {% include 'partials/pagination.html' %}
 </div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+  document.querySelectorAll('.archive-action-form').forEach(form => {
+    form.addEventListener('submit', async function(e) {
+      e.preventDefault();
+      const btn = this.querySelector('button[type="submit"]');
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+      try {
+        const response = await fetch(this.action, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': document.querySelector('[name="csrfmiddlewaretoken"]').value,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+          },
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          if (window.UIHelpers && typeof UIHelpers.showNotification === 'function') {
+            UIHelpers.showNotification(data.message, 'success');
+          } else {
+            alert(data.message);
+          }
+          setTimeout(() => location.reload(), 500);
+        } else {
+          if (window.UIHelpers && typeof UIHelpers.showNotification === 'function') {
+            UIHelpers.showNotification(data.message || 'خطایی رخ داد', 'error');
+          } else {
+            alert(data.message || 'خطایی رخ داد');
+          }
+          btn.disabled = false;
+          btn.innerHTML = originalHtml;
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        if (window.UIHelpers && typeof UIHelpers.showNotification === 'function') {
+          UIHelpers.showNotification('خطا در ارتباط با سرور', 'error');
+        } else {
+          alert('خطا در ارتباط با سرور');
+        }
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+    });
+  });
+});
+</script>
 {% endblock %}

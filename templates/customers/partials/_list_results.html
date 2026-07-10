@@ -1,41 +1,96 @@
 <div id="customerListContent">
-  <div class="table-responsive">
-    <table class="table table-sm align-middle mb-0" id="dt_DressList">
-      <thead class="table-light">
-        <tr>
-          <th>نام عروس</th>
-          <th>شماره تماس</th>
-          <th>تاریخ مراسم</th>
-          <th>نحوه آشنایی</th>
-          <th class="text-center">عملیات</th>
-        </tr>
-      </thead>
+  <form method="post" action="{% url 'customers:delete_selected' %}" id="bulkCustomerDeleteForm">
+    {% csrf_token %}
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2 mb-3">
+      <div class="form-check">
+        <input class="form-check-input" type="checkbox" id="selectAllCustomers">
+        <label class="form-check-label text-muted" for="selectAllCustomers">انتخاب همه</label>
+      </div>
+      {% if can_delete_customer %}
+      <button type="submit" class="btn btn-outline-danger btn-sm" id="bulkDeleteButton" disabled>
+        <i class="fi fi-rr-trash me-1"></i>
+        حذف انتخاب‌شده
+      </button>
+      {% endif %}
+    </div>
+    <div class="table-responsive">
+      <table class="table display table-bordered align-middle mb-0" id="dt_DressList">
+        <thead class="table-light">
+          <tr>
+            <th class="minw-60px">انتخاب</th>
+            <th class="minw-120px">ردیف</th>
+            <th class="minw-220px">
+              <a href="?sort=bride_first_name&order={% if sort == 'bride_first_name' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_with_reservations %}&show_with_reservations=1{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
+                نام عروس
+                {% if sort == 'bride_first_name' %}
+                  <i class="fi fi-rr-arrow-{% if order == 'asc' %}up{% else %}down{% endif %}"></i>
+                {% else %}
+                  <i class="fi fi-rr-sort-alt"></i>
+                {% endif %}
+              </a>
+            </th>
+            <th class="minw-180px">
+              <a href="?sort=bride_phone&order={% if sort == 'bride_phone' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_with_reservations %}&show_with_reservations=1{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
+                شماره تماس
+                {% if sort == 'bride_phone' %}
+                  <i class="fi fi-rr-arrow-{% if order == 'asc' %}up{% else %}down{% endif %}"></i>
+                {% else %}
+                  <i class="fi fi-rr-sort-alt"></i>
+                {% endif %}
+              </a>
+            </th>
+            <th class="minw-160px">
+              <a href="?sort=ceremony_date&order={% if sort == 'ceremony_date' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_with_reservations %}&show_with_reservations=1{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
+                تاریخ مراسم
+                {% if sort == 'ceremony_date' %}
+                  <i class="fi fi-rr-arrow-{% if order == 'asc' %}up{% else %}down{% endif %}"></i>
+                {% else %}
+                  <i class="fi fi-rr-sort-alt"></i>
+                {% endif %}
+              </a>
+            </th>
+            <th class="minw-200px">نحوه آشنایی</th>
+            <th class="text-end minw-140px">عملیات</th>
+          </tr>
+        </thead>
       <tbody>
         {% for customer in customers %}
         <tr>
-          <td>
+          <td data-label="انتخاب">
+            {% if can_delete_customer %}
+            <input class="form-check-input customer-checkbox" type="checkbox" name="customer_ids" value="{{ customer.id }}">
+            {% endif %}
+          </td>
+          <td data-label="ردیف">
+            <span class="badge bg-light text-muted border fw-semibold">{{ page_obj.start_index|add:forloop.counter0 }}</span>
+          </td>
+          <td data-label="نام عروس">
             <div class="fw-semibold">{{ customer.bride_first_name }} {{ customer.bride_last_name }}</div>
           </td>
-          <td>
+          <td data-label="شماره تماس">
             <span dir="ltr" class="font-monospace">{{ customer.bride_phone }}</span>
           </td>
-          <td>{{ customer.ceremony_date|jformat:"%Y/%m/%d" }}</td>
-          <td class="text-muted">{{ customer.how_to_know }}</td>
-          <td>
-            <div class="d-flex justify-content-center align-items-center gap-1">
+          <td data-label="تاریخ مراسم">
+            <span class="text-muted">{{ customer.ceremony_date|jformat:"%Y/%m/%d" }}</span>
+          </td>
+          <td data-label="نحوه آشنایی" class="text-muted">
+            {{ customer.how_to_know }}
+          </td>
+          <td data-label="عملیات" class="text-end">
+            <div class="d-none d-md-inline-flex justify-content-end gap-2 flex-wrap table-actions">
               <button
-                class="btn btn-subtle-secondary btn-sm btn-icon"
+                class="btn btn-white btn-sm btn-shadow btn-icon waves-effect"
                 type="button"
                 data-bs-toggle="modal"
                 data-bs-target="#detailCustomerModal{{ customer.id }}"
                 title="مشاهده"
               >
-                <i class="icon-eye"></i>
+                <i class="fi fi-rr-eye"></i>
               </button>
 
               {% if can_edit_customer %}
               <button
-                class="btn btn-subtle-primary btn-sm btn-icon"
+                class="btn btn-white btn-sm btn-shadow btn-icon waves-effect"
                 type="button"
                 data-bs-toggle="modal"
                 data-bs-target="#editCustomerModal{{ customer.id }}"
@@ -47,30 +102,79 @@
 
               {% if can_delete_customer %}
               <button
-                class="btn btn-subtle-danger btn-sm btn-icon"
+                class="btn btn-white btn-sm btn-shadow btn-icon waves-effect"
                 type="button"
                 data-bs-toggle="modal"
                 data-bs-target="#deleteCustomerModal{{ customer.id }}"
                 title="حذف"
               >
-                <i class="fi fi-rr-delete-user"></i>
+                <i class="fi fi-rr-trash"></i>
               </button>
               {% endif %}
+            </div>
+            <div class="dropdown d-md-none text-end">
+              <button
+                class="btn btn-white btn-sm btn-icon waves-effect"
+                type="button"
+                data-bs-toggle="dropdown"
+                aria-expanded="false"
+              >
+                <i class="fi fi-rr-menu-dots-vertical" style="vertical-align: middle;"></i>
+              </button>
+              <ul class="dropdown-menu dropdown-menu-end border-0 shadow-lg" style="border-radius: 12px; min-width: 180px;">
+                <li>
+                  <button
+                    class="dropdown-item py-2 d-flex align-items-center gap-2"
+                    type="button"
+                    data-bs-toggle="modal"
+                    data-bs-target="#detailCustomerModal{{ customer.id }}"
+                  >
+                    <i class="fi fi-rr-eye text-primary"></i>
+                    <span>مشاهده مشتری</span>
+                  </button>
+                </li>
+                {% if can_edit_customer %}
+                <li>
+                  <button
+                    class="dropdown-item py-2 d-flex align-items-center gap-2"
+                    type="button"
+                    data-bs-toggle="modal"
+                    data-bs-target="#editCustomerModal{{ customer.id }}"
+                  >
+                    <i class="fi fi-rr-edit text-primary"></i>
+                    <span>ویرایش مشتری</span>
+                  </button>
+                </li>
+                {% endif %}
+                {% if can_delete_customer %}
+                {% if can_edit_customer %}
+                <li><hr class="dropdown-divider opacity-50"></li>
+                {% endif %}
+                <li>
+                  <button
+                    class="dropdown-item py-2 d-flex align-items-center gap-2 text-danger"
+                    type="button"
+                    data-bs-toggle="modal"
+                    data-bs-target="#deleteCustomerModal{{ customer.id }}"
+                  >
+                    <i class="fi fi-rr-trash"></i>
+                    <span>حذف مشتری</span>
+                  </button>
+                </li>
+                {% endif %}
+              </ul>
             </div>
           </td>
         </tr>
         {% empty %}
         <tr>
-          <td colspan="5" class="text-center py-4">
-            <div class="text-muted">
-              {% if search_query %}
-              <i class="fi fi-rr-circle-exclamation me-2"></i>
-              نتیجه‌ای برای جستجوی «{{ search_query }}» پیدا نشد.
-              {% else %}
-              <i class="fi fi-rr-circle-exclamation me-2"></i>
-              مشتری‌ای ثبت نشده است.
-              {% endif %}
-            </div>
+          <td colspan="7" class="text-center py-4 text-muted">
+            {% if search_query %}
+            <i class="fi fi-rr-circle-exclamation me-2"></i>
+            نتیجه‌ای برای جستجوی «{{ search_query }}» پیدا نشد.
+            {% else %}
+            هنوز مشتری‌ای ثبت نشده است.
+            {% endif %}
           </td>
         </tr>
         {% endfor %}
@@ -79,4 +183,5 @@
   </div>
 
   {% include 'partials/pagination.html' %}
+  </form>
 </div>

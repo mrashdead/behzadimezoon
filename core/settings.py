@@ -26,9 +26,11 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ["185.8.172.33","127.0.0.1",]
+ALLOWED_HOSTS = ["185.8.172.33", "127.0.0.1", "localhost", "testserver"]
 CSRF_TRUSTED_ORIGINS = [
     "http://185.8.172.33",
+    "http://127.0.0.1",
+    "http://localhost",
 ]
 
 # Application definition

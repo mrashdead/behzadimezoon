@@ -1,0 +1,61 @@
+{% extends 'base.html' %}
+{% load static %}
+{% load humanize %}
+{% block title %}ثبت پرداخت - مالی{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'financial:list' %}">مالی</a></li>
+<li class="breadcrumb-item active" aria-current="page">ثبت پرداخت</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-3 mb-4">
+  <div>
+    <h1 class="h4 mb-2">ثبت پرداخت جدید</h1>
+    <p class="text-muted mb-0">از این فرم برای ثبت سریع تراکنش‌های نقدی و پرداخت رزروها استفاده کنید.</p>
+  </div>
+  <a href="{% url 'financial:list' %}" class="btn btn-outline-secondary">بازگشت به داشبورد</a>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body">
+    <form method="post" action="{% url 'financial:record_payment' %}" class="row g-3">
+      {% csrf_token %}
+      <div class="col-12 col-md-6">
+        <label class="form-label">شناسه رزرو</label>
+        <input type="text" name="reservation_id" class="form-control" placeholder="123" required>
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="form-label">نوع تراکنش</label>
+        {{ form.type|as_widget(attrs={'class':'form-select'}) }}
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="form-label">مبلغ (تومان)</label>
+        {{ form.amount|as_widget(attrs={'class':'form-control', 'min':'0'}) }}
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="form-label">روش پرداخت</label>
+        {{ form.payment_method|as_widget(attrs={'class':'form-select'}) }}
+      </div>
+
+      <div class="col-12 col-md-6">
+        <label class="form-label">کد پیگیری</label>
+        {{ form.external_reference|as_widget(attrs={'class':'form-control'}) }}
+      </div>
+
+      <div class="col-12">
+        <label class="form-label">یادداشت</label>
+        {{ form.note|as_widget(attrs={'class':'form-control', 'rows':'4'}) }}
+      </div>
+
+      <div class="col-12 text-start">
+        <button type="submit" class="btn btn-primary">ثبت پرداخت</button>
+      </div>
+    </form>
+  </div>
+</div>
+
+{% endblock %}

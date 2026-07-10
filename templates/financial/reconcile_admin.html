@@ -70,8 +70,8 @@
             {% for item in problems %}
               <tr>
                 <td>#{{ item.reservation_id }}</td>
-                <td class="text-end">{{ item.expected_cash|intcomma }} تومان</td>
-                <td class="text-end">{{ item.reservation_cash|intcomma }} تومان</td>
+                <td class="text-end">{{ item.expected_cash_from_tx|intcomma }} تومان</td>
+                <td class="text-end">{{ item.reservation_cash_recorded|intcomma }} تومان</td>
                 <td class="text-end">
                   {% if item.cash_difference > 0 %}
                     <span class="text-danger">+{{ item.cash_difference|intcomma }} تومان</span>

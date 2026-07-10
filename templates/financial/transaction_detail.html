@@ -1,0 +1,73 @@
+{% extends 'base.html' %}
+{% load humanize %}
+{% load jformat %}
+
+{% block title %}جزئیات تراکنش{% endblock %}
+
+{% block breadcrumb %}
+<li class="breadcrumb-item"><a href="{% url 'financial:list' %}">مالی</a></li>
+<li class="breadcrumb-item"><a href="{% url 'financial:transactions' %}">تراکنش‌ها</a></li>
+<li class="breadcrumb-item active" aria-current="page">جزئیات تراکنش</li>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-3 mb-4">
+  <div>
+    <h1 class="h4 mb-2">جزئیات تراکنش</h1>
+    <p class="text-muted mb-0">مشاهده اطلاعات کامل تراکنش و پیوند به رزرو مرتبط.</p>
+  </div>
+  <div class="d-flex gap-2">
+    <a href="{% url 'financial:transactions' %}" class="btn btn-outline-secondary">بازگشت به لیست</a>
+    <a href="{% url 'financial:list' %}" class="btn btn-outline-primary">داشبورد مالی</a>
+  </div>
+</div>
+
+<div class="card border-0 shadow-sm">
+  <div class="card-body">
+    <div class="row gy-3">
+      <div class="col-12 col-md-6">
+        <div class="mb-3">
+          <strong>شماره تراکنش:</strong> {{ transaction.transaction_number }}
+        </div>
+        <div class="mb-3">
+          <strong>نوع تراکنش:</strong> {{ transaction.get_transaction_type_display }}
+        </div>
+        <div class="mb-3">
+          <strong>وضعیت:</strong> {{ transaction.get_transaction_status_display }}
+        </div>
+        <div class="mb-3">
+          <strong>تاریخ:</strong> {{ transaction.transaction_date|jformat:"%Y/%m/%d %H:%M" }}
+        </div>
+      </div>
+      <div class="col-12 col-md-6">
+        <div class="mb-3">
+          <strong>مبلغ:</strong> {{ transaction.amount|intcomma }} تومان
+        </div>
+        <div class="mb-3">
+          <strong>روش پرداخت:</strong> {{ transaction.get_payment_method_display|default:transaction.payment_method }}</n>
+        </div>
+        <div class="mb-3">
+          <strong>کد پیگیری:</strong> {{ transaction.payment_reference|default:'-' }}
+        </div>
+        <div class="mb-3">
+          <strong>حساب:</strong> {{ transaction.account|default:'-' }}
+        </div>
+      </div>
+      <div class="col-12">
+        <div class="mb-3">
+          <strong>رزرو مرتبط:</strong>
+          {% if transaction.reservation %}
+            <a href="{% url 'financial:reservation_financial' transaction.reservation.pk %}">رزرو #{{ transaction.reservation.pk }}</a>
+          {% else %}
+            -
+          {% endif %}
+        </div>
+        <div class="mb-3">
+          <strong>شرح:</strong>
+          <p class="mb-0">{{ transaction.description|default:transaction.notes|default:'بدون شرح' }}</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+{% endblock %}

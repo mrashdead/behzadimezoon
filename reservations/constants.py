@@ -40,13 +40,11 @@ class GuaranteeType:
 
 class PaymentMethod:
 
-    CARD = "CARD"
     CASH = "CASH"
     TRANSFER = "TRANSFER"
     POS = "POS"
 
     CHOICES = (
-        (CARD, "کارت به کارت"),
         (CASH, "نقدی"),
         (TRANSFER, "انتقال بانکی"),
         (POS, "کارتخوان"),

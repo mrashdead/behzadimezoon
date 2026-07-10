@@ -3,22 +3,24 @@ __pycache__/
 *.py[cod]
 *.pyo
 *.pyd
+*$py.class
 
 # Virtual Environment
-nexlink/
 venv/
 env/
 .venv/
 
-# Django
+# Django: local DB
 db.sqlite3
-db.sqlite3-journal
+*.sqlite3
+*.sqlite
+
+# Local data dumps
 data.json
-db.sqlite3.bak
 # Environment variables
 .env
 .env.*
-
+!.env.example
 
 # IDE
 .vscode/
@@ -30,14 +32,68 @@ Thumbs.db
 
 # Logs
 *.log
+logs/
 
-# Coverage / test
+# Test / coverage / caches
 .coverage
 htmlcov/
 .pytest_cache/
+.mypy_cache/
+.cache/
 
-# Migrations cache
-**/__pycache__/
+# Build / packaging
+build/
+dist/
+*.egg-info/
+pip-wheel-metadata/
 
-# node
+# Node
 node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+
+### Temporary, backup, archives
+*.bak
+*~
+*.swp
+*.tmp
+*.temp
+*.orig
+*.old
+*.cache
+
+# Archives
+*.zip
+*.tar.gz
+*.rar
+*.7z
+
+# Jupyter
+.ipynb_checkpoints/
+
+# Debug / ad-hoc files
+debug_*.txt
+debug-*.txt
+debug_out.txt
+output.txt
+test_failures*.txt
+discrepancies.csv
+
+# Temporary UI/reference assets (local only)
+nexlink/
+
+# Prevent accidental commits of ad-hoc debug scripts
+tmp_*.py
+test_*debug.py
+debug_archive_delete.py
+
+# Virtualenvs/packages in-repo (should not be committed)
+env/**
+venv/**
+.venv/**
+
+# Media / collected static (review before committing large files)
+/media/
+staticfiles/
+/staticfiles/

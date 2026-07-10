@@ -19,6 +19,7 @@ from .views import (
     reservation_restore,
     reservation_delete_permanent,
     check_availability,
+    reservation_record_penalty_payment,
 )
 
 app_name = "reservations"
@@ -122,6 +123,11 @@ urlpatterns = [
         "<int:pk>/delete-permanent/",
         reservation_delete_permanent,
         name="delete_permanent"
+    ),
+    path(
+        "<int:pk>/penalty-payment/",
+        reservation_record_penalty_payment,
+        name="penalty_payment"
     ),
     path(
         "archive/",

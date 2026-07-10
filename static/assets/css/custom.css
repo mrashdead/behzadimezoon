@@ -244,6 +244,37 @@
   word-break: break-word;
 }
 
+/* Financial dashboard compact tweaks */
+.financial-stat-card .card {
+  border-radius: 12px;
+}
+.financial-stat-card .card-body {
+  padding: 0.7rem 0.9rem;
+}
+.financial-stat-card .avatar {
+  width: 40px !important;
+  height: 40px !important;
+  font-size: 16px !important;
+}
+.financial-stats-row .col-lg-3 {
+  padding-left: 0.35rem;
+  padding-right: 0.35rem;
+}
+
+/* Slightly reduce table row vertical padding */
+.table.table-sm tbody td,
+.table.table-sm thead th {
+  padding-top: 0.45rem;
+  padding-bottom: 0.45rem;
+}
+
+@media (max-width: 575.98px) {
+  /* stack amounts in table for very small screens */
+  .table.table-sm tbody td.text-end {
+    text-align: left !important;
+  }
+}
+
 .app-toast__close {
   border: 0;
   background: transparent;

@@ -32,7 +32,17 @@
                     </div>
                     <div class="col-md-6">
                       <label for="id_bride_phone" class="form-label">شماره تماس عروس</label>
-                      <input type="text" name="bride_phone" id="id_bride_phone" class="form-control" required />
+                      <input
+                        type="text"
+                        name="bride_phone"
+                        id="id_bride_phone"
+                        class="form-control"
+                        required
+                        maxlength="11"
+                        inputmode="numeric"
+                        pattern="\d{11}"
+                        placeholder="مثال: 09121234567"
+                      />
                     </div>
                     <div class="col-md-6">
                       <label for="id_ceremony_date" class="form-label">تاریخ مراسم</label>
@@ -40,7 +50,25 @@
                     </div>
                     <div class="col-md-6">
                       <label for="id_how_to_know" class="form-label">نحوه آشنایی</label>
-                      <input type="text" name="how_to_know" id="id_how_to_know" class="form-control" required />
+                      <select name="how_to_know" id="id_how_to_know" class="form-select" required>
+                        <option value="">انتخاب کنید</option>
+                        <option value="اینستاگرام">اینستاگرام</option>
+                        <option value="معرفی دوستان یا آشنایان">معرفی دوستان یا آشنایان</option>
+                        <option value="جستجو اینترنتی">جستجو اینترنتی</option>
+                        <option value="تبلیغات">تبلیغات</option>
+                        <option value="سالن زیبایی">سالن زیبایی</option>
+                        <option value="تشریفات عروس">تشریفات عروس</option>
+                        <option value="گروه موسیقی">گروه موسیقی</option>
+                        <option value="سایر">سایر</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6" id="how_to_know_detail_group">
+                      <label for="id_how_to_know_detail" class="form-label">توضیحات تکمیلی</label>
+                      <input type="text" name="how_to_know_detail" id="id_how_to_know_detail" class="form-control" placeholder="توضیح یا نام سالن/سایر" />
+                    </div>
+                    <div class="col-md-6">
+                      <label for="id_city" class="form-label">شهر</label>
+                      <input type="text" name="city" id="id_city" class="form-control" placeholder="نام شهر" />
                     </div>
                     <div class="col-md-6 d-flex align-items-end">
                       <div class="form-check w-100 mt-md-2">
@@ -76,10 +104,6 @@
                       <label for="id_groom_phone" class="form-label">شماره تماس داماد</label>
                       <input type="text" name="groom_phone" id="id_groom_phone" class="form-control" />
                     </div>
-                    <div class="col-md-6">
-                      <label for="id_preferred_consultant" class="form-label">مشاور ترجیحی</label>
-                      <input type="text" name="preferred_consultant" id="id_preferred_consultant" class="form-control" />
-                    </div>
                   </div>
                 </div>
               </div>
@@ -96,17 +120,86 @@
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
+                    <div class="col-12">
+                      <label class="form-label">خدمات مورد نظر</label>
+                      <div class="border rounded p-3">
+                        <div class="row g-2">
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="requested_services" id="id_requested_services_1" value="اجاره لباس">
+                              <label class="form-check-label" for="id_requested_services_1">اجاره لباس</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="requested_services" id="id_requested_services_2" value="خرید لباس">
+                              <label class="form-check-label" for="id_requested_services_2">خرید لباس</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="requested_services" id="id_requested_services_3" value="دوخت اختصاصی">
+                              <label class="form-check-label" for="id_requested_services_3">دوخت اختصاصی</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="requested_services" id="id_requested_services_4" value="جزئیات تکمیلی (اکسسوری)">
+                              <label class="form-check-label" for="id_requested_services_4">جزئیات تکمیلی (اکسسوری)</label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                     <div class="col-md-6">
-                      <label for="id_requested_services" class="form-label">خدمات مورد نظر</label>
-                      <input type="text" name="requested_services" id="id_requested_services" class="form-control" />
+                      <label for="id_preferred_consultant" class="form-label">مشاور ترجیحی</label>
+                      <select name="preferred_consultant" id="id_preferred_consultant" class="form-select">
+                        <option value="">انتخاب کنید</option>
+                        <option value="مشاوره تخصصی لباس">مشاوره تخصصی لباس</option>
+                        <option value="مشاور زیبایی">مشاور زیبایی</option>
+                        <option value="مشاوره کامل">مشاوره کامل</option>
+                      </select>
                     </div>
                     <div class="col-md-6">
                       <label for="id_estimated_budget" class="form-label">بودجه تقریبی</label>
-                      <input type="text" name="estimated_budget" id="id_estimated_budget" class="form-control money-input" placeholder="0 تومان" />
+                      <select name="estimated_budget" id="id_estimated_budget" class="form-select">
+                        <option value="">انتخاب کنید</option>
+                        <option value="اقتصادی">اقتصادی</option>
+                        <option value="متوسط">متوسط</option>
+                        <option value="پرمیوم">پرمیوم</option>
+                        <option value="ویژه">ویژه</option>
+                      </select>
                     </div>
-                    <div class="col-md-6">
-                      <label for="id_additional_services" class="form-label">خدمات جانبی</label>
-                      <input type="text" name="additional_services" id="id_additional_services" class="form-control" />
+                    <div class="col-12">
+                      <label class="form-label">خدمات جانبی</label>
+                      <div class="border rounded p-3">
+                        <div class="row g-2">
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="additional_services" id="id_additional_services_1" value="آتلیه">
+                              <label class="form-check-label" for="id_additional_services_1">آتلیه</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="additional_services" id="id_additional_services_2" value="تشریفات">
+                              <label class="form-check-label" for="id_additional_services_2">تشریفات</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="additional_services" id="id_additional_services_3" value="گروه موسیقی">
+                              <label class="form-check-label" for="id_additional_services_3">گروه موسیقی</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="additional_services" id="id_additional_services_4" value="سالن زیبایی">
+                              <label class="form-check-label" for="id_additional_services_4">سالن زیبایی</label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <div class="col-md-6">
                       <label for="id_guest_count" class="form-label">تعداد مهمان</label>

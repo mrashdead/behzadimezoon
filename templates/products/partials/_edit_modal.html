@@ -1,3 +1,5 @@
+{% load humanize %}
+
 <div class="modal fade" id="editDressModal{{ dress.id }}" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-lg modal-dialog-scrollable">
     <div class="modal-content border-0 shadow">
@@ -15,7 +17,7 @@
 
             <div class="col-md-6">
               <label for="edit_price_{{ dress.id }}" class="form-label">قیمت اجاره روزانه (تومان)</label>
-              <input type="text" name="daily_rent_price" id="edit_price_{{ dress.id }}" class="form-control money-input" value="{{ dress.daily_rent_price }}" required />
+              <input type="text" name="daily_rent_price" id="edit_price_{{ dress.id }}" class="form-control money-input" value="{{ dress.daily_rent_price|intcomma }}" required />
             </div>
           </div>
         </div>

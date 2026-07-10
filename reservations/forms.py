@@ -10,7 +10,24 @@ from products.models import Dress
 from reservations.models import Reservation
 from reservations.constants import GuaranteeType, PaymentMethod
 from reservations.services.availability_service import ReservationAvailabilityService
-from .utils import parse_reservation_date
+from .utils import parse_reservation_date, normalize_digits
+
+
+def parse_amount_value(value):
+    if value in (None, ""):
+        return 0
+
+    if isinstance(value, (int, float)):
+        return int(value)
+
+    normalized = normalize_digits(str(value)).replace(",", "").replace("٬", "").strip()
+    if normalized == "":
+        return 0
+
+    try:
+        return int(normalized)
+    except ValueError as exc:
+        raise ValidationError("به طور کامل یک عدد وارد کنید.") from exc
 
 
 class ReservationStepOneForm(forms.Form):
@@ -78,14 +95,18 @@ class ReservationStepOneForm(forms.Form):
 
 class ReservationStepTwoForm(forms.ModelForm):
 
+    deposit_amount = forms.CharField(
+        required=False,
+        label="بیعانه"
+    )
+
     discount_type = forms.ChoiceField(
         choices=Reservation.DISCOUNT_TYPE_CHOICES,
         required=False,
         label="نوع تخفیف"
     )
 
-    discount_value = forms.IntegerField(
-        min_value=0,
+    discount_value = forms.CharField(
         required=False,
         label="مقدار تخفیف"
     )
@@ -102,8 +123,10 @@ class ReservationStepTwoForm(forms.ModelForm):
             "payment_tracking_code",
             "guarantee1_type",
             "guarantee1_tracking_code",
+            "guarantee1_payee",
             "guarantee2_type",
             "guarantee2_tracking_code",
+            "guarantee2_payee",
             "deposit_amount",
             "discount_type",
             "discount_value",
@@ -114,12 +137,20 @@ class ReservationStepTwoForm(forms.ModelForm):
             "payment_tracking_code": "کد رهگیری پرداخت",
             "guarantee1_type": "نوع ضمانت اول",
             "guarantee1_tracking_code": "کد رهگیری ضمانت اول",
+            "guarantee1_payee": "در وجه ضمانت اول",
             "guarantee2_type": "نوع ضمانت دوم",
             "guarantee2_tracking_code": "کد رهگیری ضمانت دوم",
+            "guarantee2_payee": "در وجه ضمانت دوم",
             "deposit_amount": "بیعانه",
             "discount_type": "نوع تخفیف",
             "discount_value": "مقدار تخفیف",
         }
+
+    def clean_deposit_amount(self):
+        return parse_amount_value(self.cleaned_data.get("deposit_amount"))
+
+    def clean_discount_value(self):
+        return parse_amount_value(self.cleaned_data.get("discount_value"))
 
     def clean(self):
 
@@ -140,6 +171,17 @@ class ReservationStepTwoForm(forms.ModelForm):
 
         if discount_type == Reservation.DISCOUNT_PERCENT and discount_value > 100:
             raise ValidationError("درصد تخفیف نمی‌تواند بیشتر از ۱۰۰٪ باشد.")
+
+        guarantee1_type = cleaned_data.get("guarantee1_type")
+        guarantee1_payee = (cleaned_data.get("guarantee1_payee") or "").strip()
+        guarantee2_type = cleaned_data.get("guarantee2_type")
+        guarantee2_payee = (cleaned_data.get("guarantee2_payee") or "").strip()
+
+        if guarantee1_type == GuaranteeType.CHECK and not guarantee1_payee:
+            raise ValidationError({"guarantee1_payee": "در صورت انتخاب چک، فیلد «در وجه» برای ضمانت اول الزامی است."})
+
+        if guarantee2_type == GuaranteeType.CHECK and not guarantee2_payee:
+            raise ValidationError({"guarantee2_payee": "در صورت انتخاب چک، فیلد «در وجه» برای ضمانت دوم الزامی است."})
 
         if self.rent_price is None:
             raise ValidationError("اطلاعات هزینه اجاره کامل نیست.")
@@ -171,8 +213,7 @@ class ReservationEditForm(forms.ModelForm):
         label="نوع تخفیف"
     )
 
-    discount_value = forms.IntegerField(
-        min_value=0,
+    discount_value = forms.CharField(
         required=False,
         label="مقدار تخفیف"
     )
@@ -230,9 +271,8 @@ class ReservationEditForm(forms.ModelForm):
         label="کد رهگیری ضمانت دوم"
     )
 
-    deposit_amount = forms.IntegerField(
-        min_value=0,
-        required=True,
+    deposit_amount = forms.CharField(
+        required=False,
         label="بیعانه"
     )
 
@@ -249,8 +289,10 @@ class ReservationEditForm(forms.ModelForm):
             "payment_tracking_code",
             "guarantee1_type",
             "guarantee1_tracking_code",
+            "guarantee1_payee",
             "guarantee2_type",
             "guarantee2_tracking_code",
+            "guarantee2_payee",
             "deposit_amount",
         ]
 
@@ -261,8 +303,10 @@ class ReservationEditForm(forms.ModelForm):
             "payment_tracking_code": "کد رهگیری پرداخت",
             "guarantee1_type": "نوع ضمانت اول",
             "guarantee1_tracking_code": "کد رهگیری ضمانت اول",
+            "guarantee1_payee": "در وجه ضمانت اول",
             "guarantee2_type": "نوع ضمانت دوم",
             "guarantee2_tracking_code": "کد رهگیری ضمانت دوم",
+            "guarantee2_payee": "در وجه ضمانت دوم",
             "deposit_amount": "بیعانه",
         }
 
@@ -285,6 +329,12 @@ class ReservationEditForm(forms.ModelForm):
             raise ValidationError("تاریخ نامعتبر است.")
 
         return parsed_date
+
+    def clean_deposit_amount(self):
+        return parse_amount_value(self.cleaned_data.get("deposit_amount"))
+
+    def clean_discount_value(self):
+        return parse_amount_value(self.cleaned_data.get("discount_value"))
 
     def clean(self):
         cleaned_data = super().clean()
@@ -312,17 +362,25 @@ class ReservationEditForm(forms.ModelForm):
         payment_tracking_code = cleaned_data.get("payment_tracking_code")
         guarantee1_type = cleaned_data.get("guarantee1_type")
         guarantee1_tracking_code = cleaned_data.get("guarantee1_tracking_code")
+        guarantee1_payee = (cleaned_data.get("guarantee1_payee") or "").strip()
         guarantee2_type = cleaned_data.get("guarantee2_type")
         guarantee2_tracking_code = cleaned_data.get("guarantee2_tracking_code")
+        guarantee2_payee = (cleaned_data.get("guarantee2_payee") or "").strip()
         deposit_amount = cleaned_data.get("deposit_amount") or 0
 
         # Both guarantee2 fields are optional as a pair.
         # If user selects guarantee2_type (non-empty), code is required.
+        if guarantee1_type == GuaranteeType.CHECK and not guarantee1_payee:
+            raise ValidationError({"guarantee1_payee": "در صورت انتخاب چک، فیلد «در وجه» برای ضمانت اول الزامی است."})
+
         if guarantee2_type and guarantee2_type.strip():
             if not guarantee2_tracking_code or not guarantee2_tracking_code.strip():
                 raise ValidationError({
                     "guarantee2_tracking_code": "در صورت انتخاب ضمانت دوم، کد رهگیری آن الزامی است."
                 })
+
+        if guarantee2_type == GuaranteeType.CHECK and not guarantee2_payee:
+            raise ValidationError({"guarantee2_payee": "در صورت انتخاب چک، فیلد «در وجه» برای ضمانت دوم الزامی است."})
 
         # If user enters guarantee2_tracking_code, type is required.
         if guarantee2_tracking_code and guarantee2_tracking_code.strip():
@@ -382,8 +440,8 @@ class ReservationEditForm(forms.ModelForm):
 
 class RemainingPaymentForm(forms.Form):
 
-    remaining_payment_amount = forms.IntegerField(
-        min_value=1,
+    remaining_payment_amount = forms.CharField(
+        max_length=50,
         required=False,
         label="مبلغ پرداخت باقی‌مانده"
     )
@@ -403,9 +461,16 @@ class RemainingPaymentForm(forms.Form):
     def clean(self):
         cleaned_data = super().clean()
 
-        amount = cleaned_data.get("remaining_payment_amount")
+        amount_str = cleaned_data.get("remaining_payment_amount")
         method = cleaned_data.get("remaining_payment_method")
         code = cleaned_data.get("remaining_payment_tracking_code")
+
+        amount = None
+        if amount_str not in (None, ""):
+            try:
+                amount = parse_amount_value(amount_str)
+            except ValidationError as exc:
+                raise ValidationError("مبلغ پرداخت باید یک عدد صحیح باشد.") from exc
 
         has_amount = amount is not None and amount > 0
         has_method = method and method != ""
@@ -416,6 +481,8 @@ class RemainingPaymentForm(forms.Form):
                 raise ValidationError(
                     "باید تمام اطلاعات پرداخت باقی‌مانده را وارد کنید یا هیچ‌کدام را وارد نکنید."
                 )
+
+        cleaned_data["remaining_payment_amount"] = amount
 
         return cleaned_data
 
@@ -428,7 +495,7 @@ class RemainingPaymentForm(forms.Form):
 
         if amount != remaining_amount:
             raise ValidationError(
-                f"مبلغ پرداخت باید برابر با باقی‌مانده ({remaining_amount} تومان) باشد."
+                f"مبلغ پرداخت باید برابر با باقی‌مانده ({remaining_amount:,} تومان) باشد."
             )
 
 
@@ -443,15 +510,13 @@ class DamageReturnForm(forms.Form):
         widget=forms.CheckboxInput(attrs={"class": "form-check-input"})
     )
 
-    damage_amount = forms.IntegerField(
-        min_value=0,
+    damage_amount = forms.CharField(
         required=False,
         label="مبلغ خسارت (تومان)",
-        widget=forms.NumberInput(
+        widget=forms.TextInput(
             attrs={
-                "class": "form-control",
-                "min": "0",
-                "placeholder": "اگر آسیب وجود دارد، مبلغ را وارد کنید"
+                "class": "form-control money-input",
+                "placeholder": "0"
             }
         )
     )
@@ -463,6 +528,15 @@ class DamageReturnForm(forms.Form):
         required=False,
         label="توضیحات خسارت"
     )
+
+    def clean_damage_amount(self):
+        damage_amount_str = self.cleaned_data.get("damage_amount")
+        if damage_amount_str in (None, ""):
+            return 0
+        try:
+            return parse_amount_value(damage_amount_str)
+        except ValidationError as exc:
+            raise ValidationError("مبلغ خسارت باید یک عدد صحیح باشد.") from exc
 
     def clean(self):
         cleaned_data = super().clean()
@@ -486,4 +560,125 @@ class DamageReturnForm(forms.Form):
                 )
 
         return cleaned_data
+
+
+class AdditionalFeeForm(forms.Form):
+    """
+    فرم ثبت هزینه‌های جانبی/اضافی برای رزرو
+    """
+
+    title = forms.CharField(
+        max_length=100,
+        required=True,
+        label="عنوان هزینه جانبی",
+        widget=forms.TextInput(attrs={
+            'class': 'form-control',
+            'placeholder': 'مثلاً: هزینه اتوکشی، هزینه لکه‌بری، هزینه ارسال',
+            'dir': 'rtl'
+        })
+    )
+
+    amount = forms.CharField(
+        required=True,
+        label="مبلغ هزینه",
+        widget=forms.TextInput(attrs={
+            'class': 'form-control money-input',
+            'placeholder': '0',
+            'dir': 'ltr'
+        })
+    )
+
+    notes = forms.CharField(
+        max_length=500,
+        required=False,
+        label="یادداشت",
+        widget=forms.Textarea(attrs={
+            'class': 'form-control',
+            'rows': 2,
+            'placeholder': 'توضیحات اضافی (اختیاری)',
+            'dir': 'rtl'
+        })
+    )
+
+    def clean_amount(self):
+        amount = parse_amount_value(self.cleaned_data.get("amount"))
+        if amount < 1:
+            raise ValidationError("مبلغ هزینه جانبی باید بیشتر از صفر باشد.")
+        return amount
+
+
+class PenaltyPaymentForm(forms.Form):
+    """
+    فرم پرداخت جریمه‌ها (لغو و خسارت)
+    """
+
+    penalty_type = forms.ChoiceField(
+        choices=[
+            ("", "انتخاب نوع جریمه"),
+            ("CANCELLATION", "جریمه لغو"),
+            ("DAMAGE", "جریمه خسارت"),
+        ],
+        required=True,
+        label="نوع جریمه"
+    )
+
+    penalty_amount = forms.CharField(
+        max_length=50,
+        required=False,
+        label="مبلغ پرداخت"
+    )
+
+    penalty_payment_method = forms.ChoiceField(
+        choices=[("", "انتخاب کنید")] + list(PaymentMethod.CHOICES),
+        required=False,
+        label="روش پرداخت"
+    )
+
+    penalty_payment_tracking_code = forms.CharField(
+        max_length=100,
+        required=False,
+        label="کد رهگیری پرداخت"
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        penalty_type = cleaned_data.get("penalty_type")
+        amount_str = cleaned_data.get("penalty_amount")
+        method = cleaned_data.get("penalty_payment_method")
+        code = cleaned_data.get("penalty_payment_tracking_code")
+
+        amount = None
+        if amount_str not in (None, ""):
+            try:
+                amount = parse_amount_value(amount_str)
+            except ValidationError as exc:
+                raise ValidationError("مبلغ پرداخت باید یک عدد صحیح باشد.") from exc
+
+        has_amount = amount is not None and amount > 0
+        has_method = method and method != ""
+        has_code = code and code.strip() != ""
+
+        if has_amount or has_method or has_code:
+            if not (has_amount and has_method and has_code):
+                raise ValidationError(
+                    "باید تمام اطلاعات پرداخت جریمه را وارد کنید یا هیچ‌کدام را وارد نکنید."
+                )
+
+        cleaned_data["penalty_amount"] = amount
+
+        return cleaned_data
+
+    def validate_penalty_amount(self, available_penalty_amount):
+        """Validate that payment amount does not exceed available penalty amount."""
+        amount = self.cleaned_data.get("penalty_amount")
+
+        if amount is None or amount == 0:
+            return
+
+        if amount > available_penalty_amount:
+            raise ValidationError(
+                f"مبلغ پرداخت نمی‌تواند بیشتر از جریمه باقی‌مانده ({available_penalty_amount:,} تومان) باشد."
+            )
+
 

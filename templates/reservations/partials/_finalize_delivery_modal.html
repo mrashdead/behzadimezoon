@@ -1,19 +1,35 @@
 {% load humanize %}
 
 <div class="modal fade" id="finalizeDeliveryModal{{ reservation.id }}" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-dialog-centered">
+  <div class="modal-dialog modal-lg modal-dialog-centered">
     <div class="modal-content border-0 shadow">
-      <form method="post" action="{% url 'reservations:finalize_delivery' reservation.pk %}" class="h-100 d-flex flex-column">
+      <form method="post" action="{% url 'reservations:finalize_delivery' reservation.pk %}" class="h-100 d-flex flex-column finalize-delivery-form" id="finalizeDeliveryForm{{ reservation.id }}" data-reservation-id="{{ reservation.id }}" data-finalization-url="{% url 'reservations:finalize_delivery' reservation.pk %}">
         {% csrf_token %}
-        {% include 'partials/_modal_header.html' with title='تایید تحویل لباس' %}
+        {% include 'partials/_modal_header.html' with title='تأیید تحویل لباس' %}
 
-        <div class="modal-body">
+        <div class="modal-body" style="max-height: 80vh; overflow-y: auto;">
+          <!-- مشخصات رزرو -->
           <div class="mb-4 pb-3 border-bottom">
-            <h6 class="text-muted mb-2">مشتری: <strong>{{ reservation.customer }}</strong></h6>
-            <h6 class="text-muted mb-0">لباس: <strong>{{ reservation.dress }}</strong></h6>
+            <div class="row g-3">
+              <div class="col-md-6">
+                <h6 class="text-muted mb-2">مشتری: <strong>{{ reservation.customer }}</strong></h6>
+                <h6 class="text-muted mb-0">لباس: <strong>{{ reservation.dress }}</strong></h6>
+              </div>
+              <div class="col-md-6">
+                <label class="form-label mb-1">نام خیاط</label>
+                <input type="text" name="tailor_name" class="form-control" maxlength="100" value="{{ reservation.tailor_name|default:'' }}" placeholder="نام خیاط را وارد کنید">
+              </div>
+            </div>
           </div>
 
-          <div class="card shadow-none border mb-3">
+          <!-- خلاصه مالی -->
+          <div class="card shadow-none border mb-4">
+            <div class="card-header bg-body-tertiary border-bottom py-3">
+              <h6 class="mb-0 fw-semibold">
+                <i class="fi fi-rr-receipt me-2"></i>
+                خلاصه مالی رزرو
+              </h6>
+            </div>
             <div class="card-body">
               <div class="row mb-2">
                 <div class="col-6">
@@ -44,7 +60,7 @@
               </div>
               <div class="row mb-2">
                 <div class="col-6">
-                  <span class="text-muted">بیعانه دریافت شده:</span>
+                  <span class="text-muted">بیعانه دریافت‌شده:</span>
                 </div>
                 <div class="col-6 text-end">
                   <strong>{{ reservation.deposit_amount|intcomma }} تومان</strong>
@@ -53,10 +69,10 @@
               <hr class="my-2">
               <div class="row">
                 <div class="col-6">
-                  <span class="text-dark"><strong>باقی مانده:</strong></span>
+                  <span class="text-dark"><strong>باقی‌مانده اولیه:</strong></span>
                 </div>
                 <div class="col-6 text-end">
-                  <strong class="{% if reservation.remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}">
+                  <strong class="{% if reservation.remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}" id="baseRemainingAmount{{ reservation.id }}">
                     {{ reservation.remaining_amount|intcomma }} تومان
                   </strong>
                 </div>
@@ -64,60 +80,587 @@
             </div>
           </div>
 
-          {% if reservation.remaining_amount > 0 %}
-          <div class="card shadow-none border mb-3">
-            <div class="card-header bg-body-tertiary border-bottom py-3">
+          <!-- هزینه‌های جانبی -->
+          <div class="card shadow-none border mb-4">
+            <div class="card-header bg-body-tertiary border-bottom py-3 d-flex justify-content-between align-items-center">
               <h6 class="mb-0 fw-semibold">
-                <i class="fi fi-rr-credit-card me-2"></i>
-                ثبت پرداخت باقی‌مانده
+                <i class="fi fi-rr-plus-circle me-2"></i>
+                هزینه‌های جانبی
               </h6>
+              <button type="button" class="btn btn-sm btn-outline-primary waves-effect" id="toggleAdditionalFeeForm{{ reservation.id }}">
+                <i class="fi fi-rr-plus me-1"></i>
+                افزودن هزینه جانبی
+              </button>
             </div>
             <div class="card-body">
-              <div class="row g-3">
-                <div class="col-12">
-                  <label class="form-label">مبلغ پرداخت باقی‌مانده</label>
-                  <input type="text" name="remaining_payment_amount" class="form-control money-input" value="{{ reservation.remaining_amount }}" required>
-                  <small class="form-text text-muted">مبلغ باید برابر با {{ reservation.remaining_amount|intcomma }} تومان باشد</small>
+              <!-- لیست هزینه‌های جانبی موجود -->
+              <div id="additionalFeesContainer{{ reservation.id }}">
+                {% if reservation.additional_fees.all %}
+                  {% for fee in reservation.additional_fees.all %}
+                    {% if not fee.is_deleted %}
+                    <div class="alert alert-info mb-2 d-flex justify-content-between align-items-center fee-item" data-fee-id="{{ fee.id }}">
+                      <div class="flex-grow-1">
+                        <strong>{{ fee.title }}</strong>
+                        {% if fee.notes %}
+                          <div class="small text-muted">{{ fee.notes }}</div>
+                        {% endif %}
+                      </div>
+                      <div class="d-flex align-items-center gap-2 text-nowrap ms-2">
+                        <strong>{{ fee.amount|intcomma }} تومان</strong>
+                        <button type="button" class="btn btn-sm btn-outline-danger fee-delete-btn" data-action="delete-fee" data-fee-id="{{ fee.id }}" aria-label="حذف هزینه">×</button>
+                      </div>
+                    </div>
+                    {% endif %}
+                  {% endfor %}
+                {% else %}
+                  <div class="alert alert-light mb-0 text-center">
+                    <span class="text-muted">هنوز هزینه جانبی ثبت نشده است</span>
+                  </div>
+                {% endif %}
+              </div>
+
+              <!-- فرم افزودن هزینه جانبی -->
+              <div id="additionalFeeFormContainer{{ reservation.id }}" style="display: none;" class="mt-3 pt-3 border-top">
+                <div class="row g-3">
+                  <div class="col-md-6">
+                    <label class="form-label">عنوان هزینه جانبی</label>
+                    <input type="text" class="form-control fee-title-input" placeholder="مثل: هزینه اتوکشی، تعمیر..." maxlength="100">
+                    <small class="form-text text-muted">پیشنهادات: هزینه اتوکشی، تعمیر، لکه‌بری، بسته‌بندی، ارسال</small>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">مبلغ هزینه</label>
+                    <input type="text" class="form-control money-input fee-amount-input" placeholder="0">
+                  </div>
+                  <div class="col-12">
+                    <label class="form-label">یادداشت (اختیاری)</label>
+                    <textarea class="form-control fee-notes-input" rows="2" placeholder="توضیحات اضافی..." maxlength="500"></textarea>
+                  </div>
+                  <div class="col-12 d-flex gap-2">
+                    <button type="button" class="btn btn-primary waves-effect waves-light btn-sm flex-grow-1" id="submitFeeBtn{{ reservation.id }}">
+                      <i class="fi fi-rr-check me-1"></i>
+                      ثبت هزینه جانبی
+                    </button>
+                    <button type="button" class="btn btn-light waves-effect btn-sm" id="cancelFeeBtn{{ reservation.id }}">
+                      انصراف
+                    </button>
+                  </div>
                 </div>
-                <div class="col-md-6">
-                  <label class="form-label">روش پرداخت</label>
-                  <select name="remaining_payment_method" class="form-control" required>
-                    <option value="">انتخاب کنید</option>
-                    <option value="CASH">نقدی</option>
-                    <option value="CARD">کارت به کارت</option>
-                    <option value="TRANSFER">انتقال بانکی</option>
-                    <option value="POS">کارتخوان</option>
-                  </select>
-                </div>
-                <div class="col-md-6">
-                  <label class="form-label">کد رهگیری پرداخت</label>
-                  <input type="text" name="remaining_payment_tracking_code" class="form-control" maxlength="100" required placeholder="شماره چک، شناسه انتقال...">
+              </div>
+
+              <!-- خلاصه هزینه‌های جانبی -->
+              <div class="mt-3 pt-3 border-top" id="feeSummary{{ reservation.id }}" style="display: none;">
+                <div class="row fw-bold text-primary">
+                  <div class="col-6">
+                    مجموع هزینه‌های جانبی:
+                  </div>
+                  <div class="col-6 text-end">
+                    <span id="totalFeesAmount{{ reservation.id }}">{{ reservation.total_additional_fees|intcomma }} تومان</span>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div class="alert alert-warning mb-0" role="alert">
-            <i class="fi fi-rr-info me-2"></i>
-            <strong>توجه:</strong> قبل از تحویل، اطلاعات پرداخت باقی‌مانده را ثبت کنید. <br>
-            <span class="small">باقی‌مانده: <strong>{{ reservation.remaining_amount|intcomma }} تومان</strong></span>
+          <!-- باقی‌مانده نهایی قابل پرداخت -->
+          <div class="card shadow-none border border-2 border-primary mb-4">
+            <div class="card-body py-3">
+              <div class="row">
+                <div class="col-6">
+                  <span class="text-dark fw-bold"><i class="fi fi-rr-credit-card me-2"></i>باقی‌مانده نهایی قابل پرداخت:</span>
+                </div>
+                <div class="col-6 text-end">
+                  <strong class="display-6 text-primary" id="finalRemainingAmount{{ reservation.id }}">
+                    {{ reservation.remaining_amount_with_fees|intcomma }} تومان
+                  </strong>
+                </div>
+              </div>
+            </div>
           </div>
-          {% else %}
-          <div class="alert alert-success mb-0" role="alert">
+
+          <!-- ثبت پرداخت باقی‌مانده -->
+          <div id="paymentSection{{ reservation.id }}" style="display: none;">
+            <div class="card shadow-none border mb-3">
+              <div class="card-header bg-body-tertiary border-bottom py-3">
+                <h6 class="mb-0 fw-semibold">
+                  <i class="fi fi-rr-credit-card me-2"></i>
+                  ثبت پرداخت باقی‌مانده نهایی
+                </h6>
+              </div>
+              <div class="card-body">
+                <div class="row g-3">
+                  <div class="col-12">
+                    <label class="form-label">مبلغ پرداخت باقی‌مانده</label>
+                    <input type="text" name="remaining_payment_amount" class="form-control money-input" id="paymentAmount{{ reservation.id }}" value="{{ reservation.remaining_amount_with_fees|intcomma }}">
+                    <small class="form-text text-muted">مبلغ باید برابر با <strong id="requiredPaymentAmount{{ reservation.id }}">{{ reservation.remaining_amount_with_fees|intcomma }}</strong> تومان باشد</small>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">روش پرداخت</label>
+                    <select name="remaining_payment_method" class="form-control">
+                      <option value="">انتخاب کنید</option>
+                      <option value="CASH">نقدی</option>
+                      <option value="TRANSFER">انتقال بانکی</option>
+                      <option value="POS">کارتخوان</option>
+                    </select>
+                  </div>
+                  <div class="col-md-6">
+                    <label class="form-label">کد رهگیری پرداخت</label>
+                    <input type="text" name="remaining_payment_tracking_code" class="form-control" maxlength="100" placeholder="شماره چک، شناسه انتقال...">
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="alert alert-warning mb-0" role="alert">
+              <i class="fi fi-rr-info me-2"></i>
+              <strong>توجه:</strong> قبل از تحویل، اطلاعات پرداخت باقی‌مانده را ثبت کنید. <br>
+              <span class="small">باقی‌مانده نهایی: <strong id="alertRemainingAmount{{ reservation.id }}">{{ reservation.remaining_amount_with_fees|intcomma }} تومان</strong></span>
+            </div>
+          </div>
+
+          <div id="settledNotice{{ reservation.id }}" class="alert alert-success mb-0" role="alert" style="display: none;">
             <i class="fi fi-rr-check-circle me-2"></i>
             مشتری تمام وجوه را پرداخت کرده است. می‌توانید لباس را تحویل دهید.
           </div>
-          {% endif %}
         </div>
 
         <div class="modal-footer border-top">
           <button type="button" class="btn btn-light waves-effect" data-bs-dismiss="modal">انصراف</button>
           <button type="submit" class="btn btn-success waves-effect waves-light">
             <i class="fi fi-rr-check me-1"></i>
-            تایید تحویل
+            تأیید تحویل لباس
           </button>
         </div>
       </form>
+    </div>
+  </div>
+</div>
+
+<script>
+(function() {
+  const scriptElement = document.currentScript;
+
+  function findAssociatedForm(scriptEl) {
+    let el = scriptEl ? scriptEl.previousElementSibling : null;
+    while (el) {
+      if (el.matches && el.matches('form.finalize-delivery-form')) return el;
+      if (el.querySelector) {
+        const f = el.querySelector('form.finalize-delivery-form');
+        if (f) return f;
+      }
+      el = el.previousElementSibling;
+    }
+    // fallback: try to find any finalize-delivery form nearby
+    return document.querySelector('form.finalize-delivery-form[data-finalization-url]');
+  }
+
+  const form = findAssociatedForm(scriptElement);
+  const formId = form ? form.id : '';
+  const reservationId = form ? Number(form.getAttribute('data-reservation-id') || (form.id ? form.id.replace('finalizeDeliveryForm', '') : 0)) || 0 : 0;
+  const finalizationUrl = form ? form.getAttribute('data-finalization-url') || '' : '';
+
+  document.addEventListener('DOMContentLoaded', function() {
+  const toggleBtnId = 'toggleAdditionalFeeForm' + reservationId;
+  const formContainerId = 'additionalFeeFormContainer' + reservationId;
+  const submitFeeBtnId = 'submitFeeBtn' + reservationId;
+  const cancelFeeBtnId = 'cancelFeeBtn' + reservationId;
+  const containerElementId = 'additionalFeesContainer' + reservationId;
+  const feeSummaryId = 'feeSummary' + reservationId;
+
+  const toggleBtn = document.getElementById(toggleBtnId);
+  const formContainer = document.getElementById(formContainerId);
+  const submitFeeBtn = document.getElementById(submitFeeBtnId);
+  const cancelFeeBtn = document.getElementById(cancelFeeBtnId);
+  const containerElement = document.getElementById(containerElementId);
+  const feeSummary = document.getElementById(feeSummaryId);
+
+  // Helper functions
+  function normalizeDigits(value) {
+    const persianDigits = '۰۱۲۳۴۵۶۷۸۹';
+    const englishDigits = '0123456789';
+
+    let normalized = value.toString();
+    for (let i = 0; i < 10; i++) {
+      normalized = normalized.replace(new RegExp(persianDigits[i], 'g'), englishDigits[i]);
+    }
+    normalized = normalized.replace(/,/g, '').replace(/[^\d]/g, '');
+    return parseInt(normalized) || 0;
+  }
+
+  function formatCurrency(value) {
+    if (!value && value !== 0) return '';
+    const numericValue = normalizeDigits(value.toString());
+    const num = parseInt(numericValue, 10) || 0;
+    return num.toLocaleString('fa-IR');
+  }
+
+  function showToast(type, message) {
+    // Create toast container if it doesn't exist
+    let toastContainer = document.getElementById('toastContainer');
+    if (!toastContainer) {
+      toastContainer = document.createElement('div');
+      toastContainer.id = 'toastContainer';
+      toastContainer.style.cssText = 'position: fixed; top: 20px; right: 20px; z-index: 9999; width: 300px;';
+      document.body.appendChild(toastContainer);
+    }
+
+    // Create toast element
+    const toastId = 'toast_' + Date.now();
+    const bgClass = type === 'success' ? 'bg-success' : 'bg-danger';
+    const toastHtml = '' +
+      '<div id="' + toastId + '" class="toast show" role="alert" aria-live="assertive">' +
+        '<div class="toast-header ' + bgClass + ' text-white">' +
+          '<strong class="me-auto">' +
+            (type === 'success' ? '✓ موفق' : '✕ خطا') +
+          '</strong>' +
+          '<button type="button" class="btn-close btn-close-white" data-bs-dismiss="toast"></button>' +
+        '</div>' +
+        '<div class="toast-body">' +
+          message +
+        '</div>' +
+      '</div>';
+
+    toastContainer.insertAdjacentHTML('beforeend', toastHtml);
+
+    // Auto remove after 4 seconds
+    setTimeout(() => {
+      const toastEl = document.getElementById(toastId);
+      if (toastEl) {
+        toastEl.remove();
+      }
+    }, 4000);
+  }
+
+  // Format all currency displays on page load
+  function formatAllCurrencies() {
+    // Format financial summary
+    const baseRemainingElem = document.getElementById('baseRemainingAmount' + reservationId);
+    if (baseRemainingElem && baseRemainingElem.textContent) {
+      const text = baseRemainingElem.textContent.replace('تومان', '').trim();
+      baseRemainingElem.textContent = formatCurrency(text) + ' تومان';
+    }
+
+    const finalRemainingElem = document.getElementById('finalRemainingAmount' + reservationId);
+    if (finalRemainingElem && finalRemainingElem.textContent) {
+      const text = finalRemainingElem.textContent.replace('تومان', '').trim();
+      finalRemainingElem.textContent = formatCurrency(text) + ' تومان';
+    }
+
+    const paymentAmountElem = document.getElementById('paymentAmount' + reservationId);
+    if (paymentAmountElem && paymentAmountElem.value) {
+      paymentAmountElem.value = formatCurrency(paymentAmountElem.value);
+    }
+  }
+
+  function syncInitialVisibility() {
+    const paymentSection = document.getElementById('paymentSection' + reservationId);
+    const settledNotice = document.getElementById('settledNotice' + reservationId);
+    const requiredPaymentAmountElem = document.getElementById('requiredPaymentAmount' + reservationId);
+    const initialRemaining = requiredPaymentAmountElem ? normalizeDigits(requiredPaymentAmountElem.textContent) : 0;
+
+    if (paymentSection) {
+      paymentSection.style.display = initialRemaining > 0 ? 'block' : 'none';
+    }
+    if (settledNotice) {
+      settledNotice.style.display = initialRemaining > 0 ? 'none' : 'block';
+    }
+
+    if (feeSummary && containerElement) {
+      feeSummary.style.display = containerElement.querySelector('.fee-item') ? 'block' : 'none';
+    }
+  }
+
+  // Initialize currency formatting and visibility
+  formatAllCurrencies();
+  syncInitialVisibility();
+
+  // Toggle form visibility
+  if (toggleBtn) {
+    toggleBtn.addEventListener('click', function() {
+      formContainer.style.display = formContainer.style.display === 'none' ? 'block' : 'none';
+      if (formContainer.style.display === 'block') {
+        const titleInput = formContainer.querySelector('.fee-title-input');
+        if (titleInput) titleInput.focus();
+      }
+    });
+  }
+
+  if (cancelFeeBtn) {
+    cancelFeeBtn.addEventListener('click', function() {
+      formContainer.style.display = 'none';
+      formContainer.querySelector('.fee-title-input').value = '';
+      formContainer.querySelector('.fee-amount-input').value = '';
+      formContainer.querySelector('.fee-notes-input').value = '';
+    });
+  }
+
+  if (containerElement) {
+    containerElement.addEventListener('click', function(event) {
+      const deleteBtn = event.target.closest('.fee-delete-btn');
+      if (!deleteBtn) return;
+
+      const feeId = deleteBtn.getAttribute('data-fee-id');
+      if (!feeId) return;
+
+      const csrfTokenInput = form ? form.querySelector('input[name="csrfmiddlewaretoken"]') : null;
+      const formData = new FormData();
+      formData.append('csrfmiddlewaretoken', csrfTokenInput ? csrfTokenInput.value : '');
+      formData.append('action', 'delete_fee');
+      formData.append('fee_id', feeId);
+
+      fetch(finalizationUrl || (form ? form.action : window.location.href), {
+        method: 'POST',
+        headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': csrfTokenInput ? csrfTokenInput.value : '' },
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          const feeItem = containerElement.querySelector('.fee-item[data-fee-id="' + feeId + '"]');
+          if (feeItem) {
+            feeItem.remove();
+          }
+
+          updateFinancialSummary(data.total_fees, data.new_remaining);
+
+          const remainingFeeItems = containerElement.querySelectorAll('.fee-item');
+          if (remainingFeeItems.length === 0) {
+            const emptyState = document.createElement('div');
+            emptyState.className = 'alert alert-light mb-0 text-center';
+            emptyState.innerHTML = '<span class="text-muted">هنوز هزینه جانبی ثبت نشده است</span>';
+            containerElement.innerHTML = '';
+            containerElement.appendChild(emptyState);
+          }
+          showToast('success', data.message);
+        } else {
+          showToast('error', data.message || 'حذف هزینه جانبی با خطا مواجه شد');
+        }
+      })
+      .catch(error => {
+        console.error('Delete fee error:', error);
+        showToast('error', 'خطا در حذف هزینه جانبی');
+      });
+    });
+  }
+
+  // Submit fee form via AJAX
+  if (submitFeeBtn) {
+    submitFeeBtn.addEventListener('click', function() {
+      const titleInput = formContainer.querySelector('.fee-title-input');
+      const amountInput = formContainer.querySelector('.fee-amount-input');
+      const notesInput = formContainer.querySelector('.fee-notes-input');
+      const csrfTokenInput = form ? form.querySelector('input[name="csrfmiddlewaretoken"]') : null;
+
+      if (!containerElement || !feeSummary || !formContainer || !csrfTokenInput) {
+        showToast('error', 'اجزای فرم هزینه جانبی در دسترس نیستند');
+        return;
+      }
+
+      if (!titleInput.value.trim()) {
+        showToast('error', 'لطفاً عنوان هزینه را وارد کنید');
+        return;
+      }
+
+      if (!amountInput.value.trim()) {
+        showToast('error', 'لطفاً مبلغ هزینه را وارد کنید');
+        return;
+      }
+
+      const normalizedAmount = normalizeDigits(amountInput.value);
+
+      const formData = new FormData();
+      formData.append('csrfmiddlewaretoken', csrfTokenInput ? csrfTokenInput.value : '');
+      formData.append('action', 'add_fee');
+      formData.append('title', titleInput.value.trim());
+      formData.append('amount', normalizedAmount);
+      formData.append('notes', notesInput.value.trim());
+
+      // Post to the finalize-delivery endpoint which also accepts add_fee action
+      const postUrl = finalizationUrl || (form ? form.action : window.location.href);
+
+      const headers = { 'X-Requested-With': 'XMLHttpRequest' };
+      const csrfVal = csrfTokenInput ? csrfTokenInput.value : (document.querySelector('[name="csrfmiddlewaretoken"]') ? document.querySelector('[name="csrfmiddlewaretoken"]').value : null);
+      if (csrfVal) headers['X-CSRFToken'] = csrfVal;
+
+      fetch(postUrl, {
+        method: 'POST',
+        headers: headers,
+        body: formData
+      })
+      .then(response => response.json())
+      .then(data => {
+        if (data.success) {
+          showToast('success', data.message);
+
+          const feeHtml = '' +
+            '<div class="alert alert-info mb-2 d-flex justify-content-between align-items-center fee-item" data-fee-id="' + data.fee_id + '">' +
+              '<div class="flex-grow-1">' +
+                '<strong>' + data.fee_title + '</strong>' +
+              '</div>' +
+              '<div class="d-flex align-items-center gap-2 text-nowrap ms-2">' +
+                '<strong>' + formatCurrency(data.fee_amount) + ' تومان</strong>' +
+                '<button type="button" class="btn btn-sm btn-outline-danger fee-delete-btn" data-action="delete-fee" data-fee-id="' + data.fee_id + '" aria-label="حذف هزینه">×</button>' +
+              '</div>' +
+            '</div>';
+
+          const noFeesAlert = containerElement.querySelector('.alert-light');
+          if (noFeesAlert) {
+            noFeesAlert.remove();
+          }
+
+          containerElement.insertAdjacentHTML('beforeend', feeHtml);
+          updateFinancialSummary(data.total_fees, data.new_remaining);
+          feeSummary.style.display = 'block';
+
+          titleInput.value = '';
+          amountInput.value = '';
+          notesInput.value = '';
+          formContainer.style.display = 'none';
+        } else {
+          showToast('error', data.message || 'خطایی در ثبت هزینه رخ داد');
+        }
+      })
+      .catch(error => {
+        console.error('Error:', error);
+        showToast('error', 'خطا در ارتباط با سرور');
+      });
+    });
+  }
+
+  function updateFinancialSummary(totalFees, newRemaining) {
+    const totalFeesElem = document.getElementById('totalFeesAmount' + reservationId);
+    if (totalFeesElem) {
+      totalFeesElem.textContent = formatCurrency(totalFees) + ' تومان';
+    }
+
+    const finalRemainingElem = document.getElementById('finalRemainingAmount' + reservationId);
+    if (finalRemainingElem) {
+      finalRemainingElem.textContent = formatCurrency(newRemaining) + ' تومان';
+    }
+
+    const paymentSection = document.getElementById('paymentSection' + reservationId);
+    const settledNotice = document.getElementById('settledNotice' + reservationId);
+
+    if (paymentSection) {
+      paymentSection.style.display = newRemaining > 0 ? 'block' : 'none';
+    }
+    if (settledNotice) {
+      settledNotice.style.display = newRemaining > 0 ? 'none' : 'block';
+    }
+
+    const paymentAmountInput = document.getElementById('paymentAmount' + reservationId);
+    if (paymentAmountInput) {
+      paymentAmountInput.value = formatCurrency(newRemaining);
+    }
+
+    const requiredPaymentAmountElem = document.getElementById('requiredPaymentAmount' + reservationId);
+    if (requiredPaymentAmountElem) {
+      requiredPaymentAmountElem.textContent = formatCurrency(newRemaining) + ' تومان';
+    }
+
+    const alertRemainingAmountElem = document.getElementById('alertRemainingAmount' + reservationId);
+    if (alertRemainingAmountElem) {
+      alertRemainingAmountElem.textContent = formatCurrency(newRemaining) + ' تومان';
+    }
+  }
+
+  // Handle form submission
+  if (form) {
+    form.addEventListener('submit', function(e) {
+      e.preventDefault();
+      console.log('Form submission started');
+
+      // Get payment fields
+      const paymentAmountInput = form.querySelector('input[name="remaining_payment_amount"]');
+      const paymentMethodSelect = form.querySelector('select[name="remaining_payment_method"]');
+      const paymentCodeInput = form.querySelector('input[name="remaining_payment_tracking_code"]');
+
+      // Check if fields exist and validate
+      if (!paymentAmountInput) {
+        console.warn('Payment amount input not found');
+        showToast('error', 'فیلد مبلغ پرداخت یافت نشد');
+        return;
+      }
+
+      // If remaining amount is 0, payment fields are optional
+      const requiredPaymentAmount = document.getElementById('requiredPaymentAmount' + reservationId);
+      const requiredAmount = requiredPaymentAmount ? normalizeDigits(requiredPaymentAmount.textContent) : 0;
+
+      console.log('Required amount:', requiredAmount);
+      console.log('Payment amount input value:', paymentAmountInput.value);
+
+      // Normalize payment amount if it has value
+      if (paymentAmountInput.value) {
+        const normalized = normalizeDigits(paymentAmountInput.value);
+        console.log('Normalized payment amount:', normalized);
+        paymentAmountInput.value = normalized;
+      }
+
+      // Validate payment fields if needed
+      if (requiredAmount > 0) {
+        if (!paymentAmountInput.value || normalizeDigits(paymentAmountInput.value) === 0) {
+          showToast('error', 'لطفاً مبلغ پرداخت را وارد کنید');
+          return;
+        }
+        if (!paymentMethodSelect || !paymentMethodSelect.value) {
+          showToast('error', 'لطفاً روش پرداخت را انتخاب کنید');
+          return;
+        }
+        if (!paymentCodeInput || !paymentCodeInput.value.trim()) {
+          showToast('error', 'لطفاً کد رهگیری پرداخت را وارد کنید');
+          return;
+        }
+      }
+
+      // Create FormData from form
+      const formData = new FormData(form);
+
+      console.log('Form data keys:', Array.from(formData.keys()));
+
+      fetch(finalizationUrl, {
+        method: 'POST',
+        body: formData
+      })
+      .then(response => {
+        console.log('Response status:', response.status);
+        if (!response.ok) {
+          return response.text().then(text => {
+            console.error('Response text:', text);
+            throw new Error('HTTP Error: ' + response.status + ' - ' + text);
+          });
+        }
+        return response.json();
+      })
+      .then(data => {
+        console.log('Response data:', data);
+        if (data.success) {
+          showToast('success', data.message);
+          // Close modal
+          const modalElement = document.getElementById('finalizeDeliveryModal' + reservationId);
+          if (modalElement) {
+            const modal = bootstrap.Modal.getInstance(modalElement);
+            if (modal) {
+              modal.hide();
+            }
+          }
+          // Reload page after 1.5 seconds
+          setTimeout(() => {
+            window.location.reload();
+          }, 1500);
+        } else {
+          showToast('error', data.message || 'خطایی رخ داد');
+        }
+      })
+      .catch(error => {
+        console.error('Fetch error:', error);
+        showToast('error', 'خطا در ارتباط با سرور: ' + error.message);
+      });
+    });
+  } else {
+    console.warn('Form element not found with ID:', formId);
+  }
+  });
+})();
+</script>
     </div>
   </div>
 </div>

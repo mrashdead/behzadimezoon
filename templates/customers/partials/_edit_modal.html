@@ -32,7 +32,18 @@
                     </div>
                     <div class="col-md-6">
                       <label for="id_bride_phone_{{ customer.id }}" class="form-label">شماره تماس عروس</label>
-                      <input type="text" name="bride_phone" id="id_bride_phone_{{ customer.id }}" class="form-control" value="{{ customer.bride_phone|default:'' }}" required />
+                      <input
+                        type="text"
+                        name="bride_phone"
+                        id="id_bride_phone_{{ customer.id }}"
+                        class="form-control"
+                        value="{{ customer.bride_phone|default:'' }}"
+                        required
+                        maxlength="11"
+                        inputmode="numeric"
+                        pattern="\d{11}"
+                        placeholder="مثال: 09121234567"
+                      />
                     </div>
                     <div class="col-md-6">
                       <label for="id_ceremony_date_{{ customer.id }}" class="form-label">تاریخ مراسم</label>
@@ -40,7 +51,25 @@
                     </div>
                     <div class="col-md-6">
                       <label for="id_how_to_know_{{ customer.id }}" class="form-label">نحوه آشنایی</label>
-                      <input type="text" name="how_to_know" id="id_how_to_know_{{ customer.id }}" class="form-control" value="{{ customer.how_to_know|default:'' }}" />
+                      <select name="how_to_know" id="id_how_to_know_{{ customer.id }}" class="form-select" required>
+                        <option value="">انتخاب کنید</option>
+                        <option value="اینستاگرام" {% if customer.how_to_know == 'اینستاگرام' %}selected{% endif %}>اینستاگرام</option>
+                        <option value="معرفی دوستان یا آشنایان" {% if customer.how_to_know == 'معرفی دوستان یا آشنایان' %}selected{% endif %}>معرفی دوستان یا آشنایان</option>
+                        <option value="جستجو اینترنتی" {% if customer.how_to_know == 'جستجو اینترنتی' %}selected{% endif %}>جستجو اینترنتی</option>
+                        <option value="تبلیغات" {% if customer.how_to_know == 'تبلیغات' %}selected{% endif %}>تبلیغات</option>
+                        <option value="سالن زیبایی" {% if customer.how_to_know_option == 'سالن زیبایی' %}selected{% endif %}>سالن زیبایی</option>
+                        <option value="تشریفات عروس" {% if customer.how_to_know_option == 'تشریفات عروس' %}selected{% endif %}>تشریفات عروس</option>
+                        <option value="گروه موسیقی" {% if customer.how_to_know_option == 'گروه موسیقی' %}selected{% endif %}>گروه موسیقی</option>
+                        <option value="سایر" {% if customer.how_to_know_option == 'سایر' %}selected{% endif %}>سایر</option>
+                      </select>
+                    </div>
+                    <div class="col-md-6" id="how_to_know_detail_group_{{ customer.id }}">
+                      <label for="id_how_to_know_detail_{{ customer.id }}" class="form-label">توضیحات تکمیلی</label>
+                      <input type="text" name="how_to_know_detail" id="id_how_to_know_detail_{{ customer.id }}" class="form-control" value="{{ customer.how_to_know_detail|default:'' }}" placeholder="توضیح یا نام سالن/سایر" />
+                    </div>
+                    <div class="col-md-6">
+                      <label for="id_city_{{ customer.id }}" class="form-label">شهر</label>
+                      <input type="text" name="city" id="id_city_{{ customer.id }}" class="form-control" value="{{ customer.city|default:'' }}" placeholder="نام شهر" />
                     </div>
                     <div class="col-md-6 d-flex align-items-end">
                       <div class="form-check w-100 mt-md-2">
@@ -76,10 +105,6 @@
                       <label for="id_groom_phone_{{ customer.id }}" class="form-label">شماره تماس داماد</label>
                       <input type="text" name="groom_phone" id="id_groom_phone_{{ customer.id }}" class="form-control" value="{{ customer.groom_phone|default:'' }}" />
                     </div>
-                    <div class="col-md-6">
-                      <label for="id_preferred_consultant_{{ customer.id }}" class="form-label">مشاور ترجیحی</label>
-                      <input type="text" name="preferred_consultant" id="id_preferred_consultant_{{ customer.id }}" class="form-control" value="{{ customer.preferred_consultant|default:'' }}" />
-                    </div>
                   </div>
                 </div>
               </div>
@@ -96,17 +121,86 @@
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
+                    <div class="col-12">
+                      <label class="form-label">خدمات مورد نظر</label>
+                      <div class="border rounded p-3">
+                        <div class="row g-2">
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="requested_services" id="id_requested_services_1_{{ customer.id }}" value="اجاره لباس" {% if 'اجاره لباس' in customer.requested_services %}checked{% endif %}>
+                              <label class="form-check-label" for="id_requested_services_1_{{ customer.id }}">اجاره لباس</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="requested_services" id="id_requested_services_2_{{ customer.id }}" value="خرید لباس" {% if 'خرید لباس' in customer.requested_services %}checked{% endif %}>
+                              <label class="form-check-label" for="id_requested_services_2_{{ customer.id }}">خرید لباس</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="requested_services" id="id_requested_services_3_{{ customer.id }}" value="دوخت اختصاصی" {% if 'دوخت اختصاصی' in customer.requested_services %}checked{% endif %}>
+                              <label class="form-check-label" for="id_requested_services_3_{{ customer.id }}">دوخت اختصاصی</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="requested_services" id="id_requested_services_4_{{ customer.id }}" value="جزئیات تکمیلی (اکسسوری)" {% if 'جزئیات تکمیلی (اکسسوری)' in customer.requested_services %}checked{% endif %}>
+                              <label class="form-check-label" for="id_requested_services_4_{{ customer.id }}">جزئیات تکمیلی (اکسسوری)</label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
                     <div class="col-md-6">
-                      <label for="id_requested_services_{{ customer.id }}" class="form-label">خدمات مورد نظر</label>
-                      <input type="text" name="requested_services" id="id_requested_services_{{ customer.id }}" class="form-control" value="{{ customer.requested_services|default:'' }}" />
+                      <label for="id_preferred_consultant_{{ customer.id }}" class="form-label">مشاور ترجیحی</label>
+                      <select name="preferred_consultant" id="id_preferred_consultant_{{ customer.id }}" class="form-select">
+                        <option value="">انتخاب کنید</option>
+                        <option value="مشاوره تخصصی لباس" {% if customer.preferred_consultant == 'مشاوره تخصصی لباس' %}selected{% endif %}>مشاوره تخصصی لباس</option>
+                        <option value="مشاور زیبایی" {% if customer.preferred_consultant == 'مشاور زیبایی' %}selected{% endif %}>مشاور زیبایی</option>
+                        <option value="مشاوره کامل" {% if customer.preferred_consultant == 'مشاوره کامل' %}selected{% endif %}>مشاوره کامل</option>
+                      </select>
                     </div>
                     <div class="col-md-6">
                       <label for="id_estimated_budget_{{ customer.id }}" class="form-label">بودجه تقریبی</label>
-                      <input type="text" name="estimated_budget" id="id_estimated_budget_{{ customer.id }}" class="form-control money-input" value="{{ customer.estimated_budget|default:'' }}" placeholder="0 تومان" />
+                      <select name="estimated_budget" id="id_estimated_budget_{{ customer.id }}" class="form-select">
+                        <option value="">انتخاب کنید</option>
+                        <option value="اقتصادی" {% if customer.estimated_budget == 'اقتصادی' %}selected{% endif %}>اقتصادی</option>
+                        <option value="متوسط" {% if customer.estimated_budget == 'متوسط' %}selected{% endif %}>متوسط</option>
+                        <option value="پرمیوم" {% if customer.estimated_budget == 'پرمیوم' %}selected{% endif %}>پرمیوم</option>
+                        <option value="ویژه" {% if customer.estimated_budget == 'ویژه' %}selected{% endif %}>ویژه</option>
+                      </select>
                     </div>
-                    <div class="col-md-6">
-                      <label for="id_additional_services_{{ customer.id }}" class="form-label">خدمات جانبی</label>
-                      <input type="text" name="additional_services" id="id_additional_services_{{ customer.id }}" class="form-control" value="{{ customer.additional_services|default:'' }}" />
+                    <div class="col-12">
+                      <label class="form-label">خدمات جانبی</label>
+                      <div class="border rounded p-3">
+                        <div class="row g-2">
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="additional_services" id="id_additional_services_1_{{ customer.id }}" value="آتلیه" {% if 'آتلیه' in customer.additional_services %}checked{% endif %}>
+                              <label class="form-check-label" for="id_additional_services_1_{{ customer.id }}">آتلیه</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="additional_services" id="id_additional_services_2_{{ customer.id }}" value="تشریفات" {% if 'تشریفات' in customer.additional_services %}checked{% endif %}>
+                              <label class="form-check-label" for="id_additional_services_2_{{ customer.id }}">تشریفات</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="additional_services" id="id_additional_services_3_{{ customer.id }}" value="گروه موسیقی" {% if 'گروه موسیقی' in customer.additional_services %}checked{% endif %}>
+                              <label class="form-check-label" for="id_additional_services_3_{{ customer.id }}">گروه موسیقی</label>
+                            </div>
+                          </div>
+                          <div class="col-md-6">
+                            <div class="form-check">
+                              <input class="form-check-input" type="checkbox" name="additional_services" id="id_additional_services_4_{{ customer.id }}" value="سالن زیبایی" {% if 'سالن زیبایی' in customer.additional_services %}checked{% endif %}>
+                              <label class="form-check-label" for="id_additional_services_4_{{ customer.id }}">سالن زیبایی</label>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
                     </div>
                     <div class="col-md-6">
                       <label for="id_guest_count_{{ customer.id }}" class="form-label">تعداد مهمان</label>

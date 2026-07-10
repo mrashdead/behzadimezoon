@@ -162,6 +162,13 @@ class Reservation(models.Model):
         verbose_name="تاریخ پرداخت باقی‌مانده"
     )
 
+    tailor_name = models.CharField(
+        max_length=100,
+        blank=True,
+        default='',
+        verbose_name="نام خیاط"
+    )
+
     # -----------------------
     # ضمانت ها
     # -----------------------
@@ -177,6 +184,13 @@ class Reservation(models.Model):
         verbose_name="کد رهگیری ضمانت اول"
     )
 
+    guarantee1_payee = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name="در وجه ضمانت اول"
+    )
+
     guarantee2_type = models.CharField(
         max_length=20,
         choices=GuaranteeType.CHOICES,
@@ -190,6 +204,13 @@ class Reservation(models.Model):
         null=True,
         blank=True,
         verbose_name="کد رهگیری ضمانت دوم"
+    )
+
+    guarantee2_payee = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name="در وجه ضمانت دوم"
     )
 
     # -----------------------
@@ -322,6 +343,62 @@ class Reservation(models.Model):
     )
 
     # -----------------------
+    # اطلاعات پرداخت جریمه‌ها
+    # -----------------------
+
+    cancellation_fee_paid_amount = models.PositiveIntegerField(
+        default=0,
+        verbose_name="مبلغ پرداخت شده جریمه لغو"
+    )
+
+    cancellation_fee_payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethod.CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="روش پرداخت جریمه لغو"
+    )
+
+    cancellation_fee_tracking_code = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name="کد رهگیری پرداخت جریمه لغو"
+    )
+
+    cancellation_fee_paid_at = jmodels.jDateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="زمان پرداخت جریمه لغو"
+    )
+
+    damage_fee_paid_amount = models.PositiveIntegerField(
+        default=0,
+        verbose_name="مبلغ پرداخت شده جریمه خسارت"
+    )
+
+    damage_fee_payment_method = models.CharField(
+        max_length=20,
+        choices=PaymentMethod.CHOICES,
+        null=True,
+        blank=True,
+        verbose_name="روش پرداخت جریمه خسارت"
+    )
+
+    damage_fee_tracking_code = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        verbose_name="کد رهگیری پرداخت جریمه خسارت"
+    )
+
+    damage_fee_paid_at = jmodels.jDateTimeField(
+        null=True,
+        blank=True,
+        verbose_name="زمان پرداخت جریمه خسارت"
+    )
+
+    # -----------------------
     # Snapshot Fields (for historical audit & immutability)
     # -----------------------
 
@@ -399,6 +476,24 @@ class Reservation(models.Model):
 
     def total_received_amount(self):
         return (self.deposit_amount or 0) + (self.remaining_payment_amount or 0)
+
+    def active_additional_fees(self):
+        if self._state.adding or self.pk is None:
+            from .models import AdditionalFee
+            return AdditionalFee.objects.none()
+        return self.additional_fees.filter(is_deleted=False)
+
+    def total_additional_fees(self):
+        """Calculate total of all additional fees for this reservation."""
+        from django.db.models import Sum
+        result = self.active_additional_fees().aggregate(total=Sum('amount'))
+        return result['total'] or 0
+
+    def remaining_amount_with_fees(self):
+        """Calculate remaining amount including additional fees."""
+        base_remaining = self.remaining_amount or 0
+        total_fees = self.total_additional_fees()
+        return base_remaining + total_fees
 
     @property
     def gross_rent_price(self):
@@ -487,10 +582,10 @@ class Reservation(models.Model):
 
         self.calculate_dates()
         self.calculate_financials()
-        
+
         # Update snapshot of collected cash
         self.total_cash_collected_snapshot = self.total_received_amount()
-        
+
         self.full_clean()
 
         super().save(*args, **kwargs)
@@ -645,3 +740,62 @@ class ReservationStatusLog(models.Model):
 
     def __str__(self):
         return f"{self.reservation_id}: {self.old_status} -> {self.new_status} at {self.changed_at}"
+
+
+class AdditionalFee(models.Model):
+    """
+    هزینه‌های جانبی/اضافی برای رزرو
+    مثل هزینه اتوکشی، تعمیر، لکه‌بری، بسته‌بندی، ارسال و ...
+    """
+
+    reservation = models.ForeignKey(
+        Reservation,
+        on_delete=models.CASCADE,
+        related_name='additional_fees',
+        verbose_name="رزرو"
+    )
+
+    title = models.CharField(
+        max_length=100,
+        verbose_name="عنوان هزینه"
+    )
+
+    amount = models.PositiveIntegerField(
+        verbose_name="مبلغ هزینه"
+    )
+
+    created_by = models.ForeignKey(
+        User,
+        on_delete=models.PROTECT,
+        related_name='created_additional_fees',
+        verbose_name="ثبت کننده"
+    )
+
+    created_at = jmodels.jDateTimeField(
+        auto_now_add=True,
+        verbose_name="تاریخ ثبت"
+    )
+
+    notes = models.TextField(
+        blank=True,
+        verbose_name="یادداشت"
+    )
+
+    is_deleted = models.BooleanField(
+        default=False,
+        db_index=True,
+        verbose_name="حذف نرم"
+    )
+
+    class Meta:
+        verbose_name = "هزینه جانبی"
+        verbose_name_plural = "هزینه‌های جانبی"
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['reservation']),
+            models.Index(fields=['created_at']),
+            models.Index(fields=['is_deleted']),
+        ]
+
+    def __str__(self):
+        return f"{self.title} - {self.amount} تومان ({self.reservation_id})"

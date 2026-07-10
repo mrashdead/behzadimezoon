@@ -35,7 +35,7 @@ class ReservationArchiveService:
         for transaction_data in Transaction.objects.filter(reservation=reservation).values(
             'id',
             'amount',
-            'type',
+            'transaction_type',
             'created_by_id',
             'created_at',
             'transaction_date',

@@ -1,6 +1,7 @@
 #products/views.py
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db.models.deletion import ProtectedError
 from django.shortcuts import get_object_or_404, redirect
 from django.urls import reverse_lazy
 from django.views import View
@@ -35,18 +36,44 @@ class DressListView(ListView):
     def get_queryset(self):
         queryset = super().get_queryset()
         search_query = self.request.GET.get('search', '').strip()
+        show_reserved_only = self.request.GET.get('show_reserved_only') == '1'
+        sort_field = self.request.GET.get('sort', 'id')
+        order = self.request.GET.get('order', 'desc')
 
         if search_query:
-            # Search by product code (primary search field)
             queryset = queryset.filter(code__icontains=search_query)
 
-        return queryset
+        if show_reserved_only:
+            from reservations.models import Reservation
+            from reservations.services.availability_service import ReservationAvailabilityService
+
+            blocking_statuses = ReservationAvailabilityService.get_blocking_statuses()
+            reserved_ids = set(
+                Reservation.objects.filter(
+                    status__in=blocking_statuses,
+                    dress_id__in=queryset.values_list('id', flat=True),
+                ).values_list('dress_id', flat=True)
+            )
+            queryset = queryset.filter(id__in=reserved_ids)
+
+        allowed_sort_fields = {
+            'id': 'id',
+            'code': 'code',
+            'daily_rent_price': 'daily_rent_price',
+            'created_at': 'created_at',
+        }
+        sort_field = allowed_sort_fields.get(sort_field, 'id')
+        ordering = sort_field if order == 'asc' else f'-{sort_field}'
+        return queryset.order_by(ordering)
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)
         context['page_title'] = 'محصولات'
         context['form'] = DressForm()
         context['search_query'] = self.request.GET.get('search', '')
+        context['show_reserved_only'] = self.request.GET.get('show_reserved_only') == '1'
+        context['sort'] = self.request.GET.get('sort', 'id')
+        context['order'] = self.request.GET.get('order', 'desc')
         user = self.request.user
         can_create_product = user.is_authenticated and (
             user.is_superuser or getattr(user, 'role', None) in ['SUPER_ADMIN', 'MANAGER', 'SELLER']
@@ -119,7 +146,41 @@ class DressUpdateView(ProductManagerPermissionMixin, UpdateView):
 class DressDeleteView(ProductManagerPermissionMixin, View):
     def post(self, request, pk):
         dress = get_object_or_404(Dress, pk=pk)
-        dress.delete()
+        try:
+            dress.delete()
+        except ProtectedError:
+            messages.error(request, "امکان حذف این محصول وجود ندارد زیرا در رزروهای ثبت‌شده استفاده شده است.")
+            return redirect("products:list")
+
         messages.success(request, "محصول با موفقیت حذف شد.")
+        return redirect("products:list")
+
+
+class DressBulkDeleteView(ProductManagerPermissionMixin, View):
+    def post(self, request, *args, **kwargs):
+        selected_ids = request.POST.getlist('dress_ids')
+        if not selected_ids:
+            messages.error(request, "هیچ محصولی برای حذف انتخاب نشده است.")
+            return redirect("products:list")
+
+        dresses = Dress.objects.filter(pk__in=selected_ids)
+        deleted_count = 0
+        blocked_codes = []
+
+        for dress in dresses:
+            try:
+                dress.delete()
+                deleted_count += 1
+            except ProtectedError:
+                blocked_codes.append(dress.code)
+
+        if deleted_count:
+            messages.success(request, f"{deleted_count} محصول با موفقیت حذف شدند.")
+        if blocked_codes:
+            messages.error(
+                request,
+                "امکان حذف برخی محصولات وجود ندارد زیرا در رزروهای فعال یا ثبت‌شده استفاده شده‌اند: " + ", ".join(blocked_codes)
+            )
+
         return redirect("products:list")
 

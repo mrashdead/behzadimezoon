@@ -180,6 +180,33 @@ function getCookie(name) {
   return cookieValue;
 }
 
+// Initialize all UI helpers on page load
+document.addEventListener('DOMContentLoaded', function() {
+  // Initialize money input formatting
+  initMoneyInputs();
+
+  // Initialize number displays
+  formatNumberDisplays();
+
+  // Initialize date pickers
+  initPersianDatepickers();
+
+  // Attach form submission handlers for all forms with money inputs
+  document.querySelectorAll('form').forEach(form => {
+    // Only attach if form has money-input fields
+    if (form.querySelector('.money-input')) {
+      form.addEventListener('submit', function(e) {
+        // Clean money inputs before submission
+        form.querySelectorAll('.money-input').forEach(input => {
+          let cleanValue = input.value.toString().replace(/,/g, '');
+          cleanValue = normalizeDigits(cleanValue);
+          input.value = cleanValue;
+        });
+      });
+    }
+  });
+});
+
 // Backwards-compatible alias used by inline scripts
 window.UIHelpers = window.UIHelpers || {};
 window.UIHelpers.normalizeDigits = normalizeDigits;
@@ -398,6 +425,98 @@ function initUIHelpers() {
   initPersianDatepickers();
   setupModalForms();
   setupFormMoneyNormalization();
+  setupBulkCustomerDelete();
+  setupBulkProductDelete();
+}
+
+function setupBulkCustomerDelete() {
+  const bulkDeleteForm = document.getElementById('bulkCustomerDeleteForm');
+  const selectAllCustomers = document.getElementById('selectAllCustomers');
+  const bulkDeleteButton = document.getElementById('bulkDeleteButton');
+
+  if (!bulkDeleteForm || !selectAllCustomers || !bulkDeleteButton) {
+    return;
+  }
+
+  const checkboxes = Array.from(bulkDeleteForm.querySelectorAll('.customer-checkbox'));
+
+  const updateBulkDeleteButtonState = () => {
+    const hasSelection = checkboxes.some((checkbox) => checkbox.checked);
+    bulkDeleteButton.disabled = !hasSelection;
+    selectAllCustomers.checked = checkboxes.length > 0 && checkboxes.every((checkbox) => checkbox.checked);
+  };
+
+  selectAllCustomers.addEventListener('change', function () {
+    checkboxes.forEach((checkbox) => {
+      checkbox.checked = selectAllCustomers.checked;
+    });
+    updateBulkDeleteButtonState();
+  });
+
+  checkboxes.forEach((checkbox) => {
+    checkbox.addEventListener('change', updateBulkDeleteButtonState);
+  });
+
+  bulkDeleteForm.addEventListener('submit', function (event) {
+    const selected = checkboxes.filter((checkbox) => checkbox.checked);
+    if (!selected.length) {
+      event.preventDefault();
+      return false;
+    }
+
+    const confirmed = window.confirm('آیا از حذف مشتریان انتخاب‌شده مطمئن هستید؟ مشتریانی که رزرو فعال دارند حذف نمی‌شوند و پیام مناسب نمایش داده می‌شود.');
+    if (!confirmed) {
+      event.preventDefault();
+      return false;
+    }
+  });
+
+  updateBulkDeleteButtonState();
+}
+
+function setupBulkProductDelete() {
+  const bulkDeleteForm = document.getElementById('bulkProductDeleteForm');
+  const selectAllProducts = document.getElementById('selectAllProducts');
+  const bulkDeleteButton = document.getElementById('bulkDeleteButton');
+
+  if (!bulkDeleteForm || !selectAllProducts || !bulkDeleteButton) {
+    return;
+  }
+
+  const checkboxes = Array.from(bulkDeleteForm.querySelectorAll('.product-checkbox'));
+
+  const updateBulkDeleteButtonState = () => {
+    const hasSelection = checkboxes.some((checkbox) => checkbox.checked);
+    bulkDeleteButton.disabled = !hasSelection;
+    selectAllProducts.checked = checkboxes.length > 0 && checkboxes.every((checkbox) => checkbox.checked);
+  };
+
+  selectAllProducts.addEventListener('change', function () {
+    checkboxes.forEach((checkbox) => {
+      checkbox.checked = selectAllProducts.checked;
+    });
+    updateBulkDeleteButtonState();
+  });
+
+  checkboxes.forEach((checkbox) => {
+    checkbox.addEventListener('change', updateBulkDeleteButtonState);
+  });
+
+  bulkDeleteForm.addEventListener('submit', function (event) {
+    const selected = checkboxes.filter((checkbox) => checkbox.checked);
+    if (!selected.length) {
+      event.preventDefault();
+      return false;
+    }
+
+    const confirmed = window.confirm('آیا از حذف محصولات انتخاب‌شده مطمئن هستید؟ محصولاتی که در رزروهای فعال استفاده شده‌اند حذف نمی‌شوند و پیام مناسب نمایش داده می‌شود.');
+    if (!confirmed) {
+      event.preventDefault();
+      return false;
+    }
+  });
+
+  updateBulkDeleteButtonState();
 }
 
 // Setup money normalization for all form submissions (both AJAX and traditional)

@@ -26,6 +26,20 @@ document.addEventListener('DOMContentLoaded', function () {
     function buildUrl(page) {
       const url = new URL(form.action || window.location.href, window.location.origin);
       url.searchParams.set('search', input.value.trim());
+      const reservedToggle = form.querySelector('button[name="show_reserved_only"]');
+      const customerReservedToggle = form.querySelector('button[name="show_with_reservations"]');
+      const reservedValue = reservedToggle && reservedToggle.dataset.active === '1' ? '1' : '';
+      const customerReservedValue = customerReservedToggle && customerReservedToggle.dataset.active === '1' ? '1' : '';
+      if (reservedValue) {
+        url.searchParams.set('show_reserved_only', '1');
+      } else {
+        url.searchParams.delete('show_reserved_only');
+      }
+      if (customerReservedValue) {
+        url.searchParams.set('show_with_reservations', '1');
+      } else {
+        url.searchParams.delete('show_with_reservations');
+      }
       if (page) {
         url.searchParams.set('page', page);
       } else {
@@ -39,6 +53,20 @@ document.addEventListener('DOMContentLoaded', function () {
       if (!window.history.replaceState) return;
       const url = new URL(form.action || window.location.href, window.location.origin);
       url.searchParams.set('search', input.value.trim());
+      const reservedToggle = form.querySelector('button[name="show_reserved_only"]');
+      const customerReservedToggle = form.querySelector('button[name="show_with_reservations"]');
+      const reservedValue = reservedToggle && reservedToggle.dataset.active === '1' ? '1' : '';
+      const customerReservedValue = customerReservedToggle && customerReservedToggle.dataset.active === '1' ? '1' : '';
+      if (reservedValue) {
+        url.searchParams.set('show_reserved_only', '1');
+      } else {
+        url.searchParams.delete('show_reserved_only');
+      }
+      if (customerReservedValue) {
+        url.searchParams.set('show_with_reservations', '1');
+      } else {
+        url.searchParams.delete('show_with_reservations');
+      }
       if (page) {
         url.searchParams.set('page', page);
       } else {
@@ -85,6 +113,32 @@ document.addEventListener('DOMContentLoaded', function () {
       clearTimeout(debounceTimer);
       fetchResults(1);
     });
+
+    const reservedToggle = form.querySelector('button[name="show_reserved_only"]');
+    if (reservedToggle) {
+      reservedToggle.addEventListener('click', function () {
+        const active = reservedToggle.dataset.active === '1';
+        reservedToggle.dataset.active = active ? '0' : '1';
+        reservedToggle.classList.toggle('btn-outline-warning', !active);
+        reservedToggle.classList.toggle('btn-warning', active);
+        reservedToggle.classList.toggle('text-white', active);
+        reservedToggle.classList.toggle('text-warning', !active);
+        fetchResults(1);
+      });
+    }
+
+    const customerReservedToggle = form.querySelector('button[name="show_with_reservations"]');
+    if (customerReservedToggle) {
+      customerReservedToggle.addEventListener('click', function () {
+        const active = customerReservedToggle.dataset.active === '1';
+        customerReservedToggle.dataset.active = active ? '0' : '1';
+        customerReservedToggle.classList.toggle('btn-outline-warning', !active);
+        customerReservedToggle.classList.toggle('btn-warning', active);
+        customerReservedToggle.classList.toggle('text-white', active);
+        customerReservedToggle.classList.toggle('text-warning', !active);
+        fetchResults(1);
+      });
+    }
 
     input.addEventListener('input', onInputChanged);
 

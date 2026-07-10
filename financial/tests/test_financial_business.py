@@ -1,5 +1,8 @@
+import json
+
 from django.core.exceptions import ValidationError
-from django.test import TestCase
+from django.db.utils import OperationalError
+from django.test import RequestFactory, TestCase
 from django.urls import reverse
 
 import jdatetime
@@ -7,6 +10,7 @@ import jdatetime
 from accounts.models import User
 from customers.models import Customer
 from financial.models import CancellationRecord, DamageRecord, Guarantee, Transaction
+from unittest.mock import patch
 from financial.services import (
     CancellationService,
     DamageService,
@@ -15,11 +19,13 @@ from financial.services import (
     RefundService,
     ReservationFinancialService,
 )
+from financial.services.dashboard_service import DashboardService
 from financial.services.reconciliation_service import ReconciliationService
 from financial.services.transaction_service import TransactionService
+from financial import views_operations
 from products.models import Dress
 from reservations.constants import PaymentMethod, ReservationStatus
-from reservations.models import Reservation
+from reservations.models import AdditionalFee, Reservation
 
 
 class FinancialBusinessTests(TestCase):
@@ -64,6 +70,32 @@ class FinancialBusinessTests(TestCase):
         defaults.update(kwargs)
         return Reservation.objects.create(**defaults)
 
+    def test_financial_context_applies_date_and_seller_filters(self):
+        reservation_in_range = self.create_reservation(
+            start_date=jdatetime.date(1402, 2, 1),
+            created_by=self.seller2,
+            final_price=120000,
+            remaining_amount=120000,
+        )
+        self.create_reservation(
+            start_date=jdatetime.date(1402, 1, 1),
+            created_by=self.seller1,
+            final_price=90000,
+            remaining_amount=90000,
+        )
+
+        other_reservation = Reservation.objects.get(created_by=self.seller1, start_date=jdatetime.date(1402, 1, 1))
+
+        context = DashboardService.get_financial_context(filters={
+            'date_from': '1402/01/15',
+            'date_to': '1402/02/15',
+            'seller_id': str(self.seller2.pk),
+        })
+
+        recent_ids = [item.pk for item in context['recent_reservations']]
+        self.assertIn(reservation_in_range.pk, recent_ids)
+        self.assertNotIn(other_reservation.pk, recent_ids)
+
     def test_deposit_and_final_settlement_updates_reservation_balance(self):
         reservation = self.create_reservation(deposit_amount=0, remaining_payment_amount=0, final_price=100000, remaining_amount=100000)
 
@@ -107,6 +139,156 @@ class FinancialBusinessTests(TestCase):
         reservation.discount_amount = -100
         with self.assertRaises(ValidationError):
             ReservationFinancialService.validate_discount(reservation)
+
+    def test_dashboard_totals_include_additional_fee_revenue(self):
+        reservation = self.create_reservation(final_price=100000, remaining_amount=100000)
+        AdditionalFee.objects.create(reservation=reservation, title='اتوکشی', amount=15000, created_by=self.admin)
+        AdditionalFee.objects.create(reservation=reservation, title='ارسال', amount=5000, created_by=self.admin)
+
+        context = DashboardService.get_financial_context(filters={})
+
+        self.assertEqual(context['totals']['total_additional_fee_revenue'], 20000)
+
+    def test_penalty_payments_are_recorded_and_counted_as_revenue(self):
+        reservation = self.create_reservation(final_price=100000, remaining_amount=100000)
+        reservation.cancellation_fee = 20000
+        reservation.damage_amount = 30000
+        reservation.save(update_fields=['cancellation_fee', 'damage_amount'])
+
+        PaymentService.record_penalty_payment(
+            reservation=reservation,
+            amount=20000,
+            penalty_type='CANCELLATION',
+            created_by=self.admin,
+            payment_method=PaymentMethod.CASH,
+            external_reference='PEN-1',
+            note='Cancellation penalty received',
+        )
+        PaymentService.record_penalty_payment(
+            reservation=reservation,
+            amount=30000,
+            penalty_type='DAMAGE',
+            created_by=self.admin,
+            payment_method=PaymentMethod.CASH,
+            external_reference='PEN-2',
+            note='Damage penalty received',
+        )
+
+        totals = TransactionService.aggregate_reservation_totals(reservation)
+        context = DashboardService.get_financial_context(filters={})
+
+        self.assertEqual(totals.get('total_penalty_income', 0), 50000)
+        self.assertEqual(context['totals']['total_revenue'], 50000)
+        self.assertEqual(context['totals']['total_cash_inflow'], 50000)
+
+    def test_seller_can_record_penalty_payment_for_their_reservation(self):
+        reservation = self.create_reservation(
+            created_by=self.seller1,
+            final_price=100000,
+            remaining_amount=100000,
+            cancellation_fee=15000,
+        )
+
+        self.client.login(username='seller1', password='pw')
+        response = self.client.post(
+            reverse('reservations:penalty_payment', args=[reservation.pk]),
+            {
+                'penalty_type': 'CANCELLATION',
+                'penalty_amount': '15000',
+                'penalty_payment_method': PaymentMethod.CASH,
+                'penalty_payment_tracking_code': 'PEN-SELLER',
+            },
+            content_type='application/x-www-form-urlencoded',
+        )
+
+        reservation.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
+        self.assertEqual(reservation.cancellation_fee_paid_amount, 15000)
+
+    def test_penalty_payment_retries_after_transient_database_lock(self):
+        reservation = self.create_reservation(
+            final_price=100000,
+            remaining_amount=100000,
+            cancellation_fee=15000,
+        )
+
+        original_create_transaction = TransactionService.create_transaction
+        attempts = {'count': 0}
+
+        def flaky_create_transaction(*args, **kwargs):
+            attempts['count'] += 1
+            if attempts['count'] == 1:
+                raise OperationalError('database is locked')
+            return original_create_transaction(*args, **kwargs)
+
+        with patch('financial.services.payment_service.TransactionService.create_transaction', side_effect=flaky_create_transaction):
+            tx = PaymentService.record_penalty_payment(
+                reservation=reservation,
+                amount=15000,
+                penalty_type='CANCELLATION',
+                created_by=self.admin,
+                payment_method=PaymentMethod.CASH,
+                external_reference='PEN-RETRY',
+                note='Retry test',
+            )
+
+        reservation.refresh_from_db()
+        self.assertEqual(attempts['count'], 2)
+        self.assertEqual(reservation.cancellation_fee_paid_amount, 15000)
+        self.assertEqual(tx.amount, 15000)
+
+    def test_financial_dashboard_includes_cancelled_reservations_in_reservation_list(self):
+        cancelled_reservation = self.create_reservation(
+            status=ReservationStatus.CANCELLED,
+            final_price=80000,
+            remaining_amount=80000,
+            cancellation_fee=20000,
+        )
+        self.create_reservation(
+            status=ReservationStatus.DELIVERED,
+            final_price=90000,
+            remaining_amount=0,
+        )
+
+        context = DashboardService.get_financial_context(filters={})
+        recent_ids = [item.pk for item in context['recent_reservations']]
+
+        self.assertIn(cancelled_reservation.pk, recent_ids)
+        self.assertEqual(len(recent_ids), 2)
+
+    def test_refund_view_returns_json_validation_error_when_no_refund_amount_is_allowed(self):
+        reservation = self.create_reservation(final_price=100000, remaining_amount=100000)
+        factory = RequestFactory()
+        request = factory.post(
+            reverse('financial:create_transaction', args=[reservation.pk]),
+            {
+                'type': 'REFUND',
+                'amount': '10000',
+                'payment_method': PaymentMethod.CASH,
+                'external_reference': 'REF-1',
+                'note': 'refund attempt',
+            },
+        )
+        request.user = self.admin
+
+        response = views_operations.create_transaction_view(request, reservation.pk)
+
+        self.assertEqual(response.status_code, 400)
+        payload = json.loads(response.content)
+        self.assertIn('مبلغ بازپرداخت', payload['error'])
+
+    def test_reservation_financial_view_includes_additional_fee_breakdown(self):
+        reservation = self.create_reservation(final_price=100000, remaining_amount=100000)
+        AdditionalFee.objects.create(reservation=reservation, title='هزینه اضافی', amount=25000, created_by=self.admin)
+
+        self.client.login(username='admin', password='pw')
+        response = self.client.get(reverse('financial:reservation_financial', args=[reservation.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'هزینه‌های جانبی')
+        self.assertContains(response, 'هزینه اضافی')
+        self.assertContains(response, '25000')
 
     def test_multiple_payments_and_refund_validation(self):
         reservation = self.create_reservation(deposit_amount=0, remaining_payment_amount=0, final_price=100000, remaining_amount=100000)
@@ -224,6 +406,22 @@ class FinancialBusinessTests(TestCase):
         self.assertEqual(cancellation.penalty_amount, 2000)
         self.assertEqual(Transaction.objects.filter(type=Transaction.Type.REFUND, reservation=reservation).count(), 1)
         self.assertEqual(Transaction.objects.filter(type=Transaction.Type.CANCELLATION_FEE, reservation=reservation).count(), 1)
+
+    def test_cancellation_penalty_is_saved_on_reservation(self):
+        reservation = self.create_reservation(deposit_amount=0, remaining_payment_amount=0)
+
+        CancellationService.create_cancellation_record(
+            reservation=reservation,
+            reason='Customer cancelled',
+            created_by=self.admin,
+            refund_amount=0,
+            penalty_amount=15000,
+            payment_method=PaymentMethod.CASH,
+            note='Penalty only cancellation',
+        )
+
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.cancellation_fee, 15000)
 
     def test_damage_registration_and_payment_links_consistently(self):
         reservation = self.create_reservation(deposit_amount=5000, remaining_payment_amount=0, final_price=5000, remaining_amount=0)

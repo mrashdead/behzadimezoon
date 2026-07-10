@@ -4,6 +4,7 @@ import jdatetime
 
 from accounts.models import User
 from customers.models import Customer
+from financial.models import FinancialAccount
 from financial.services import DashboardService
 from financial.services.transaction_service import TransactionService
 from products.models import Dress
@@ -29,6 +30,12 @@ class FinancialDashboardTests(TestCase):
         )
         cls.dress = Dress.objects.create(code='D001', daily_rent_price=100000)
         cls.user = create_user('finance_user', 'MANAGER')
+        cls.cash_account = FinancialAccount.objects.create(
+            code='CASH-DEFAULT',
+            name='Default Cash Account',
+            account_type=FinancialAccount.AccountType.CASH,
+            balance=0,
+        )
 
     def setUp(self):
         self.client = Client()
@@ -119,6 +126,51 @@ class FinancialDashboardTests(TestCase):
         self.assertEqual(ctx['totals']['total_revenue'], 150000)
         self.assertTrue(ctx['uses_transaction_ledger'])
         self.assertEqual(ctx['open_reconciliation_issues'], 0)
+
+    def test_dashboard_today_income_uses_transaction_types(self):
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.DELIVERED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_payment_amount=100000,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.user
+        )
+
+        TransactionService.create_deposit(
+            reservation=reservation,
+            amount=40000,
+            created_by=self.user,
+            payment_method='CASH',
+            note='Initial deposit'
+        )
+        TransactionService.create_final_payment(
+            reservation=reservation,
+            amount=60000,
+            created_by=self.user,
+            payment_method='CASH',
+            note='Final payment'
+        )
+        TransactionService.create_refund(
+            reservation=reservation,
+            amount=10000,
+            created_by=self.user,
+            payment_method='CASH',
+            note='Refund'
+        )
+
+        ctx = DashboardService.get_financial_context()
+        self.assertEqual(ctx['totals']['today_income'], 100000)
+        self.assertEqual(ctx['totals']['total_revenue'], 100000)
 
     def test_dashboard_shows_transaction_ledger_mode(self):
         reservation = Reservation.objects.create(

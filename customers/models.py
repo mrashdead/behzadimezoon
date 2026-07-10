@@ -34,6 +34,12 @@ class Customer(models.Model):
         verbose_name="نحوه آشنایی"
     )
 
+    city = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="شهر"
+    )
+
     allow_contact = models.BooleanField(
         default=False,
         verbose_name="اجازه ارتباط با شما؟"
@@ -126,6 +132,20 @@ class Customer(models.Model):
         verbose_name="یادداشت مشتری"
     )
 
+
+    @property
+    def how_to_know_option(self):
+        if not self.how_to_know:
+            return ''
+        return self.how_to_know.split(':', 1)[0].strip()
+
+    @property
+    def how_to_know_detail(self):
+        if not self.how_to_know:
+            return ''
+        if ':' not in self.how_to_know:
+            return ''
+        return self.how_to_know.split(':', 1)[1].strip()
 
     def __str__(self):
         return f"{self.bride_first_name} {self.bride_last_name}"

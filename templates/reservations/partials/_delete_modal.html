@@ -11,29 +11,85 @@
         {% endif %}
         <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
       </div>
-      <div class="modal-body">
-        {% if 'CANCELLED' in reservation.allowed_transitions %}
-        <p class="mb-2">این رزرو از لیست فعال خارج می‌شود و وضعیت آن به «لغو» تغییر می‌کند.</p>
-        {% elif 'ARCHIVED' in reservation.allowed_transitions %}
-        <p class="mb-2">این رزرو از لیست فعال خارج می‌شود و برای حفظ سوابق مالی به آرشیو منتقل خواهد شد.</p>
-        {% else %}
-        <p class="mb-2">این رزرو در وضعیت فعلی قابل تغییر نیست.</p>
-        {% endif %}
-        {% if reservation.deposit_amount > 0 or reservation.remaining_payment_amount > 0 or reservation.refunded_amount > 0 or reservation.damage_amount > 0 %}
-        <p class="small text-muted">رزروهای دارای پرداخت، عودت وجه یا خسارت به‌صورت دائمی حذف نمی‌شوند و فقط آرشیو می‌شوند.</p>
-        {% endif %}
-      </div>
-      <div class="modal-footer">
-        <button type="button" class="btn btn-light" data-bs-dismiss="modal">انصراف</button>
-        <form method="post" action="{% if 'CANCELLED' in reservation.allowed_transitions %}{% url 'reservations:cancel_action' reservation.pk %}{% else %}{% url 'reservations:archive_action' reservation.pk %}{% endif %}">
-          {% csrf_token %}
+      <form method="post" action="{% if 'CANCELLED' in reservation.allowed_transitions %}{% url 'reservations:cancel_action' reservation.pk %}{% else %}{% url 'reservations:archive_action' reservation.pk %}{% endif %}">
+        {% csrf_token %}
+        <div class="modal-body">
+          {% if 'CANCELLED' in reservation.allowed_transitions %}
+          <p class="mb-2">این رزرو از لیست فعال خارج می‌شود و وضعیت آن به «لغو» تغییر می‌کند.</p>
+          <div class="mb-3">
+            <div class="form-check form-switch">
+              <input class="form-check-input" type="checkbox" name="item_damaged" value="on" id="id_item_damaged_{{ reservation.id }}">
+              <label class="form-check-label" for="id_item_damaged_{{ reservation.id }}">آیا لباس آسیب‌دیده است؟</label>
+            </div>
+          </div>
+
+          <div class="damage-details d-none">
+            <div class="mb-3">
+              <label class="form-label" for="id_damage_amount_{{ reservation.id }}">مبلغ خسارت (تومان)</label>
+              <input type="text" name="damage_amount" id="id_damage_amount_{{ reservation.id }}" class="form-control money-input" placeholder="0">
+            </div>
+            <div class="mb-3">
+              <label class="form-label" for="id_damage_notes_{{ reservation.id }}">توضیحات خسارت</label>
+              <textarea name="damage_notes" id="id_damage_notes_{{ reservation.id }}" rows="2" class="form-control" placeholder="اختیاری"></textarea>
+            </div>
+          </div>
+
+          <div class="alert alert-info mb-3" role="alert">
+            در صورت وجود خسارت، مبلغ و توضیحات آن را وارد کنید.
+          </div>
+          {% elif 'ARCHIVED' in reservation.allowed_transitions %}
+          <p class="mb-2">این رزرو از لیست فعال خارج می‌شود و برای حفظ سوابق مالی به آرشیو منتقل خواهد شد.</p>
+          {% else %}
+          <p class="mb-2">این رزرو در وضعیت فعلی قابل تغییر نیست.</p>
+          {% endif %}
+
+          {% if reservation.deposit_amount > 0 or reservation.remaining_payment_amount > 0 or reservation.refunded_amount > 0 or reservation.damage_amount > 0 %}
+          <p class="small text-muted">رزروهای دارای پرداخت، عودت وجه یا خسارت به‌صورت دائمی حذف نمی‌شوند و فقط آرشیو می‌شوند.</p>
+          {% endif %}
+        </div>
+
+        <div class="modal-footer">
+          <button type="button" class="btn btn-light" data-bs-dismiss="modal">انصراف</button>
           {% if 'CANCELLED' in reservation.allowed_transitions %}
           <button type="submit" class="btn btn-warning">بله، لغو شود</button>
           {% else %}
           <button type="submit" class="btn btn-danger">بله، آرشیو شود</button>
           {% endif %}
-        </form>
-      </div>
+        </div>
+      </form>
+
+      {% if 'CANCELLED' in reservation.allowed_transitions %}
+      <script>
+        (function () {
+          const modalId = 'deleteReservationModal{{ reservation.id }}';
+          const modal = document.getElementById(modalId);
+          if (!modal) {
+            return;
+          }
+
+          const checkbox = modal.querySelector('#id_item_damaged_{{ reservation.id }}');
+          const details = modal.querySelector('.damage-details');
+          if (!checkbox || !details) {
+            return;
+          }
+
+          const updateVisibility = function () {
+            if (checkbox.checked) {
+              details.classList.remove('d-none');
+            } else {
+              details.classList.add('d-none');
+            }
+          };
+
+          checkbox.addEventListener('change', updateVisibility);
+          updateVisibility();
+
+          modal.addEventListener('shown.bs.modal', function () {
+            updateVisibility();
+          });
+        })();
+      </script>
+      {% endif %}
     </div>
   </div>
 </div>

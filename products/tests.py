@@ -123,3 +123,23 @@ class ProductPermissionAndStatusTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertTrue(response.context['can_create_product'])
         self.assertFalse(response.context['can_manage_product'])
+
+    def test_row_number_continues_across_paginated_product_pages(self):
+        for i in range(25):
+            Dress.objects.create(code=f'D{i:03d}', daily_rent_price=100000)
+
+        response = self.client.get(reverse('products:list'), {'page': 2})
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn('>21</span>', response.content.decode())
+
+    def test_list_can_sort_products_by_code(self):
+        Dress.objects.create(code='Z100', daily_rent_price=100000)
+        Dress.objects.create(code='A100', daily_rent_price=200000)
+        Dress.objects.create(code='M100', daily_rent_price=300000)
+
+        response = self.client.get(reverse('products:list'), {'sort': 'code', 'order': 'asc'})
+
+        self.assertEqual(response.status_code, 200)
+        codes = [dress.code for dress in response.context['dresses']]
+        self.assertEqual(codes, ['A100', 'M100', 'Z100'])
