@@ -5,6 +5,7 @@ from django.urls import path
 from .views import (
     reservation_list,
     reservation_archive_list,
+    contract_number_suggest,
     reservation_step_one,
     reservation_create,
     reservation_detail,
@@ -31,6 +32,13 @@ urlpatterns = [
         "",
         reservation_list,
         name="list"
+    ),
+
+    # contract number suggestion
+    path(
+        "contract-number-suggest/",
+        contract_number_suggest,
+        name="contract_number_suggest"
     ),
 
     # step one validation

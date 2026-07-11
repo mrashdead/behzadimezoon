@@ -54,6 +54,82 @@ class ReservationFormBehaviorTests(TestCase):
         self.assertFalse(form.is_valid())
         self.assertIn('guarantee1_payee', form.errors)
 
+    def test_step_two_form_rejects_duplicate_contract_number(self):
+        Reservation.objects.create(
+            customer=Customer.objects.create(
+                bride_first_name='Existing',
+                bride_last_name='Customer',
+                bride_phone='09120000001',
+                ceremony_date=jdatetime.date(1402, 1, 1),
+                how_to_know='test',
+                allow_contact=True,
+            ),
+            dress=Dress.objects.create(code='D002', daily_rent_price=100000),
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=100000,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=50000,
+            payment_method='CASH',
+            payment_tracking_code='PAY-EXISTING',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=create_user('existing_owner', 'MANAGER'),
+            contract_number='CN-10001',
+        )
+
+        form = ReservationStepTwoForm(data={
+            'payment_method': 'CASH',
+            'payment_tracking_code': 'PAY-2',
+            'guarantee1_type': 'CASH',
+            'guarantee1_tracking_code': 'G1',
+            'guarantee2_type': '',
+            'guarantee2_tracking_code': '',
+            'deposit_amount': '5000',
+            'discount_type': 'NONE',
+            'discount_value': '0',
+            'contract_number': 'CN-10001',
+        }, rent_price=100000)
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('contract_number', form.errors)
+
+    def test_contract_number_suggestion_endpoint_returns_next_value(self):
+        Reservation.objects.create(
+            customer=Customer.objects.create(
+                bride_first_name='Suggest',
+                bride_last_name='Customer',
+                bride_phone='09120000002',
+                ceremony_date=jdatetime.date(1402, 1, 2),
+                how_to_know='test',
+                allow_contact=True,
+            ),
+            dress=Dress.objects.create(code='D003', daily_rent_price=100000),
+            start_date=jdatetime.date(1402, 1, 2),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=100000,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=50000,
+            payment_method='CASH',
+            payment_tracking_code='PAY-SUGGEST',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=create_user('suggest_owner', 'MANAGER'),
+            contract_number='CN-10025',
+        )
+
+        self.client.login(username='suggest_owner', password='password123')
+        response = self.client.get(reverse('reservations:contract_number_suggest'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json()['contract_number'], 'CN-10026')
+
 
 class ReservationStatusTransitionTests(TestCase):
 
@@ -107,14 +183,15 @@ class ReservationStatusTransitionTests(TestCase):
 
     def test_create_reservation_with_full_deposit_succeeds(self):
         self.client.login(username='manager_user', password='password123')
-        self.client.session['reservation_step1'] = {
+        session = self.client.session
+        session['reservation_step1'] = {
             'customer_id': self.customer.id,
             'dress_id': self.dress.id,
             'start_date': '1402/01/01',
             'rental_days': 3,
             'rent_price': self.dress.daily_rent_price,
         }
-        self.client.session.save()
+        session.save()
 
         response = self.client.post(
             reverse('reservations:create'),

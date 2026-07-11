@@ -94,6 +94,16 @@
                   {% endif %}
                 </a>
               </th>
+              <th class="minw-160px">
+                <a href="?sort=contract_number&order={% if sort == 'contract_number' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
+                  شماره قرارداد
+                  {% if sort == 'contract_number' %}
+                    <i class="fi fi-rr-arrow-{% if order == 'asc' %}up{% else %}down{% endif %}"></i>
+                  {% else %}
+                    <i class="fi fi-rr-sort-alt"></i>
+                  {% endif %}
+                </a>
+              </th>
               <th class="minw-140px">
                 <a href="?sort=start_date&order={% if sort == 'start_date' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
                   شروع اجاره
@@ -139,6 +149,9 @@
               </td>
               <td data-label="لباس">
                 <div class="fw-semibold">{{ reservation.dress }}</div>
+              </td>
+              <td data-label="شماره قرارداد">
+                <span class="fw-semibold">{{ reservation.contract_number|default:'-' }}</span>
               </td>
               <td data-label="شروع اجاره">
                 <span class="text-muted">{{ reservation.start_date|jformat:"%Y/%m/%d" }}</span>
@@ -343,7 +356,7 @@
             </tr>
             {% empty %}
               <tr>
-                <td colspan="7" class="text-center py-4 text-muted">هیچ رزروی ثبت نشده است.</td>
+                <td colspan="8" class="text-center py-4 text-muted">هیچ رزروی ثبت نشده است.</td>
               </tr>
             {% endfor %}
           </tbody>

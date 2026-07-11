@@ -19,6 +19,17 @@
                 <div class="card-body">
                   <div class="row g-3">
                     <div class="col-12 col-md-6">
+                      <label for="id_contract_number_{{ reservation.id }}" class="form-label">شماره قرارداد</label>
+                      <input
+                        type="text"
+                        id="id_contract_number_{{ reservation.id }}"
+                        name="contract_number"
+                        class="form-control"
+                        value="{{ reservation.contract_number|default:'' }}"
+                        autocomplete="off"
+                      />
+                    </div>
+                    <div class="col-12 col-md-6">
                       <label for="id_dress_{{ reservation.id }}" class="form-label">لباس</label>
                       <select id="id_dress_{{ reservation.id }}" name="dress" class="form-select" required>
                         <option value="">انتخاب کنید</option>

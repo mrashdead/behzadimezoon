@@ -201,11 +201,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     function saveReservationStepOne() {
+      const contractNumberInput = step1Form.querySelector("input[name='contract_number']")
       const formData = new URLSearchParams({
         customer: customerSelect.value,
         dress: dressSelect.value,
         start_date: startDateInput.value,
-        rental_days: rentalDaysInput.value
+        rental_days: rentalDaysInput.value,
+        contract_number: contractNumberInput ? contractNumberInput.value : ''
       })
 
       return fetch("/reservations/step-one/", {
@@ -217,6 +219,38 @@ document.addEventListener('DOMContentLoaded', function () {
         },
         body: formData
       }).then(response => response.json())
+    }
+
+    function populateContractNumberSuggestion() {
+      const contractInputs = [
+        document.getElementById('contractNumberInput')
+      ].filter(Boolean)
+
+      if (!contractInputs.length) return
+
+      const hasValue = contractInputs.some(input => (input.value || '').trim())
+      if (hasValue) return
+
+      return fetch('/reservations/contract-number-suggest/', {
+        method: 'GET',
+        headers: {
+          'X-Requested-With': 'XMLHttpRequest',
+          'Accept': 'application/json'
+        }
+      })
+        .then(response => response.json())
+        .then(data => {
+          if (data && data.contract_number) {
+            contractInputs.forEach(input => {
+              if (!input.value) {
+                input.value = data.contract_number
+              }
+            })
+          }
+        })
+        .catch(error => {
+          console.error('Contract number suggestion failed:', error)
+        })
     }
 
     customerSelect.addEventListener("change", checkAvailability)
@@ -321,5 +355,16 @@ document.addEventListener('DOMContentLoaded', function () {
 
   // Initialize the form
   initializeReservationForm()
+
+  const createReservationModal = document.getElementById('createReservationModal')
+  if (createReservationModal) {
+    createReservationModal.addEventListener('shown.bs.modal', function () {
+      const contractInput = document.getElementById('contractNumberInput')
+      const hasValue = contractInput && (contractInput.value || '').trim()
+      if (!hasValue) {
+        populateContractNumberSuggestion()
+      }
+    })
+  }
 })
 </script>

@@ -1,3 +1,5 @@
+import re
+
 from django.core.exceptions import ValidationError
 from django.db import models
 from django.conf import settings
@@ -34,6 +36,14 @@ class Reservation(models.Model):
         on_delete=models.PROTECT,
         related_name="reservations",
         verbose_name="لباس"
+    )
+
+    contract_number = models.CharField(
+        max_length=50,
+        null=True,
+        blank=True,
+        db_index=True,
+        verbose_name="شماره قرارداد"
     )
 
     # -----------------------
@@ -433,6 +443,35 @@ class Reservation(models.Model):
     # متدهای محاسباتی
     # -----------------------
 
+    @classmethod
+    def get_next_contract_number(cls, initial_value=None):
+        existing_values = [
+            str(value).strip()
+            for value in cls.objects.exclude(contract_number__isnull=True)
+            .exclude(contract_number='')
+            .values_list('contract_number', flat=True)
+            if str(value).strip()
+        ]
+
+        latest_value = None
+        latest_number = None
+        for value in existing_values:
+            match = re.search(r'(\d+)$', value)
+            if match:
+                candidate_number = int(match.group(1))
+                if latest_number is None or candidate_number > latest_number:
+                    latest_number = candidate_number
+                    latest_value = value
+
+        if latest_value and latest_number is not None:
+            match = re.search(r'(\d+)$', latest_value)
+            if match:
+                prefix = latest_value[:match.start(1)]
+                return f"{prefix}{latest_number + 1}"
+
+        base_value = initial_value or getattr(settings, 'CONTRACT_NUMBER_INITIAL_VALUE', 'CN-10001')
+        return str(base_value).strip() or 'CN-10001'
+
     def calculate_dates(self):
         """Calculate return and delivery dates for the reservation."""
 
@@ -536,6 +575,19 @@ class Reservation(models.Model):
     def clean(self):
         if self.discount_amount is None:
             self.discount_amount = 0
+
+        contract_number = (self.contract_number or '').strip()
+        if contract_number:
+            self.contract_number = contract_number
+            duplicate_exists = Reservation.objects.filter(contract_number__iexact=contract_number)
+            if self.pk is not None:
+                duplicate_exists = duplicate_exists.exclude(pk=self.pk)
+            if duplicate_exists.exists():
+                raise ValidationError({
+                    'contract_number': 'شماره قرارداد تکراری است.'
+                })
+        else:
+            self.contract_number = None
 
         if self.rent_price is None:
             return

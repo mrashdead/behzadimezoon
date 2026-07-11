@@ -57,7 +57,7 @@
         <div class="mb-3">
           <strong>رزرو مرتبط:</strong>
           {% if transaction.reservation %}
-            <a href="{% url 'financial:reservation_financial' transaction.reservation.pk %}">رزرو #{{ transaction.reservation.pk }}</a>
+            <a href="{% url 'financial:reservation_financial' transaction.reservation.pk %}">رزرو #{{ transaction.reservation.pk }}{% if transaction.reservation.contract_number %} / {{ transaction.reservation.contract_number }}{% endif %}</a>
           {% else %}
             -
           {% endif %}

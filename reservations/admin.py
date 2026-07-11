@@ -26,9 +26,9 @@ class AdditionalFeeInline(admin.TabularInline):
 
 @admin.register(Reservation)
 class ReservationAdmin(admin.ModelAdmin):
-    list_display = ('id', 'customer', 'dress', 'start_date', 'end_date', 'status', 'payment_status', 'created_by')
+    list_display = ('id', 'contract_number', 'customer', 'dress', 'start_date', 'end_date', 'status', 'payment_status', 'created_by')
     list_filter = ('status', 'payment_status', 'start_date')
-    search_fields = ('customer__bride_first_name', 'customer__bride_last_name', 'dress__code')
+    search_fields = ('contract_number', 'customer__bride_first_name', 'customer__bride_last_name', 'dress__code')
     inlines = [GuaranteeInline, DamageInline, AdditionalFeeInline]
 
 

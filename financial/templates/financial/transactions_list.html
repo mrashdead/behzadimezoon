@@ -36,7 +36,7 @@
                 <th>تاریخ</th>
                 <th>نوع تراکنش</th>
                 <th>مبلغ</th>
-                <th>رزرو مرتبط</th>
+                <th>رزرو/قرارداد</th>
                 <th>ایجادکننده</th>
                 <th>شرح تراکنش</th>
             </tr>
@@ -47,7 +47,7 @@
                 <td>{{ tx.transaction_date|jformat:"%Y/%m/%d %H:%M" }}</td>
                 <td>{{ tx.get_type_display }}</td>
                 <td>{{ tx.amount|ir_currency }} تومان</td>
-                <td>{% if tx.reservation %}#{{ tx.reservation.pk }}{% else %}-{% endif %}</td>
+                <td>{% if tx.reservation %}#{{ tx.reservation.pk }}{% if tx.reservation.contract_number %} / {{ tx.reservation.contract_number }}{% endif %}{% else %}-{% endif %}</td>
                 <td>{% if tx.created_by %}{{ tx.created_by.get_full_name }}{% else %}-{% endif %}</td>
                 <td>{{ tx.description }}</td>
             </tr>

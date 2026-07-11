@@ -5,6 +5,7 @@ import json
 from datetime import date
 from datetime import timedelta
 import time
+from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
 from django.db.utils import OperationalError
@@ -60,6 +61,53 @@ def format_validation_message(exc):
     if hasattr(exc, 'messages') and exc.messages:
         return exc.messages[0]
     return str(exc)
+
+
+def _get_reservation_step1_data(request):
+    step1_data = request.session.get("reservation_step1")
+    if step1_data:
+        return step1_data
+
+    session_key = getattr(request.session, 'session_key', None) or request.COOKIES.get(getattr(settings, 'SESSION_COOKIE_NAME', 'sessionid'))
+    if session_key:
+        try:
+            from django.contrib.sessions.backends.db import SessionStore as DBSessionStore
+            stored_session = DBSessionStore(session_key=session_key)
+            stored = stored_session.load()
+            if stored and 'reservation_step1' in stored:
+                step1_data = stored.get('reservation_step1')
+                if step1_data:
+                    try:
+                        request.session['reservation_step1'] = step1_data
+                    except Exception:
+                        pass
+                    return step1_data
+        except Exception:
+            pass
+
+    if getattr(request.user, 'is_authenticated', False):
+        try:
+            from django.contrib.sessions.models import Session
+            print('DEBUG_STEP1_HELPER_USER', request.user.pk, 'session_key', session_key, file=sys.stderr)
+            for session_obj in Session.objects.order_by('-expire_date'):
+                try:
+                    decoded = session_obj.get_decoded()
+                except Exception:
+                    continue
+                print('DEBUG_STEP1_HELPER_SESSION', session_obj.session_key, decoded.keys(), decoded.get('_auth_user_id'), file=sys.stderr)
+                if str(decoded.get('_auth_user_id')) != str(request.user.pk):
+                    continue
+                step1_data = decoded.get('reservation_step1')
+                if step1_data:
+                    try:
+                        request.session['reservation_step1'] = step1_data
+                    except Exception:
+                        pass
+                    return step1_data
+        except Exception:
+            pass
+
+    return None
 
 
 def _get_penalty_request_payload(request):
@@ -152,7 +200,8 @@ def reservation_list(request):
             Q(customer__bride_phone__icontains=search_query) |
             Q(customer__groom_first_name__icontains=search_query) |
             Q(customer__groom_last_name__icontains=search_query) |
-            Q(dress__code__icontains=search_query)
+            Q(dress__code__icontains=search_query) |
+            Q(contract_number__icontains=search_query)
         )
 
     sort_field = request.GET.get('sort', 'start_date')
@@ -161,6 +210,7 @@ def reservation_list(request):
         'id': 'id',
         'customer': 'customer__bride_first_name',
         'dress': 'dress__code',
+        'contract_number': 'contract_number',
         'start_date': 'start_date',
         'end_date': 'end_date',
         'status': 'status',
@@ -203,6 +253,12 @@ def reservation_list(request):
     }
 
     return render(request, "reservations/list.html", context)
+
+
+@login_required
+def contract_number_suggest(request):
+    suggested = Reservation.get_next_contract_number()
+    return JsonResponse({"contract_number": suggested})
 
 
 @login_required
@@ -281,6 +337,7 @@ def reservation_step_one(request):
         "start_date": str(start_date),
         "rental_days": rental_days,
         "rent_price": rent_price,
+        "contract_number": form.cleaned_data.get("contract_number"),
     }
 
     return JsonResponse({
@@ -308,7 +365,7 @@ def reservation_create(request):
             keys = None
         logger.debug('AJAX reservation_create session keys: %s', keys)
 
-    step1_data = request.session.get("reservation_step1")
+    step1_data = _get_reservation_step1_data(request)
     step1_form = None
 
     if not step1_data:
@@ -318,7 +375,7 @@ def reservation_create(request):
         # session cookie as a best-effort recovery.
         try:
             from django.conf import settings
-            session_key = request.COOKIES.get(getattr(settings, 'SESSION_COOKIE_NAME', 'sessionid'))
+            session_key = getattr(request.session, 'session_key', None) or request.COOKIES.get(getattr(settings, 'SESSION_COOKIE_NAME', 'sessionid'))
             if session_key:
                 try:
                     from django.contrib.sessions.backends.db import SessionStore as DBSessionStore
@@ -336,46 +393,44 @@ def reservation_create(request):
                     pass
         except Exception:
             pass
-        step1_form = ReservationStepOneForm(request.POST)
-        if not step1_form.is_valid():
 
-            if request.META.get("HTTP_X_REQUESTED_WITH") == "XMLHttpRequest":
-                # If there are non-field errors (e.g. availability), return that message
-                non_field = step1_form.non_field_errors()
-                try:
-                    session_keys = list(request.session.keys())
-                except Exception:
-                    session_keys = None
-                try:
-                    session_key = request.session.session_key
-                except Exception:
-                    session_key = None
-                try:
-                    from django.conf import settings
-                    session_cookie = request.COOKIES.get(getattr(settings, 'SESSION_COOKIE_NAME', 'sessionid'))
-                except Exception:
-                    session_cookie = None
-                if non_field:
-                    return JsonResponse({"success": False, "message": str(non_field[0]), "errors": step1_form.errors, "session_keys": session_keys, "session_key": session_key, "session_cookie": session_cookie})
-                # Include full form errors and session keys in AJAX response to aid debugging
-                return JsonResponse({"success": False, "message": "اطلاعات رزرو نامعتبر است.", "errors": step1_form.errors, "session_keys": session_keys, "session_key": session_key, "session_cookie": session_cookie})
-            return render(request, "reservations/list.html", {
-                "customers": Customer.objects.all(),
-                "dresses": Dress.objects.filter(status=Dress.STATUS_ACTIVE),
-                "step1_errors": step1_form.errors
-            })
+        if not step1_data:
+            step1_payload = {
+                "customer": request.POST.get("customer"),
+                "dress": request.POST.get("dress"),
+                "start_date": request.POST.get("start_date"),
+                "rental_days": request.POST.get("rental_days"),
+                "contract_number": request.POST.get("contract_number"),
+            }
+            if any(step1_payload.values()):
+                step1_form = ReservationStepOneForm(step1_payload)
+                if not step1_form.is_valid():
+                    if request.META.get("HTTP_X_REQUESTED_WITH") == "XMLHttpRequest":
+                        non_field = step1_form.non_field_errors()
+                        message = str(non_field[0]) if non_field else "اطلاعات رزرو نامعتبر است."
+                        return JsonResponse({"success": False, "message": message})
+                    return render(request, "reservations/list.html", {
+                        "customers": Customer.objects.all(),
+                        "dresses": Dress.objects.filter(status=Dress.STATUS_ACTIVE),
+                        "step1_errors": step1_form.errors
+                    })
 
-        cleaned = step1_form.cleaned_data
-        rent_price = cleaned["dress"].daily_rent_price
-        step1_data = {
-            "customer_id": cleaned["customer"].id,
-            "dress_id": cleaned["dress"].id,
-            "start_date": str(cleaned["start_date"]),
-            "rental_days": cleaned["rental_days"],
-            "end_date": str(cleaned["end_date"]),
-            "event_date": date_to_iso(getattr(cleaned["customer"], "ceremony_date", None)),
-            "rent_price": rent_price,
-        }
+                cleaned = step1_form.cleaned_data
+                rent_price = cleaned["dress"].daily_rent_price
+                step1_data = {
+                    "customer_id": cleaned["customer"].id,
+                    "dress_id": cleaned["dress"].id,
+                    "start_date": str(cleaned["start_date"]),
+                    "rental_days": cleaned["rental_days"],
+                    "end_date": str(cleaned["end_date"]),
+                    "event_date": date_to_iso(getattr(cleaned["customer"], "ceremony_date", None)),
+                    "rent_price": rent_price,
+                    "contract_number": cleaned.get("contract_number"),
+                }
+                try:
+                    request.session["reservation_step1"] = step1_data
+                except Exception:
+                    pass
 
     rent_price = step1_data.get("rent_price") if step1_data else None
     if rent_price is None and step1_data and step1_data.get("dress_id"):
@@ -460,6 +515,7 @@ def reservation_create(request):
             reservation = form.save(commit=False)
             reservation.customer = customer
             reservation.dress = dress
+            reservation.contract_number = form.cleaned_data.get('contract_number') or step1_data.get('contract_number')
             reservation.start_date = start_date
             reservation.rental_days = rental_days
             reservation.end_date = end_date
@@ -863,6 +919,7 @@ def reservation_edit(request, pk):
     try:
         # Save changes and update financials
         reservation = form.save(commit=False)
+        reservation.contract_number = form.cleaned_data.get('contract_number')
         reservation.updated_by = request.user
 
         # Explicitly update financial fields and snapshots before saving

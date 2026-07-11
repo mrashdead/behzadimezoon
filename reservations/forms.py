@@ -13,6 +13,21 @@ from reservations.services.availability_service import ReservationAvailabilitySe
 from .utils import parse_reservation_date, normalize_digits
 
 
+def validate_contract_number(value, exclude_pk=None):
+    normalized = (value or '').strip()
+    if not normalized:
+        return None
+
+    duplicate_exists = Reservation.objects.filter(contract_number__iexact=normalized)
+    if exclude_pk is not None:
+        duplicate_exists = duplicate_exists.exclude(pk=exclude_pk)
+
+    if duplicate_exists.exists():
+        raise ValidationError('شماره قرارداد تکراری است.')
+
+    return normalized
+
+
 def parse_amount_value(value):
     if value in (None, ""):
         return 0
@@ -55,6 +70,12 @@ class ReservationStepOneForm(forms.Form):
         label="مدت اجاره (روز)"
     )
 
+    contract_number = forms.CharField(
+        required=False,
+        max_length=50,
+        label="شماره قرارداد"
+    )
+
     def clean_start_date(self):
         value = self.cleaned_data.get("start_date")
 
@@ -84,6 +105,10 @@ class ReservationStepOneForm(forms.Form):
             start_date=start_date,
             rental_days=rental_days
         )
+
+        contract_number = cleaned_data.get("contract_number")
+        if contract_number:
+            cleaned_data["contract_number"] = validate_contract_number(contract_number)
 
         if not is_available:
             raise ValidationError("این لباس در این بازه زمانی رزرو شده است.")
@@ -115,10 +140,17 @@ class ReservationStepTwoForm(forms.ModelForm):
         self.rent_price = kwargs.pop("rent_price", None)
         super().__init__(*args, **kwargs)
 
+    contract_number = forms.CharField(
+        required=False,
+        max_length=50,
+        label="شماره قرارداد"
+    )
+
     class Meta:
         model = Reservation
 
         fields = [
+            "contract_number",
             "payment_method",
             "payment_tracking_code",
             "guarantee1_type",
@@ -133,6 +165,7 @@ class ReservationStepTwoForm(forms.ModelForm):
         ]
 
         labels = {
+            "contract_number": "شماره قرارداد",
             "payment_method": "روش پرداخت",
             "payment_tracking_code": "کد رهگیری پرداخت",
             "guarantee1_type": "نوع ضمانت اول",
@@ -145,6 +178,9 @@ class ReservationStepTwoForm(forms.ModelForm):
             "discount_type": "نوع تخفیف",
             "discount_value": "مقدار تخفیف",
         }
+
+    def clean_contract_number(self):
+        return validate_contract_number(self.cleaned_data.get('contract_number'), exclude_pk=self.instance.pk)
 
     def clean_deposit_amount(self):
         return parse_amount_value(self.cleaned_data.get("deposit_amount"))
@@ -276,10 +312,17 @@ class ReservationEditForm(forms.ModelForm):
         label="بیعانه"
     )
 
+    contract_number = forms.CharField(
+        required=False,
+        max_length=50,
+        label="شماره قرارداد"
+    )
+
     class Meta:
         model = Reservation
 
         fields = [
+            "contract_number",
             "dress",
             "start_date",
             "rental_days",
@@ -297,6 +340,7 @@ class ReservationEditForm(forms.ModelForm):
         ]
 
         labels = {
+            "contract_number": "شماره قرارداد",
             "discount_type": "نوع تخفیف",
             "discount_value": "مقدار تخفیف",
             "payment_method": "روش پرداخت",
@@ -329,6 +373,9 @@ class ReservationEditForm(forms.ModelForm):
             raise ValidationError("تاریخ نامعتبر است.")
 
         return parsed_date
+
+    def clean_contract_number(self):
+        return validate_contract_number(self.cleaned_data.get('contract_number'), exclude_pk=self.instance.pk)
 
     def clean_deposit_amount(self):
         return parse_amount_value(self.cleaned_data.get("deposit_amount"))

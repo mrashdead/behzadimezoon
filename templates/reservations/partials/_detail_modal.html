@@ -17,6 +17,7 @@
           <div class="row row-cols-1 row-cols-md-2 row-cols-xl-4 g-3">
             {% include 'partials/_detail_card.html' with label='مشتری' value=reservation.customer %}
             {% include 'partials/_detail_card.html' with label='لباس' value=reservation.dress %}
+            {% include 'partials/_detail_card.html' with label='شماره قرارداد' value=reservation.contract_number|default:'-' %}
             {% include 'partials/_detail_card.html' with label='وضعیت' value=reservation.get_status_display %}
             {% include 'partials/_detail_card.html' with label='تعداد روز اجاره' value=reservation.rental_days %}
           </div>
