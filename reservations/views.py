@@ -819,35 +819,45 @@ def reservation_finalize_delivery(request, pk):
 
     for attempt in range(3):
         try:
-            # Calculate final remaining amount including additional fees
-            final_remaining = reservation.remaining_amount_with_fees()
+            with transaction.atomic():
+                reservation = Reservation.objects.select_for_update().get(pk=pk)
 
-            if final_remaining == 0 and not has_payment_data:
-                # No remaining payment is required for delivery
-                pass
-            else:
-                if final_remaining == 0 and has_payment_data:
-                    # If reservation is already settled, any payment info is unexpected
-                    raise ValidationError('این رزرو قبلاً تسویه شده است. پرداخت اضافی ثبت نشود.')
+                if tailor_name:
+                    reservation.tailor_name = tailor_name
+                    reservation.save(update_fields=['tailor_name'])
 
-                form.validate_payment_amount(final_remaining)
+                if reservation.status == ReservationStatus.DELIVERED:
+                    return JsonResponse({"success": True, "message": "رزرو قبلاً تحویل شده است."})
 
-                # Record the payment transaction
-                PaymentService.record_balance_payment(
-                    reservation=reservation,
-                    amount=amount,
-                    created_by=request.user,
-                    payment_method=method,
-                    external_reference=code,
-                    note='پرداخت نهایی در تحویل ثبت شد (شامل هزینه‌های جانبی)',
-                    transaction_date=timezone.now()
-                )
+                # Calculate final remaining amount including additional fees
+                final_remaining = reservation.remaining_amount_with_fees()
 
-            # Change status to DELIVERED
-            ReservationStatusService.change_status(reservation, ReservationStatus.DELIVERED, request.user)
-            ReservationFinancialService.capture_financial_snapshot(reservation, 'delivered')
-            reservation.save()
-            return JsonResponse({"success": True, "message": "لباس با موفقیت تحویل شد."})
+                if final_remaining == 0 and not has_payment_data:
+                    # No remaining payment is required for delivery
+                    pass
+                else:
+                    if final_remaining == 0 and has_payment_data:
+                        # If reservation is already settled, any payment info is unexpected
+                        raise ValidationError('این رزرو قبلاً تسویه شده است. پرداخت اضافی ثبت نشود.')
+
+                    form.validate_payment_amount(final_remaining)
+
+                    # Record the payment transaction
+                    PaymentService.record_balance_payment(
+                        reservation=reservation,
+                        amount=amount,
+                        created_by=request.user,
+                        payment_method=method,
+                        external_reference=code,
+                        note='پرداخت نهایی در تحویل ثبت شد (شامل هزینه‌های جانبی)',
+                        transaction_date=timezone.now()
+                    )
+
+                # Change status to DELIVERED
+                ReservationStatusService.change_status(reservation, ReservationStatus.DELIVERED, request.user)
+                ReservationFinancialService.capture_financial_snapshot(reservation, 'delivered')
+                reservation.save()
+                return JsonResponse({"success": True, "message": "لباس با موفقیت تحویل شد."})
 
         except OperationalError as e:
             if 'locked' not in str(e).lower() or attempt == 2:

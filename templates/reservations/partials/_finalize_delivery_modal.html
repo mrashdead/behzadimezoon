@@ -225,7 +225,7 @@
 
         <div class="modal-footer border-top">
           <button type="button" class="btn btn-light waves-effect" data-bs-dismiss="modal">انصراف</button>
-          <button type="submit" class="btn btn-success waves-effect waves-light">
+          <button type="submit" class="btn btn-success waves-effect waves-light" id="submitFinalizeDeliveryBtn{{ reservation.id }}">
             <i class="fi fi-rr-check me-1"></i>
             تأیید تحویل لباس
           </button>
@@ -291,6 +291,17 @@
     const numericValue = normalizeDigits(value.toString());
     const num = parseInt(numericValue, 10) || 0;
     return num.toLocaleString('fa-IR');
+  }
+
+  function setFinalizeButtonLoading(isLoading) {
+    const submitButton = form ? form.querySelector('button[type="submit"]') : null;
+    if (!submitButton) return;
+
+    submitButton.disabled = isLoading;
+    submitButton.classList.toggle('disabled', isLoading);
+    submitButton.innerHTML = isLoading
+      ? '<span class="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true"></span>در حال پردازش...'
+      : '<i class="fi fi-rr-check me-1"></i>تأیید تحویل لباس';
   }
 
   function showToast(type, message) {
@@ -614,6 +625,7 @@
       // Create FormData from form
       const formData = new FormData(form);
 
+      setFinalizeButtonLoading(true);
       console.log('Form data keys:', Array.from(formData.keys()));
 
       fetch(finalizationUrl, {
@@ -653,6 +665,9 @@
       .catch(error => {
         console.error('Fetch error:', error);
         showToast('error', 'خطا در ارتباط با سرور: ' + error.message);
+      })
+      .finally(() => {
+        setFinalizeButtonLoading(false);
       });
     });
   } else {

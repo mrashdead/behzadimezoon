@@ -67,16 +67,16 @@ class TransactionService:
             raise ValueError("مبلغ تراکنش باید عددی صفر یا مثبت باشد.")
 
         if not account:
-            account = FinancialAccount.objects.filter(account_type=FinancialAccount.AccountType.CASH).first()
-            if not account:
-                account = FinancialAccount.objects.create(
-                    code='CASH_DEFAULT',
-                    name='Default Cash Account',
-                    account_type=FinancialAccount.AccountType.CASH,
-                    balance=0,
-                    description='Default cash account created automatically.',
-                    is_active=True,
-                )
+            account, created = FinancialAccount.objects.get_or_create(
+                code='CASH_DEFAULT',
+                defaults={
+                    'name': 'Default Cash Account',
+                    'account_type': FinancialAccount.AccountType.CASH,
+                    'balance': 0,
+                    'description': 'Default cash account created automatically.',
+                    'is_active': True,
+                }
+            )
 
         transaction_date = transaction_date or timezone.now()
         payment_reference = payment_reference or external_reference or ''

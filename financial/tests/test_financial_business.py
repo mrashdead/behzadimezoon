@@ -11,7 +11,7 @@ import jdatetime
 
 from accounts.models import User
 from customers.models import Customer
-from financial.models import CancellationRecord, DamageRecord, Guarantee, Transaction
+from financial.models import CancellationRecord, DamageRecord, Guarantee, Transaction, FinancialAccount
 from unittest.mock import patch
 from financial.services import (
     CancellationService,
@@ -97,6 +97,27 @@ class FinancialBusinessTests(TestCase):
         recent_ids = [item.pk for item in context['recent_reservations']]
         self.assertIn(reservation_in_range.pk, recent_ids)
         self.assertNotIn(other_reservation.pk, recent_ids)
+
+    def test_default_cash_account_is_reused_when_already_present(self):
+        FinancialAccount.objects.create(
+            code='CASH_DEFAULT',
+            name='Existing Cash Account',
+            account_type=FinancialAccount.AccountType.CASH,
+            balance=0,
+            description='existing',
+            is_active=True,
+        )
+        reservation = self.create_reservation(deposit_amount=0, remaining_payment_amount=0, final_price=100000, remaining_amount=100000)
+
+        tx = TransactionService.create(
+            reservation=reservation,
+            transaction_type=Transaction.TransactionType.DEPOSIT,
+            amount=1000,
+            created_by=self.admin,
+        )
+
+        self.assertEqual(tx.account.code, 'CASH_DEFAULT')
+        self.assertEqual(FinancialAccount.objects.filter(code='CASH_DEFAULT').count(), 1)
 
     def test_deposit_and_final_settlement_updates_reservation_balance(self):
         reservation = self.create_reservation(deposit_amount=0, remaining_payment_amount=0, final_price=100000, remaining_amount=100000)

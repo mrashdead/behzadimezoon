@@ -4,7 +4,7 @@ import jdatetime
 
 from accounts.models import User
 from customers.models import Customer
-from financial.models import CancellationRecord, DamageRecord
+from financial.models import CancellationRecord, DamageRecord, Transaction
 from products.models import Dress
 from reservations.models import Reservation, AdditionalFee
 from reservations.constants import ReservationStatus
@@ -1401,6 +1401,38 @@ class RemainingPaymentTests(TestCase):
         self.assertTrue(data['success'])
         self.assertEqual(data['new_remaining'], 3000000)
         self.assertEqual(reservation.additional_fees.count(), 1)
+
+    def test_duplicate_finalize_request_for_already_delivered_reservation_is_idempotent(self):
+        """Repeated finalize requests for an already delivered reservation should be harmless."""
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.DELIVERED,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=100000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=0,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.manager
+        )
+
+        self.client.login(username='manager_user', password='password123')
+        finalize_url = reverse('reservations:finalize_delivery', args=[reservation.pk])
+
+        response = self.client.post(finalize_url, {}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertJSONEqual(response.content, {
+            "success": True,
+            "message": "رزرو قبلاً تحویل شده است."
+        })
+        self.assertEqual(reservation.transactions.count(), 0)
 
     def test_permission_check_on_remaining_payment(self):
         """Test that only authorized users can register remaining payment"""
