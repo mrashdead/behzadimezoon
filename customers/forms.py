@@ -53,6 +53,7 @@ HOW_TO_KNOW_CHOICES = [
     ('تشریفات عروس', 'تشریفات عروس'),
     ('گروه موسیقی', 'گروه موسیقی'),
     ('سایر', 'سایر'),
+    ('ندارد', 'ندارد'),
 ]
 
 REQUESTED_SERVICE_CHOICES = [
@@ -120,11 +121,18 @@ class CustomerForm(forms.ModelForm):
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'}),
     )
+
     preferred_consultant = forms.ChoiceField(
         label='مشاور ترجیحی',
         choices=[('', 'انتخاب کنید')] + PREFERRED_CONSULTANT_CHOICES,
         required=False,
         widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+
+    preferred_consultant_name = forms.CharField(
+        label='نام مشاور ترجیحی',
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control', 'placeholder': 'نام مشاور ترجیحی'}),
     )
 
     class Meta:
@@ -144,7 +152,6 @@ class CustomerForm(forms.ModelForm):
             "studio_name": forms.TextInput(attrs={"class": "form-control", "placeholder": "نام آتلیه"}),
             "music_band": forms.TextInput(attrs={"class": "form-control", "placeholder": "گروه موسیقی"}),
             "customer_note": forms.Textarea(attrs={"class": "form-control", "rows": 4, "placeholder": "یادداشت مشتری"}),
-            "allow_contact": forms.CheckboxInput(attrs={"class": "form-check-input"}),
         }
 
     def __init__(self, *args, **kwargs):
@@ -180,6 +187,8 @@ class CustomerForm(forms.ModelForm):
                 self.initial['estimated_budget'] = self.instance.estimated_budget
             if self.instance.preferred_consultant:
                 self.initial['preferred_consultant'] = self.instance.preferred_consultant
+            if self.instance.preferred_consultant_name:
+                self.initial['preferred_consultant_name'] = self.instance.preferred_consultant_name
 
     def clean_ceremony_date(self):
         raw_value = self.data.get('ceremony_date') or self.cleaned_data.get('ceremony_date')

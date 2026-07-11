@@ -60,6 +60,7 @@
                         <option value="تشریفات عروس">تشریفات عروس</option>
                         <option value="گروه موسیقی">گروه موسیقی</option>
                         <option value="سایر">سایر</option>
+                        <option value="ندارد">ندارد</option>
                       </select>
                     </div>
                     <div class="col-md-6" id="how_to_know_detail_group">
@@ -102,7 +103,7 @@
                     </div>
                     <div class="col-md-6">
                       <label for="id_groom_phone" class="form-label">شماره تماس داماد</label>
-                      <input type="text" name="groom_phone" id="id_groom_phone" class="form-control" />
+                      <input type="text" name="groom_phone" id="id_groom_phone" class="form-control" maxlength="11" inputmode="numeric" pattern="\d{11}" placeholder="مثال: 09121234567" />
                     </div>
                   </div>
                 </div>
@@ -159,6 +160,10 @@
                         <option value="مشاور زیبایی">مشاور زیبایی</option>
                         <option value="مشاوره کامل">مشاوره کامل</option>
                       </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="id_preferred_consultant_name" class="form-label">نام مشاور ترجیحی</label>
+                      <input type="text" name="preferred_consultant_name" id="id_preferred_consultant_name" class="form-control" placeholder="نام مشاور ترجیحی" />
                     </div>
                     <div class="col-md-6">
                       <label for="id_estimated_budget" class="form-label">بودجه تقریبی</label>

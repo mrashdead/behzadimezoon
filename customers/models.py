@@ -97,6 +97,12 @@ class Customer(models.Model):
         verbose_name="ترجیح می‌دهم مشاوره من توسط:"
     )
 
+    preferred_consultant_name = models.CharField(
+        max_length=100,
+        blank=True,
+        verbose_name="نام مشاور ترجیحی"
+    )
+
     guest_count = models.PositiveIntegerField(
         blank=True,
         null=True,

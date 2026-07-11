@@ -49,7 +49,7 @@
                       {% if customer.allow_contact %}
                         <span class="badge bg-success-subtle text-success">بله</span>
                       {% else %}
-                        <span class="badge bg-secondary-subtle text-secondary">خیر</span>
+                        <span class="badge bg-secondary-subtle text-secondary">ندارد</span>
                       {% endif %}
                     </div>
                   </div>
@@ -114,6 +114,10 @@
                   <div class="col-md-6">
                     <div class="small text-muted mb-1">مشاور ترجیحی</div>
                     <div class="fw-semibold">{{ customer.preferred_consultant|default:"-" }}</div>
+                  </div>
+                  <div class="col-md-6">
+                    <div class="small text-muted mb-1">نام مشاور ترجیحی</div>
+                    <div class="fw-semibold">{{ customer.preferred_consultant_name|default:"-" }}</div>
                   </div>
                   <div class="col-md-6">
                     <div class="small text-muted mb-1">خدمات جانبی</div>

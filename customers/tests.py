@@ -88,6 +88,36 @@ class CustomerSelectionFieldTests(TestCase):
         self.assertTrue(form.is_valid(), form.errors)
         self.assertEqual(form.cleaned_data['preferred_consultant'], 'مشاوره کامل')
 
+    def test_preferred_consultant_name_is_optional(self):
+        form = CustomerForm(
+            data={
+                'bride_first_name': 'مریم',
+                'bride_last_name': 'احمدی',
+                'bride_phone': '09121234567',
+                'ceremony_date': '۱۴۰۵/۰۳/۲۴',
+                'how_to_know': 'اینستاگرام',
+                'preferred_consultant': 'مشاوره کامل',
+                'preferred_consultant_name': '',
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['preferred_consultant_name'], '')
+
+    def test_how_to_know_can_be_set_to_no_contact(self):
+        form = CustomerForm(
+            data={
+                'bride_first_name': 'مریم',
+                'bride_last_name': 'احمدی',
+                'bride_phone': '09121234567',
+                'ceremony_date': '۱۴۰۵/۰۳/۲۴',
+                'how_to_know': 'ندارد',
+            }
+        )
+
+        self.assertTrue(form.is_valid(), form.errors)
+        self.assertEqual(form.cleaned_data['how_to_know'], 'ندارد')
+
     def test_how_to_know_detail_property_extracts_the_detail_value(self):
         customer = Customer.objects.create(
             bride_first_name='مریم',

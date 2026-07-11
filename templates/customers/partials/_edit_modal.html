@@ -61,6 +61,7 @@
                         <option value="تشریفات عروس" {% if customer.how_to_know_option == 'تشریفات عروس' %}selected{% endif %}>تشریفات عروس</option>
                         <option value="گروه موسیقی" {% if customer.how_to_know_option == 'گروه موسیقی' %}selected{% endif %}>گروه موسیقی</option>
                         <option value="سایر" {% if customer.how_to_know_option == 'سایر' %}selected{% endif %}>سایر</option>
+                        <option value="ندارد" {% if customer.how_to_know == 'ندارد' %}selected{% endif %}>ندارد</option>
                       </select>
                     </div>
                     <div class="col-md-6" id="how_to_know_detail_group_{{ customer.id }}">
@@ -103,7 +104,7 @@
                     </div>
                     <div class="col-md-6">
                       <label for="id_groom_phone_{{ customer.id }}" class="form-label">شماره تماس داماد</label>
-                      <input type="text" name="groom_phone" id="id_groom_phone_{{ customer.id }}" class="form-control" value="{{ customer.groom_phone|default:'' }}" />
+                      <input type="text" name="groom_phone" id="id_groom_phone_{{ customer.id }}" class="form-control" value="{{ customer.groom_phone|default:'' }}" maxlength="11" inputmode="numeric" pattern="\d{11}" placeholder="مثال: 09121234567" />
                     </div>
                   </div>
                 </div>
@@ -160,6 +161,10 @@
                         <option value="مشاور زیبایی" {% if customer.preferred_consultant == 'مشاور زیبایی' %}selected{% endif %}>مشاور زیبایی</option>
                         <option value="مشاوره کامل" {% if customer.preferred_consultant == 'مشاوره کامل' %}selected{% endif %}>مشاوره کامل</option>
                       </select>
+                    </div>
+                    <div class="col-md-6">
+                      <label for="id_preferred_consultant_name_{{ customer.id }}" class="form-label">نام مشاور ترجیحی</label>
+                      <input type="text" name="preferred_consultant_name" id="id_preferred_consultant_name_{{ customer.id }}" class="form-control" value="{{ customer.preferred_consultant_name|default:'' }}" placeholder="نام مشاور ترجیحی" />
                     </div>
                     <div class="col-md-6">
                       <label for="id_estimated_budget_{{ customer.id }}" class="form-label">بودجه تقریبی</label>
