@@ -42,12 +42,13 @@
     </div>
 
     <form method="get" class="row g-3 mt-2 align-items-end" id="reportFilterForm">
-      <input type="hidden" name="date_from" id="dateFromHidden" value="{{ date_from_value }}">
-      <input type="hidden" name="date_to" id="dateToHidden" value="{{ date_to_value }}">
-
-      <div class="col-md-4">
-        <label class="form-label small text-muted">بازه زمانی</label>
-        <input type="text" class="form-control form-control-sm p-date-range" id="dateRangeInput" placeholder="از تاریخ - تا تاریخ" autocomplete="off">
+      <div class="col-md-3">
+        <label class="form-label small text-muted">از تاریخ</label>
+        <input type="text" class="form-control form-control-sm p-date-only" id="dateFromInput" name="date_from" value="{{ date_from_value }}" placeholder="انتخاب تاریخ شروع" autocomplete="off">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label small text-muted">تا تاریخ</label>
+        <input type="text" class="form-control form-control-sm p-date-only" id="dateToInput" name="date_to" value="{{ date_to_value }}" placeholder="انتخاب تاریخ پایان" autocomplete="off">
       </div>
       <div class="col-md-3">
         <label class="form-label small text-muted">فروشنده</label>
@@ -496,47 +497,26 @@
       chart.render();
     }
 
-    // Initialize date range picker
-    const dateRangeInput = document.getElementById('dateRangeInput');
-    const dateFromHidden = document.getElementById('dateFromHidden');
-    const dateToHidden = document.getElementById('dateToHidden');
-    const reportFilterForm = document.getElementById('reportFilterForm');
+    // Initialize separate Persian date pickers for the report filter form
+    const dateFromInput = document.getElementById('dateFromInput');
+    const dateToInput = document.getElementById('dateToInput');
 
-    if (dateRangeInput) {
-      // Build initial value from hidden inputs
-      const dateFrom = dateFromHidden?.value;
-      const dateTo = dateToHidden?.value;
-      if (dateFrom && dateTo) {
-        dateRangeInput.value = dateFrom + ' - ' + dateTo;
-      }
+    [dateFromInput, dateToInput].forEach(function (input) {
+      if (!input) return;
 
-      // Initialize Persian date range picker
-      $(dateRangeInput).persianDatepicker({
-        format: "YYYY/MM/DD",
-        autoClose: false,
-        range: true,
-        onSelect: function(dates) {
-          if (dates && dates.length >= 2) {
-            dateFromHidden.value = dates[0];
-            dateToHidden.value = dates[1];
-          }
-        }
+      $(input).persianDatepicker({
+        format: 'YYYY/MM/DD',
+        autoClose: true,
+        initialValue: false,
+        onlySelectOnDate: true,
+        observer: true,
+        calendar: {
+          persian: {
+            locale: 'fa',
+          },
+        },
       });
-    }
-
-    // Handle form submission to ensure dates are populated
-    if (reportFilterForm) {
-      reportFilterForm.addEventListener('submit', function(e) {
-        const dateRange = dateRangeInput?.value || '';
-        if (dateRange && dateRange.includes(' - ')) {
-          const parts = dateRange.split(' - ');
-          if (parts.length === 2) {
-            dateFromHidden.value = parts[0].trim();
-            dateToHidden.value = parts[1].trim();
-          }
-        }
-      });
-    }
+    });
   });
 </script>
 {% endblock %}

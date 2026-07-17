@@ -26,8 +26,10 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ["185.8.172.33", "127.0.0.1", "localhost", "testserver"]
+ALLOWED_HOSTS = ["juliette.ir","www.juliette.ir","185.8.172.33","127.0.0.1","localhost", "testserver"]
 CSRF_TRUSTED_ORIGINS = [
+    "https://juliette.ir/",
+    "https://www.juliette.ir/",
     "http://185.8.172.33",
     "http://127.0.0.1",
     "http://localhost",
@@ -154,6 +156,7 @@ USE_TZ = True
 
 
 STATIC_URL = '/static/'
+STATIC_ROOT = "/var/www/behzadimezoon/static/"
 STATICFILES_DIRS = [BASE_DIR / 'static']
 
 MEDIA_URL = '/media/'
@@ -166,8 +169,8 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 # Session & cookie hardening (sensible defaults; in production DEBUG=False these become secure)
 SESSION_COOKIE_HTTPONLY = True
-SESSION_COOKIE_SECURE = not DEBUG
-CSRF_COOKIE_SECURE = not DEBUG
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
 SESSION_COOKIE_SAMESITE = 'Lax'
 CSRF_COOKIE_SAMESITE = 'Lax'
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False

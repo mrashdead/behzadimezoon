@@ -47,6 +47,43 @@ class ReportsIndexView(TemplateView):
         except Exception:
             return ''
 
+    def _format_jalali_date(self, value):
+        """Format a date-like value as Jalali string for the report UI."""
+        if not value:
+            return ''
+        if isinstance(value, datetime):
+            value = value.date()
+        if isinstance(value, date):
+            try:
+                return jdatetime.date.fromgregorian(date=value).strftime('%Y/%m/%d')
+            except Exception:
+                return ''
+        if isinstance(value, str):
+            parsed = self._parse_date(value)
+            if parsed:
+                return self._format_jalali_date(parsed)
+            return value.strip()
+        if hasattr(value, 'togregorian'):
+            return value.strftime('%Y/%m/%d')
+        return ''
+
+    def _coerce_datetime_filter(self, value, *, end_of_day=False):
+        """Return an aware datetime for DateTimeField filtering."""
+        if not value:
+            return None
+        if isinstance(value, datetime):
+            if timezone.is_aware(value):
+                return value
+            return timezone.make_aware(value, timezone.get_current_timezone())
+        if isinstance(value, date):
+            naive_dt = datetime.combine(value, datetime.max.time() if end_of_day else datetime.min.time())
+            return timezone.make_aware(naive_dt, timezone.get_current_timezone())
+        parsed = self._parse_date(value)
+        if parsed:
+            naive_dt = datetime.combine(parsed, datetime.max.time() if end_of_day else datetime.min.time())
+            return timezone.make_aware(naive_dt, timezone.get_current_timezone())
+        return None
+
     def _build_filter_url(self, override_params=None):
         params = {key: value for key, value in self.request.GET.items() if value}
         if override_params:
@@ -85,9 +122,9 @@ class ReportsIndexView(TemplateView):
     def _active_filter_labels(self, filters, selected_seller, selected_customer, selected_dress):
         labels = []
         if filters.get('date_from'):
-            labels.append(f"از {filters['date_from'].strftime('%Y/%m/%d')}")
+            labels.append(f"از {self._format_jalali_date(filters['date_from'])}")
         if filters.get('date_to'):
-            labels.append(f"تا {filters['date_to'].strftime('%Y/%m/%d')}")
+            labels.append(f"تا {self._format_jalali_date(filters['date_to'])}")
         if selected_seller:
             labels.append(f"فروشنده: {selected_seller}")
         if selected_customer:
@@ -121,11 +158,14 @@ class ReportsIndexView(TemplateView):
             'status': request.GET.get('status') or '',
             'payment_method': request.GET.get('payment_method') or '',
         }
+        transaction_filters = dict(filters)
+        transaction_filters['date_from'] = self._coerce_datetime_filter(filters['date_from'])
+        transaction_filters['date_to'] = self._coerce_datetime_filter(filters['date_to'], end_of_day=True)
 
         reservation_qs = self._apply_filters(Reservation.objects.filter(is_deleted=False), filters)
         transaction_qs = self._apply_filters(
             Transaction.objects.filter(transaction_status=Transaction.TransactionStatus.POSTED, is_voided=False),
-            filters,
+            transaction_filters,
             date_field='transaction_date',
             field_overrides={
                 'seller_id': 'reservation__created_by_id',
@@ -221,7 +261,7 @@ class ReportsIndexView(TemplateView):
         current_day = date_to
         for offset in range(trend_days):
             day = current_day - timedelta(days=trend_days - 1 - offset)
-            labels.append(day.strftime('%Y/%m/%d'))
+            labels.append(self._format_jalali_date(day))
             day_reservations = reservation_qs.filter(start_date=day)
             revenue_series.append(day_reservations.aggregate(total=Sum('final_price'))['total'] or 0)
             reservation_series.append(day_reservations.count())
@@ -263,15 +303,53 @@ class ReportsIndexView(TemplateView):
 
         context['page_title'] = 'گزارش‌های عملیاتی'
         context['filters'] = filters
-        context['date_from_value'] = request.GET.get('date_from') or self._gregorian_to_jalali(date_from)
-        context['date_to_value'] = request.GET.get('date_to') or self._gregorian_to_jalali(date_to)
+        context['date_from_value'] = self._format_jalali_date(request.GET.get('date_from') or date_from)
+        context['date_to_value'] = self._format_jalali_date(request.GET.get('date_to') or date_to)
         context['active_filter_labels'] = self._active_filter_labels(filters, selected_seller, selected_customer, selected_dress)
+
+        def _jalali_week_bounds(base_date):
+            week_start = base_date - timedelta(days=base_date.weekday())
+            week_end = week_start + timedelta(days=6)
+            return week_start, week_end
+
+        def _jalali_month_bounds(base_date):
+            month_start = jdatetime.date(base_date.year, base_date.month, 1)
+            if base_date.month == 12:
+                month_end = jdatetime.date(base_date.year + 1, 1, 1) - timedelta(days=1)
+            else:
+                month_end = jdatetime.date(base_date.year, base_date.month + 1, 1) - timedelta(days=1)
+            return month_start, month_end
+
+        def _jalali_year_bounds(base_date):
+            year_start = jdatetime.date(base_date.year, 1, 1)
+            year_end = jdatetime.date(base_date.year + 1, 1, 1) - timedelta(days=1)
+            return year_start, year_end
+
+        today_jalali = jdatetime.date.fromgregorian(date=today)
+        this_week_start, this_week_end = _jalali_week_bounds(today_jalali)
+        this_month_start, this_month_end = _jalali_month_bounds(today_jalali)
+        this_year_start, this_year_end = _jalali_year_bounds(today_jalali)
+
+        if today_jalali.month == 12:
+            next_month_start = jdatetime.date(today_jalali.year + 1, 1, 1)
+            next_month_end = jdatetime.date(today_jalali.year + 1, 2, 1) - timedelta(days=1)
+        else:
+            next_month_start = jdatetime.date(today_jalali.year, today_jalali.month + 1, 1)
+            next_month_end = jdatetime.date(today_jalali.year, today_jalali.month + 2, 1) - timedelta(days=1) if today_jalali.month < 11 else jdatetime.date(today_jalali.year + 1, 1, 1) - timedelta(days=1)
+
+        if today_jalali.month > 3:
+            three_month_start = jdatetime.date(today_jalali.year, today_jalali.month - 3, 1)
+        else:
+            three_month_start = jdatetime.date(today_jalali.year - 1, today_jalali.month + 9, 1)
+
         context['date_presets'] = [
             {'label': 'امروز', 'url': self._build_filter_url({'date_from': today.strftime('%Y-%m-%d'), 'date_to': today.strftime('%Y-%m-%d')})},
-            {'label': 'این هفته', 'url': self._build_filter_url({'date_from': (today - timedelta(days=6)).strftime('%Y-%m-%d'), 'date_to': today.strftime('%Y-%m-%d')})},
-            {'label': 'این ماه', 'url': self._build_filter_url({'date_from': today.replace(day=1).strftime('%Y-%m-%d'), 'date_to': today.strftime('%Y-%m-%d')})},
-            {'label': '۳ ماه اخیر', 'url': self._build_filter_url({'date_from': (today.replace(year=today.year if today.month > 3 else today.year - 1, month=today.month - 3 if today.month > 3 else today.month + 9)).strftime('%Y-%m-%d'), 'date_to': today.strftime('%Y-%m-%d')})},
-            {'label': 'سال جاری', 'url': self._build_filter_url({'date_from': date(today.year, 1, 1).strftime('%Y-%m-%d'), 'date_to': today.strftime('%Y-%m-%d')})},
+            {'label': 'این هفته', 'url': self._build_filter_url({'date_from': this_week_start.togregorian().strftime('%Y-%m-%d'), 'date_to': this_week_end.togregorian().strftime('%Y-%m-%d')})},
+            {'label': 'هفته آینده', 'url': self._build_filter_url({'date_from': (this_week_start + timedelta(days=7)).togregorian().strftime('%Y-%m-%d'), 'date_to': (this_week_end + timedelta(days=7)).togregorian().strftime('%Y-%m-%d')})},
+            {'label': 'این ماه', 'url': self._build_filter_url({'date_from': this_month_start.togregorian().strftime('%Y-%m-%d'), 'date_to': this_month_end.togregorian().strftime('%Y-%m-%d')})},
+            {'label': 'ماه آینده', 'url': self._build_filter_url({'date_from': next_month_start.togregorian().strftime('%Y-%m-%d'), 'date_to': next_month_end.togregorian().strftime('%Y-%m-%d')})},
+            {'label': '۳ ماه اخیر', 'url': self._build_filter_url({'date_from': three_month_start.togregorian().strftime('%Y-%m-%d'), 'date_to': today.strftime('%Y-%m-%d')})},
+            {'label': 'سال جاری', 'url': self._build_filter_url({'date_from': this_year_start.togregorian().strftime('%Y-%m-%d'), 'date_to': this_year_end.togregorian().strftime('%Y-%m-%d')})},
         ]
         context['reset_url'] = self.request.path
         context['sellers'] = User.objects.filter(is_active=True).order_by('username')
@@ -292,7 +370,7 @@ class ReportsIndexView(TemplateView):
             'damage_penalty_total': damage_penalty_total,
             'top_dress_label': f"{top_dress['dress__code']}" if top_dress else '—',
             'top_customer_label': top_customer_label,
-            'period_label': f"{date_from.strftime('%Y/%m/%d')} تا {date_to.strftime('%Y/%m/%d')}",
+            'period_label': f"{self._format_jalali_date(date_from)} تا {self._format_jalali_date(date_to)}",
         }
         context['financial_rows'] = [
             {'label': 'درآمد خالص از رزروها', 'value': month_revenue, 'hint': 'جمع مبلغ نهایی رزروها'},
