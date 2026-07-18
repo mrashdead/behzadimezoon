@@ -506,12 +506,10 @@ class Reservation(models.Model):
         if self.final_price < 0:
             self.final_price = 0
 
-        if self.remaining_payment_amount and self.remaining_payment_amount > 0:
+        paid_balance = self.remaining_payment_amount or 0
+        self.remaining_amount = self.final_price - (self.deposit_amount or 0) - paid_balance
+        if self.remaining_amount < 0:
             self.remaining_amount = 0
-        else:
-            self.remaining_amount = self.final_price - (self.deposit_amount or 0)
-            if self.remaining_amount < 0:
-                self.remaining_amount = 0
 
     def total_received_amount(self):
         return (self.deposit_amount or 0) + (self.remaining_payment_amount or 0)

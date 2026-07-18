@@ -1,4 +1,5 @@
 import json
+import warnings
 from io import BytesIO
 
 from django.core.exceptions import ValidationError
@@ -98,6 +99,82 @@ class FinancialBusinessTests(TestCase):
         self.assertIn(reservation_in_range.pk, recent_ids)
         self.assertNotIn(other_reservation.pk, recent_ids)
 
+    def test_transaction_date_filters_do_not_emit_naive_datetime_warnings(self):
+        self.create_reservation(
+            start_date=jdatetime.date(1402, 2, 1),
+            created_by=self.seller2,
+            final_price=120000,
+            remaining_amount=120000,
+        )
+
+        with warnings.catch_warnings(record=True) as caught:
+            warnings.simplefilter('always')
+            DashboardService.get_financial_context(filters={
+                'date_from': '1402/01/15',
+                'date_to': '1402/02/15',
+                'seller_id': str(self.seller2.pk),
+            })
+
+        self.assertFalse(any('received a naive datetime' in str(w.message) for w in caught))
+
+    def test_financial_export_matches_page_results_for_selected_date_range(self):
+        in_range = self.create_reservation(
+            start_date=jdatetime.date(1402, 2, 1),
+            created_by=self.seller2,
+            final_price=120000,
+            remaining_amount=120000,
+        )
+        self.create_reservation(
+            start_date=jdatetime.date(1402, 1, 1),
+            created_by=self.seller1,
+            final_price=90000,
+            remaining_amount=90000,
+        )
+
+        filters = {
+            'date_from': '1402/01/15',
+            'date_to': '1402/02/15',
+            'seller_id': str(self.seller2.pk),
+        }
+
+        self.client.login(username='seller1', password='pw')
+        page_context = DashboardService.get_financial_context(filters=filters)
+        response = self.client.get(reverse('financial:export_excel'), data=filters)
+
+        self.assertEqual(response.status_code, 200)
+        workbook = load_workbook(filename=BytesIO(response.content), read_only=True, data_only=True)
+        worksheet = workbook.active
+        exported_ids = [row[0] for row in worksheet.iter_rows(min_row=2, values_only=True) if row[0] is not None]
+
+        page_ids = [item.pk for item in page_context['recent_reservations']]
+        self.assertEqual(page_ids, exported_ids)
+        self.assertIn(in_range.pk, page_ids)
+
+    def test_financial_export_without_filters_returns_all_reservations(self):
+        reservation1 = self.create_reservation(
+            start_date=jdatetime.date(1402, 3, 1),
+            final_price=100000,
+            remaining_amount=100000,
+        )
+        reservation2 = self.create_reservation(
+            start_date=jdatetime.date(1402, 3, 10),
+            final_price=150000,
+            remaining_amount=150000,
+        )
+
+        self.client.login(username='seller1', password='pw')
+        response = self.client.get(reverse('financial:export_excel'))
+
+        self.assertEqual(response.status_code, 200)
+        workbook = load_workbook(filename=BytesIO(response.content), read_only=True, data_only=True)
+        worksheet = workbook.active
+        exported_ids = [row[0] for row in worksheet.iter_rows(min_row=2, values_only=True) if row[0] is not None]
+
+        total_reservations = Reservation.objects.filter(is_deleted=False).count()
+        self.assertEqual(len(exported_ids), total_reservations)
+        self.assertIn(reservation1.pk, exported_ids)
+        self.assertIn(reservation2.pk, exported_ids)
+
     def test_default_cash_account_is_reused_when_already_present(self):
         FinancialAccount.objects.create(
             code='CASH_DEFAULT',
@@ -163,6 +240,25 @@ class FinancialBusinessTests(TestCase):
         with self.assertRaises(ValidationError):
             ReservationFinancialService.validate_discount(reservation)
 
+    def test_partial_payment_status_after_discount_and_deposit(self):
+        custom_dress = Dress.objects.create(code='D002', daily_rent_price=35000)
+        reservation = self.create_reservation(
+            dress=custom_dress,
+            rent_price=35000,
+            discount_type='AMOUNT',
+            discount_value=7000,
+            discount_amount=7000,
+            final_price=28000,
+            deposit_amount=20000,
+            remaining_payment_amount=0,
+            remaining_amount=8000,
+        )
+
+        ReservationFinancialService.update_financial_status(reservation)
+
+        self.assertEqual(reservation.remaining_amount, 8000)
+        self.assertEqual(reservation.payment_status, Reservation.PAYMENT_PARTIAL)
+
     def test_dashboard_totals_include_additional_fee_revenue(self):
         reservation = self.create_reservation(final_price=100000, remaining_amount=100000)
         AdditionalFee.objects.create(reservation=reservation, title='اتوکشی', amount=15000, created_by=self.admin)
@@ -196,50 +292,74 @@ class FinancialBusinessTests(TestCase):
 
         self.assertEqual(response.status_code, 200)
         workbook = load_workbook(filename=BytesIO(response.content), read_only=True, data_only=True)
-        worksheet = workbook.active
+        worksheet = workbook['رزروها']
         headers = [cell.value for cell in next(worksheet.iter_rows(min_row=1, max_row=1))]
 
-        expected_headers = [
-            'شناسه رزرو',
-            'ثبت کننده',
-            'ویرایش کننده',
-            'آرشیو کننده',
-            'مشتری',
-            'نام عروس',
-            'نام خانوادگی عروس',
-            'تلفن عروس',
-            'تاریخ مراسم مشتری',
-            'نحوه آشنایی',
-            'کد لباس',
-            'قیمت روزانه لباس',
-            'تاریخ شروع',
-            'تاریخ پایان',
-            'تاریخ تحویل',
-            'تاریخ مراسم',
-            'روزهای اجاره',
-            'وضعیت رزرو',
-            'وضعیت قبلی',
-            'وضعیت پرداخت',
-            'روش پرداخت',
-            'کد رهگیری پرداخت',
-            'روش پرداخت باقی‌مانده',
-            'کد رهگیری پرداخت باقی‌مانده',
-            'تاریخ پرداخت باقی‌مانده',
-            'هزینه اجاره',
-            'نوع تخفیف',
-            'میزان تخفیف',
-            'مبلغ تخفیف',
-            'مبلغ نهایی',
-            'بیعانه',
-            'باقی‌مانده',
-            'جمع هزینه‌های جانبی',
-            'جزئیات هزینه‌های جانبی',
-            'مبلغ مرجوعی',
-            'هزینه لغو',
-            'آسیب؟',
-        ]
+        self.assertIn('شناسه رزرو', headers)
+        self.assertIn('تخفیف', headers)
+        self.assertIn('مبلغ نهایی', headers)
+        self.assertIn('بیعانه', headers)
+        self.assertIn('باقی‌مانده', headers)
+        self.assertIn('هزینه لغو', headers)
+        self.assertNotIn('نام عروس', headers)
 
-        self.assertEqual(headers, expected_headers)
+    def test_excel_export_creates_summary_and_transaction_sheets_for_accounting_variant(self):
+        self.create_reservation(final_price=100000, remaining_amount=100000, deposit_amount=50000)
+        self.client.login(username='seller1', password='pw')
+        response = self.client.get(reverse('financial:export_excel'), data={'variant': 'accounting'})
+
+        self.assertEqual(response.status_code, 200)
+        workbook = load_workbook(filename=BytesIO(response.content), read_only=True, data_only=True)
+
+        self.assertEqual(set(workbook.sheetnames), {'خلاصه', 'رزروها', 'تراکنش‌ها', 'بازرسی مهاجرت'})
+        self.assertIn('خلاصه', workbook.sheetnames)
+        self.assertIn('تراکنش‌ها', workbook.sheetnames)
+        self.assertIn('بازرسی مهاجرت', workbook.sheetnames)
+
+    def test_excel_export_summary_sheet_has_executive_layout(self):
+        self.create_reservation(final_price=100000, remaining_amount=100000, deposit_amount=50000)
+        self.client.login(username='seller1', password='pw')
+        response = self.client.get(reverse('financial:export_excel'), data={'variant': 'accounting'})
+
+        self.assertEqual(response.status_code, 200)
+        workbook = load_workbook(filename=BytesIO(response.content), read_only=True, data_only=True)
+        summary_sheet = workbook['خلاصه']
+
+        self.assertEqual(summary_sheet['A1'].value, 'خلاصه مدیریتی')
+        self.assertEqual(summary_sheet['A3'].value, 'متریک')
+        self.assertEqual(summary_sheet['B3'].value, 'ارزش')
+
+    def test_excel_export_translates_values_and_headers_to_persian(self):
+        self.create_reservation(
+            final_price=100000,
+            remaining_amount=100000,
+            payment_status=Reservation.PAYMENT_PAID,
+            payment_method='CASH',
+            status=ReservationStatus.CONFIRMED,
+        )
+        self.client.login(username='seller1', password='pw')
+        response = self.client.get(reverse('financial:export_excel'), data={'variant': 'accounting'})
+
+        self.assertEqual(response.status_code, 200)
+        workbook = load_workbook(filename=BytesIO(response.content), read_only=True, data_only=True)
+
+        reservation_headers = [cell.value for cell in next(workbook['رزروها'].iter_rows(min_row=1, max_row=1))]
+        self.assertEqual(reservation_headers.count('وضعیت'), 1)
+        self.assertNotIn('Unnamed: 1', reservation_headers)
+
+        audit_headers = [cell.value for cell in next(workbook['بازرسی مهاجرت'].iter_rows(min_row=1, max_row=1))]
+        self.assertIn('شناسه', audit_headers)
+        self.assertIn('تاریخ ایجاد', audit_headers)
+        self.assertIn('شناسه تراکنش', audit_headers)
+        self.assertNotIn('Unnamed: 1', audit_headers)
+
+        status_idx = reservation_headers.index('وضعیت')
+        payment_status_idx = reservation_headers.index('وضعیت پرداخت')
+        payment_method_idx = reservation_headers.index('روش پرداخت')
+        first_row = next(workbook['رزروها'].iter_rows(min_row=2, max_row=2))
+        self.assertEqual(first_row[status_idx].value, 'تایید شده')
+        self.assertEqual(first_row[payment_status_idx].value, 'پرداخت کامل')
+        self.assertEqual(first_row[payment_method_idx].value, 'نقدی')
 
     def test_penalty_payments_are_recorded_and_counted_as_revenue(self):
         reservation = self.create_reservation(final_price=100000, remaining_amount=100000)
@@ -298,11 +418,121 @@ class FinancialBusinessTests(TestCase):
         self.assertTrue(response.json()['success'])
         self.assertEqual(reservation.cancellation_fee_paid_amount, 15000)
 
+    def test_penalty_payment_accepts_cash_payment_without_tracking_code(self):
+        reservation = self.create_reservation(
+            created_by=self.seller1,
+            final_price=100000,
+            remaining_amount=100000,
+            cancellation_fee=15000,
+            status=ReservationStatus.CANCELLED,
+        )
+
+        self.client.login(username='seller1', password='pw')
+        response = self.client.post(
+            reverse('reservations:penalty_payment', args=[reservation.pk]),
+            {
+                'penalty_type': 'CANCELLATION',
+                'penalty_amount': '15000',
+                'penalty_payment_method': PaymentMethod.CASH,
+                'penalty_payment_tracking_code': '',
+            },
+            content_type='application/x-www-form-urlencoded',
+        )
+
+        reservation.refresh_from_db()
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'])
+        self.assertEqual(reservation.cancellation_fee_paid_amount, 15000)
+
+    def test_penalty_payment_uses_cancellation_record_when_reservation_fee_field_is_empty(self):
+        reservation = self.create_reservation(
+            final_price=100000,
+            remaining_amount=100000,
+            status=ReservationStatus.CANCELLED,
+        )
+        CancellationRecord.objects.create(
+            reservation=reservation,
+            reason='Customer cancelled',
+            cancelled_by=self.admin,
+            penalty_amount=15000,
+            refund_amount=0,
+        )
+        reservation.cancellation_fee = None
+        reservation.cancellation_fee_paid_amount = 0
+        reservation.save(update_fields=['cancellation_fee', 'cancellation_fee_paid_amount'])
+
+        state = PaymentService.get_penalty_payment_state(reservation, 'CANCELLATION')
+
+        self.assertTrue(state['is_allowed'])
+        self.assertEqual(state['remaining_amount'], 15000)
+
+    def test_penalty_payment_requires_a_recorded_cancellation_penalty(self):
+        reservation = self.create_reservation(
+            final_price=100000,
+            remaining_amount=100000,
+            status=ReservationStatus.CONFIRMED,
+        )
+
+        with self.assertRaises(ValidationError):
+            PaymentService.record_penalty_payment(
+                reservation=reservation,
+                amount=15000,
+                penalty_type='CANCELLATION',
+                created_by=self.admin,
+                payment_method=PaymentMethod.CASH,
+                external_reference='PEN-INVALID-STATUS',
+                note='Invalid penalty test',
+            )
+
+    def test_penalty_payment_rejects_duplicate_payment_when_full_amount_is_already_paid(self):
+        reservation = self.create_reservation(
+            final_price=100000,
+            remaining_amount=100000,
+            cancellation_fee=15000,
+            cancellation_fee_paid_amount=15000,
+            status=ReservationStatus.CANCELLED,
+        )
+
+        with self.assertRaises(ValidationError):
+            PaymentService.record_penalty_payment(
+                reservation=reservation,
+                amount=15000,
+                penalty_type='CANCELLATION',
+                created_by=self.admin,
+                payment_method=PaymentMethod.CASH,
+                external_reference='PEN-DUPLICATE',
+                note='Duplicate payment test',
+            )
+
+    def test_penalty_payment_records_transaction_and_updates_paid_amounts(self):
+        reservation = self.create_reservation(
+            final_price=100000,
+            remaining_amount=100000,
+            cancellation_fee=15000,
+            status=ReservationStatus.CANCELLED,
+        )
+
+        tx = PaymentService.record_penalty_payment(
+            reservation=reservation,
+            amount=15000,
+            penalty_type='CANCELLATION',
+            created_by=self.admin,
+            payment_method=PaymentMethod.CASH,
+            external_reference='PEN-OK',
+            note='Valid payment test',
+        )
+
+        reservation.refresh_from_db()
+        self.assertEqual(tx.transaction_type, Transaction.TransactionType.PENALTY_INCOME)
+        self.assertEqual(reservation.cancellation_fee_paid_amount, 15000)
+        self.assertEqual(Transaction.objects.filter(reservation=reservation, transaction_type=Transaction.TransactionType.PENALTY_INCOME).count(), 1)
+
     def test_penalty_payment_retries_after_transient_database_lock(self):
         reservation = self.create_reservation(
             final_price=100000,
             remaining_amount=100000,
             cancellation_fee=15000,
+            status=ReservationStatus.CANCELLED,
         )
 
         original_create_transaction = TransactionService.create_transaction
@@ -380,7 +610,7 @@ class FinancialBusinessTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'هزینه‌های جانبی')
         self.assertContains(response, 'هزینه اضافی')
-        self.assertContains(response, '25000')
+        self.assertContains(response, '25,000')
 
     def test_multiple_payments_and_refund_validation(self):
         reservation = self.create_reservation(deposit_amount=0, remaining_payment_amount=0, final_price=100000, remaining_amount=100000)
@@ -702,3 +932,22 @@ class FinancialBusinessTests(TestCase):
         response = self.client.get(reverse('financial:reservation_financial', args=[reservation.pk]))
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'بهای پایه')
+
+    def test_reservation_financial_view_shows_cancellation_penalty_payment_button_for_cancelled_reservation_with_cancellation_record(self):
+        reservation = self.create_reservation(status=ReservationStatus.CONFIRMED)
+        CancellationService.create_cancellation_record(
+            reservation=reservation,
+            reason='Customer cancelled',
+            created_by=self.admin,
+            refund_amount=0,
+            penalty_amount=15000,
+            payment_method=PaymentMethod.CASH,
+            note='Penalty on cancellation',
+        )
+        reservation.refresh_from_db()
+
+        self.client.login(username='admin', password='pw')
+        response = self.client.get(reverse('financial:reservation_financial', args=[reservation.pk]))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'پرداخت مانده جریمه لغو')

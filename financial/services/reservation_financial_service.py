@@ -88,7 +88,7 @@ class ReservationFinancialService:
         reservation.final_price = ReservationFinancialService.calculate_final_price(reservation)
         reservation.remaining_amount = ReservationFinancialService.calculate_remaining_amount(reservation)
 
-        paid_cash = ReservationFinancialService.current_paid_amount(reservation)
+        paid_cash = reservation.total_received_amount()
         refunded_amount = reservation.refunded_amount or 0
         net_cash = paid_cash - refunded_amount
 
@@ -96,10 +96,12 @@ class ReservationFinancialService:
             reservation.payment_status = (
                 Reservation.PAYMENT_REFUNDED if refunded_amount > 0 else Reservation.PAYMENT_UNPAID
             )
-        elif net_cash >= (reservation.final_price or 0):
+        elif reservation.remaining_amount == 0 and (reservation.final_price or 0) > 0:
             reservation.payment_status = Reservation.PAYMENT_PAID
-        else:
+        elif net_cash > 0:
             reservation.payment_status = Reservation.PAYMENT_PARTIAL
+        else:
+            reservation.payment_status = Reservation.PAYMENT_UNPAID
 
         return reservation
 

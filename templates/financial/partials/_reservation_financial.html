@@ -208,7 +208,7 @@
                     <div class="row gy-2 mb-3">
                       <div class="col-6">
                         <div class="small text-muted">مبلغ کل جریمه</div>
-                        <div class="fw-semibold">{{ reservation.cancellation_fee|default:0|ir_currency }} تومان</div>
+                        <div class="fw-semibold">{{ cancellation_total|default:0|ir_currency }} تومان</div>
                       </div>
                       <div class="col-6">
                         <div class="small text-muted">پرداخت‌شده</div>
@@ -229,10 +229,12 @@
                       </div>
                       {% endif %}
                     </div>
-                    {% if cancellation_remaining|default:0 > 0 %}
-                      <button type="button" class="btn btn-sm btn-outline-danger w-100 open-penalty-form temporarily-disabled-action" data-reservation-id="{{ reservation.pk }}" data-penalty-type="CANCELLATION" data-remaining-amount="{{ cancellation_remaining|default:0 }}" data-action-disabled="true" aria-disabled="true" tabindex="-1" style="opacity: 0.65; cursor: not-allowed;">
+                    {% if can_pay_cancellation_penalty %}
+                      <button type="button" class="btn btn-sm btn-outline-danger w-100 open-penalty-form" data-reservation-id="{{ reservation.pk }}" data-penalty-type="CANCELLATION" data-remaining-amount="{{ cancellation_remaining|default:0 }}">
                         <i class="fi fi-rr-plus me-2"></i>پرداخت مانده جریمه لغو
                       </button>
+                    {% elif cancellation_remaining|default:0 > 0 %}
+                      <div class="text-muted small">پرداخت جریمه لغو فقط برای رزروهای لغو شده مجاز است.</div>
                     {% else %}
                       <div class="text-muted small">جریمه لغو برای این رزرو تسویه شده است.</div>
                     {% endif %}
@@ -271,10 +273,12 @@
                       </div>
                       {% endif %}
                     </div>
-                    {% if damage_remaining|default:0 > 0 %}
-                      <button type="button" class="btn btn-sm btn-outline-warning w-100 open-penalty-form temporarily-disabled-action" data-reservation-id="{{ reservation.pk }}" data-penalty-type="DAMAGE" data-remaining-amount="{{ damage_remaining|default:0 }}" data-action-disabled="true" aria-disabled="true" tabindex="-1" style="opacity: 0.65; cursor: not-allowed;">
+                    {% if can_pay_damage_penalty %}
+                      <button type="button" class="btn btn-sm btn-outline-warning w-100 open-penalty-form" data-reservation-id="{{ reservation.pk }}" data-penalty-type="DAMAGE" data-remaining-amount="{{ damage_remaining|default:0 }}">
                         <i class="fi fi-rr-plus me-2"></i>پرداخت مانده جریمه خسارت
                       </button>
+                    {% elif damage_remaining|default:0 > 0 %}
+                      <div class="text-muted small">برای این رزرو جریمه خسارت ثبت نشده یا در وضعیت قابل پرداخت نیست.</div>
                     {% else %}
                       <div class="text-muted small">جریمه خسارت برای این رزرو تسویه شده است.</div>
                     {% endif %}
@@ -428,7 +432,7 @@
                 </div>
                 <div class="mb-3">
                   <label for="penaltyPaymentRef" class="form-label">کد رهگیری پرداخت</label>
-                  <input type="text" class="form-control" id="penaltyPaymentRef" name="penalty_payment_tracking_code" required>
+                  <input type="text" class="form-control" id="penaltyPaymentRef" name="penalty_payment_tracking_code">
                 </div>
               </div>
               <div class="modal-footer">

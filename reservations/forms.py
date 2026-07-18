@@ -703,14 +703,16 @@ class PenaltyPaymentForm(forms.Form):
                 raise ValidationError("مبلغ پرداخت باید یک عدد صحیح باشد.") from exc
 
         has_amount = amount is not None and amount > 0
-        has_method = method and method != ""
-        has_code = code and code.strip() != ""
+        has_method = bool(method and method != "")
+        has_code = bool(code and code.strip() != "")
 
         if has_amount or has_method or has_code:
-            if not (has_amount and has_method and has_code):
-                raise ValidationError(
-                    "باید تمام اطلاعات پرداخت جریمه را وارد کنید یا هیچ‌کدام را وارد نکنید."
-                )
+            if not has_amount:
+                raise ValidationError("مبلغ پرداخت جریمه را وارد کنید.")
+            if not has_method:
+                raise ValidationError("روش پرداخت را انتخاب کنید.")
+            if method != PaymentMethod.CASH and not has_code:
+                raise ValidationError("برای روش پرداخت غیرنقدی باید کد رهگیری وارد شود.")
 
         cleaned_data["penalty_amount"] = amount
 

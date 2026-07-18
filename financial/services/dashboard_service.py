@@ -4,6 +4,37 @@ from django.db.models import Count, Q, Sum, Case, When, Value, BigIntegerField, 
 from django.utils import timezone
 import datetime
 
+
+def _coerce_date_filter(value):
+    if not value:
+        return None
+    if isinstance(value, datetime.datetime):
+        if timezone.is_aware(value):
+            return value
+        return timezone.make_aware(value, timezone.get_current_timezone())
+    if isinstance(value, datetime.date):
+        naive_dt = datetime.datetime.combine(value, datetime.time.min)
+        return timezone.make_aware(naive_dt, timezone.get_current_timezone())
+    if isinstance(value, str):
+        value = value.strip()
+        if not value:
+            return None
+        parsed = parse_reservation_date(value)
+        if parsed:
+            naive_dt = datetime.datetime.combine(parsed, datetime.time.min)
+            return timezone.make_aware(naive_dt, timezone.get_current_timezone())
+    return None
+
+
+def _coerce_date_range(filters):
+    if not filters:
+        return None, None
+    date_from = _coerce_date_filter(filters.get('date_from'))
+    date_to = _coerce_date_filter(filters.get('date_to'))
+    if date_from and date_to and date_from > date_to:
+        date_from, date_to = date_to, date_from
+    return date_from, date_to
+
 from financial.models import Transaction, DamageRecord, Guarantee, CancellationRecord, FinancialAccount, TransactionCategory
 from reservations.constants import ReservationStatus
 from reservations.models import AdditionalFee, Reservation
@@ -24,7 +55,9 @@ class DashboardService:
         if not value:
             return None
         if isinstance(value, datetime.datetime):
-            return value.date()
+            if timezone.is_aware(value):
+                return value.date()
+            return timezone.make_aware(value, timezone.get_current_timezone()).date()
         if isinstance(value, datetime.date):
             return value
         if isinstance(value, str):
@@ -73,12 +106,12 @@ class DashboardService:
 
         queryset = DashboardService._apply_seller_filter(queryset, filters.get('seller_id'))
 
-        date_from = DashboardService._parse_filter_date(filters.get('date_from'))
-        date_to = DashboardService._parse_filter_date(filters.get('date_to'))
+        date_from, date_to = _coerce_date_range(filters)
         if date_from:
             queryset = queryset.filter(transaction_date__gte=date_from)
         if date_to:
-            queryset = queryset.filter(transaction_date__lte=date_to)
+            end_of_day = date_to + datetime.timedelta(days=1)
+            queryset = queryset.filter(transaction_date__lt=end_of_day)
 
         return queryset
 
@@ -399,7 +432,11 @@ class DashboardService:
                 'total_cash_balance': total_cash_balance,
                 'total_deposit': total_deposit,
                 'total_remaining': total_remaining,
-                'total_damage_received': all_posted_transactions.filter(transaction_type=Transaction.TransactionType.DAMAGE_PAYMENT).aggregate(total=Sum('amount'))['total'] or 0,
+                'total_damage_received': (
+                    all_posted_transactions.filter(transaction_type=Transaction.TransactionType.DAMAGE_PAYMENT).aggregate(total=Sum('amount'))['total'] or 0
+                ) + (
+                    all_posted_transactions.filter(transaction_type=Transaction.TransactionType.PENALTY_INCOME).aggregate(total=Sum('amount'))['total'] or 0
+                ),
                 'total_cash_inflow': total_cash_inflow,
                 'total_refunded': all_posted_transactions.filter(transaction_type=Transaction.TransactionType.REFUND).aggregate(total=Sum('amount'))['total'] or 0,
                 'total_additional_fee_revenue': additional_fee_total,

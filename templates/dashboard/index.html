@@ -32,7 +32,7 @@
                             <thead class="table-light">
                                 <tr>
                                     <th>رزرو</th>
-                                    <th>نوع</th>
+                                    <th>شرح تراکنش</th>
                                     <th>مبلغ</th>
                                     <th>تاریخ</th>
                                 </tr>
@@ -41,7 +41,7 @@
                                 {% for tx in recent_transactions %}
                                 <tr>
                                     <td>{% if tx.reservation %}#{{ tx.reservation.id }}{% else %}-{% endif %}</td>
-                                    <td>{{ tx.get_type_display }}</td>
+                                    <td>{{ tx.get_transaction_type_display|default:'تراکنش' }}</td>
                                     <td>{{ tx.amount|ir_currency }}</td>
                                     <td>{{ tx.transaction_date|jformat:"%Y/%m/%d %H:%M" }}</td>
                                 </tr>

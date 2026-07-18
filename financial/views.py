@@ -16,6 +16,7 @@ from financial.services.transaction_service import TransactionService
 from financial.services.payment_service import PaymentService
 from financial.services.refund_service import RefundService
 from financial.services.dashboard_service import DashboardService
+from financial.services.export_service import FinancialExportService
 from financial.models import FinancialAccount, TransactionCategory
 from financial.forms import TransactionForm
 from reservations.models import AdditionalFee, Reservation
@@ -293,126 +294,9 @@ def export_financial_excel(request):
         'seller_id': request.GET.get('seller'),
         'ledger_mode': request.GET.get('ledger', None),
     }
-    ctx = DashboardService.get_financial_context(filters=params)
-    reservations = ctx.get('recent_reservations', [])
+    variant = request.GET.get('variant', 'management')
 
-    def format_value(value):
-        if value is None:
-            return ''
-        if hasattr(value, 'isoformat'):
-            return value.isoformat()
-        return str(value)
-
-    def get_user_label(user):
-        if not user:
-            return ''
-        return str(user)
-
-    headers = [
-        'شناسه رزرو',
-        'ثبت کننده',
-        'ویرایش کننده',
-        'آرشیو کننده',
-        'مشتری',
-        'نام عروس',
-        'نام خانوادگی عروس',
-        'تلفن عروس',
-        'تاریخ مراسم مشتری',
-        'نحوه آشنایی',
-        'کد لباس',
-        'قیمت روزانه لباس',
-        'تاریخ شروع',
-        'تاریخ پایان',
-        'تاریخ تحویل',
-        'تاریخ مراسم',
-        'روزهای اجاره',
-        'وضعیت رزرو',
-        'وضعیت قبلی',
-        'وضعیت پرداخت',
-        'روش پرداخت',
-        'کد رهگیری پرداخت',
-        'روش پرداخت باقی‌مانده',
-        'کد رهگیری پرداخت باقی‌مانده',
-        'تاریخ پرداخت باقی‌مانده',
-        'هزینه اجاره',
-        'نوع تخفیف',
-        'میزان تخفیف',
-        'مبلغ تخفیف',
-        'مبلغ نهایی',
-        'بیعانه',
-        'باقی‌مانده',
-        'جمع هزینه‌های جانبی',
-        'جزئیات هزینه‌های جانبی',
-        'مبلغ مرجوعی',
-        'هزینه لغو',
-        'آسیب؟',
-    ]
-
-    wb = Workbook()
-    ws = wb.active
-    ws.title = 'گزارش رزروها'
-    ws.sheet_view.rightToLeft = True
-    ws.append(headers)
-
-    for reservation in reservations:
-        customer = getattr(reservation, 'customer', None)
-        dress = getattr(reservation, 'dress', None)
-        row = [
-            reservation.pk,
-            get_user_label(getattr(reservation, 'created_by', None)),
-            get_user_label(getattr(reservation, 'updated_by', None)),
-            get_user_label(getattr(reservation, 'archived_by', None)),
-            str(customer) if customer else '',
-            getattr(customer, 'bride_first_name', ''),
-            getattr(customer, 'bride_last_name', ''),
-            getattr(customer, 'bride_phone', ''),
-            format_value(getattr(customer, 'ceremony_date', None)),
-            getattr(customer, 'how_to_know', ''),
-            getattr(dress, 'code', ''),
-            getattr(dress, 'daily_rent_price', ''),
-            format_value(getattr(reservation, 'start_date', None)),
-            format_value(getattr(reservation, 'end_date', None)),
-            format_value(getattr(reservation, 'delivery_date', None)),
-            format_value(getattr(reservation, 'event_date', None)),
-            getattr(reservation, 'rental_days', ''),
-            getattr(reservation, 'status', ''),
-            getattr(reservation, 'previous_status', ''),
-            getattr(reservation, 'payment_status', ''),
-            getattr(reservation, 'payment_method', ''),
-            getattr(reservation, 'payment_tracking_code', ''),
-            getattr(reservation, 'remaining_payment_method', ''),
-            getattr(reservation, 'remaining_payment_tracking_code', ''),
-            format_value(getattr(reservation, 'remaining_paid_at', None)),
-            getattr(reservation, 'rent_price', ''),
-            getattr(reservation, 'discount_type', ''),
-            getattr(reservation, 'discount_value', ''),
-            getattr(reservation, 'discount_amount', ''),
-            getattr(reservation, 'final_price', ''),
-            getattr(reservation, 'deposit_amount', ''),
-            getattr(reservation, 'remaining_amount', ''),
-            reservation.total_additional_fees() if hasattr(reservation, 'total_additional_fees') else 0,
-            '; '.join(f"{item.title}:{item.amount}" for item in reservation.active_additional_fees()) if hasattr(reservation, 'active_additional_fees') else '',
-            getattr(reservation, 'refunded_amount', ''),
-            getattr(reservation, 'cancellation_fee', ''),
-            'بله' if getattr(reservation, 'item_damaged', False) else 'خیر',
-        ]
-        ws.append(row)
-
-    for idx, column_cells in enumerate(ws.columns, 1):
-        max_length = 0
-        for cell in column_cells:
-            if cell.value is not None:
-                value = str(cell.value)
-                if len(value) > max_length:
-                    max_length = len(value)
-        adjusted_width = min(max_length + 2, 50)
-        ws.column_dimensions[get_column_letter(idx)].width = adjusted_width
-
-    ws.freeze_panes = 'A2'
-
-    output = BytesIO()
-    wb.save(output)
-    output.seek(0)
+    output = FinancialExportService.build_workbook(filters=params, variant=variant)
 
     response = HttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
     response['Content-Disposition'] = 'attachment; filename="financial_export.xlsx"'

@@ -8,7 +8,7 @@ from django.utils import timezone
 from financial.services.transaction_service import TransactionService
 from financial.services.reservation_financial_service import ReservationFinancialService
 from financial.models import FinancialAccount, TransactionCategory, Transaction
-from reservations.constants import PaymentMethod
+from reservations.constants import PaymentMethod, ReservationStatus
 from reservations.models import Reservation
 
 
@@ -17,6 +17,57 @@ class PaymentService:
     def _validate_amount(amount, label):
         if amount is None or amount < 0:
             raise ValidationError(f'مقدار {label} باید عددی صفر یا مثبت باشد.')
+
+    @staticmethod
+    def get_penalty_payment_state(reservation, penalty_type):
+        if penalty_type == 'CANCELLATION':
+            cancellation_record = getattr(reservation, 'cancellation_record', None)
+            total_penalty = reservation.cancellation_fee or 0
+            if total_penalty <= 0 and cancellation_record is not None:
+                total_penalty = cancellation_record.penalty_amount or 0
+            paid_amount = reservation.cancellation_fee_paid_amount or 0
+            remaining_amount = max(total_penalty - paid_amount, 0)
+            if total_penalty <= 0:
+                return {
+                    'is_allowed': False,
+                    'remaining_amount': 0,
+                    'message': 'برای این رزرو جریمه لغو ثبت نشده است.',
+                }
+            if remaining_amount <= 0:
+                return {
+                    'is_allowed': False,
+                    'remaining_amount': 0,
+                    'message': 'جریمه لغو قبلاً به‌طور کامل پرداخت شده است.',
+                }
+            return {
+                'is_allowed': True,
+                'remaining_amount': remaining_amount,
+                'message': '',
+            }
+
+        if penalty_type == 'DAMAGE':
+            total_penalty = reservation.damage_amount or 0
+            paid_amount = reservation.damage_fee_paid_amount or 0
+            remaining_amount = max(total_penalty - paid_amount, 0)
+            if total_penalty <= 0:
+                return {
+                    'is_allowed': False,
+                    'remaining_amount': 0,
+                    'message': 'برای این رزرو جریمه خسارت ثبت نشده است.',
+                }
+            if remaining_amount <= 0:
+                return {
+                    'is_allowed': False,
+                    'remaining_amount': 0,
+                    'message': 'جریمه خسارت قبلاً به‌طور کامل پرداخت شده است.',
+                }
+            return {
+                'is_allowed': True,
+                'remaining_amount': remaining_amount,
+                'message': '',
+            }
+
+        raise ValidationError('نوع جریمه نامعتبر است.')
 
     @staticmethod
     def _validate_payment_reference(payment_method, external_reference):
@@ -130,18 +181,33 @@ class PaymentService:
             note: یادداشت
             transaction_date: تاریخ تراکنش
         """
-        PaymentService._validate_amount(amount, 'جریمه')
         PaymentService._validate_payment_reference(payment_method, external_reference)
+
+        try:
+            amount = int(amount)
+        except (TypeError, ValueError):
+            raise ValidationError('مبلغ جریمه باید یک عدد صحیح باشد.')
+
+        if amount <= 0:
+            raise ValidationError('مبلغ جریمه باید بیشتر از صفر باشد.')
 
         transaction_date = transaction_date or timezone.now()
 
-        # Get default account and category if not provided
         if not account:
             account = FinancialAccount.objects.filter(account_type=FinancialAccount.AccountType.CASH).first()
         if not category:
             category = TransactionCategory.objects.filter(name='Penalty Income').first()
 
-        # Determine transaction type and default note based on penalty_type
+        reservation = Reservation.objects.select_for_update().get(pk=reservation.pk)
+        state = PaymentService.get_penalty_payment_state(reservation, penalty_type)
+        if not state['is_allowed']:
+            raise ValidationError(state['message'])
+
+        if amount > state['remaining_amount']:
+            raise ValidationError(
+                f'مبلغ پرداخت نمی‌تواند بیشتر از مانده جریمه ({state["remaining_amount"]:,} تومان) باشد.'
+            )
+
         if penalty_type == 'CANCELLATION':
             tx_type = Transaction.TransactionType.PENALTY_INCOME
             default_note = 'پرداخت جریمه لغو'
@@ -151,7 +217,6 @@ class PaymentService:
         else:
             raise ValidationError(f'نوع جریمه نامعتبر: {penalty_type}')
 
-        # Create transaction with a short retry for transient SQLite lock errors.
         tx = None
         for attempt in range(3):
             try:
@@ -177,7 +242,6 @@ class PaymentService:
         if tx is None:
             raise OperationalError('Failed to create penalty payment transaction after retries')
 
-        # Update reservation penalty payment tracking
         if penalty_type == 'CANCELLATION':
             reservation.cancellation_fee_paid_amount = (reservation.cancellation_fee_paid_amount or 0) + amount
             reservation.cancellation_fee_payment_method = payment_method
@@ -189,5 +253,7 @@ class PaymentService:
             reservation.damage_fee_tracking_code = external_reference
             reservation.damage_fee_paid_at = transaction_date
 
+        ReservationFinancialService.update_financial_status(reservation)
+        ReservationFinancialService.capture_financial_snapshot(reservation, 'penalty_payment')
         reservation.save()
         return tx

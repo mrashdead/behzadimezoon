@@ -50,7 +50,7 @@ class DashboardView(TemplateView):
                 ReservationStatus.CONFIRMED,
                 ReservationStatus.DELIVERED,
             ]
-        ).order_by('-created_at')[:3]
+        ).order_by('-created_at')[:10]
 
         context['page_title'] = 'داشبورد'
         return context

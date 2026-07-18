@@ -256,7 +256,7 @@ class ReservationStatusTransitionTests(TestCase):
             {'success': True, 'message': 'رزرو با موفقیت به‌روز شد.'}
         )
 
-    def test_manager_can_cancel_reservation_with_damage_details(self):
+    def test_manager_can_cancel_reservation_with_penalty_amount(self):
         reservation = Reservation.objects.create(
             customer=self.customer,
             dress=self.dress,
@@ -278,22 +278,22 @@ class ReservationStatusTransitionTests(TestCase):
         self.client.login(username='manager_user', password='password123')
         cancel_url = reverse('reservations:cancel_action', args=[reservation.pk])
         response = self.client.post(cancel_url, {
-            'reason': 'لغو با خسارت',
+            'reason': 'لغو با جریمه',
             'refund_amount': '0',
-            'penalty_amount': '0',
-            'item_damaged': 'on',
             'damage_amount': '150000',
             'damage_notes': 'پارگی بزرگ در آستین',
         }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
 
         reservation.refresh_from_db()
+        cancellation_record = CancellationRecord.objects.get(reservation=reservation)
         self.assertEqual(response.status_code, 200)
         self.assertEqual(reservation.status, ReservationStatus.CANCELLED)
-        self.assertTrue(reservation.item_damaged)
-        self.assertEqual(reservation.damage_amount, 150000)
-        self.assertEqual(reservation.damage_notes, 'پارگی بزرگ در آستین')
-        self.assertTrue(CancellationRecord.objects.filter(reservation=reservation).exists())
-        self.assertTrue(DamageRecord.objects.filter(reservation=reservation, amount=150000).exists())
+        self.assertFalse(reservation.item_damaged)
+        self.assertEqual(reservation.cancellation_fee, 150000)
+        self.assertEqual(cancellation_record.penalty_amount, 150000)
+        self.assertIsNone(reservation.damage_amount)
+        self.assertEqual(reservation.damage_notes, '')
+        self.assertFalse(DamageRecord.objects.filter(reservation=reservation).exists())
 
     def test_manager_can_mark_delivered_and_returned(self):
         reservation = Reservation.objects.create(

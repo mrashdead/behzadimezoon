@@ -572,6 +572,7 @@ $(document).ready(function () {
     timePicker: { enabled: false },
     format: "YYYY/MM/DD",
     autoClose: true,
+    initialValue: false,
     initialValueType: "persian",
     calendar: {
       persian: {

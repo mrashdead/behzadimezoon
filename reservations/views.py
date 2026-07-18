@@ -988,7 +988,7 @@ def reservation_cancel(request, pk):
         # Get data for cancellation from request or use defaults
         reason = request.POST.get('reason', '')
         refund_amount = int(request.POST.get('refund_amount', 0))
-        penalty_amount = int(request.POST.get('penalty_amount', 0))
+        penalty_amount = parse_amount_value(request.POST.get('penalty_amount', 0))
         refund_method = request.POST.get('refund_method')
         refund_tracking_code = request.POST.get('refund_tracking_code')
         notes = request.POST.get('notes', '')
@@ -997,17 +997,28 @@ def reservation_cancel(request, pk):
         damage_amount = parse_amount_value(request.POST.get('damage_amount', 0))
         damage_notes = request.POST.get('damage_notes', '').strip()
 
+        if penalty_amount <= 0 and not item_damaged and damage_amount > 0:
+            penalty_amount = damage_amount
+            damage_amount = 0
+
+        has_penalty = penalty_amount and penalty_amount > 0
+        has_damage = item_damaged and damage_amount and damage_amount > 0
+
         if item_damaged and (damage_amount is None or damage_amount <= 0):
             raise ValidationError('اگر لباس آسیب‌دیده است، باید مبلغ خسارت را وارد کنید.')
         if damage_amount and not item_damaged:
             raise ValidationError('اگر مبلغ خسارت وارد شده، باید آسیب لباس را علامت‌گذاری کنید.')
 
         reservation.item_damaged = item_damaged
-        reservation.damage_amount = damage_amount if item_damaged and damage_amount > 0 else None
-        reservation.damage_notes = damage_notes or ''
+        if has_damage:
+            reservation.damage_amount = damage_amount
+            reservation.damage_notes = damage_notes or ''
+        else:
+            reservation.damage_amount = None
+            reservation.damage_notes = ''
 
         with transaction.atomic():
-            if reservation.damage_amount and reservation.damage_amount > 0:
+            if has_damage:
                 DamageService.record_damage(
                     reservation=reservation,
                     customer=reservation.customer,
@@ -1144,7 +1155,7 @@ def reservation_record_penalty_payment(request, pk):
     form = PenaltyPaymentForm(_get_penalty_request_payload(request))
 
     if not form.is_valid():
-        return JsonResponse({"success": False, "errors": form.errors}, status=400)
+        return JsonResponse({"success": False, "error": form.errors}, status=400)
 
     penalty_type = form.cleaned_data.get("penalty_type")
     amount = form.cleaned_data.get("penalty_amount")
@@ -1157,41 +1168,16 @@ def reservation_record_penalty_payment(request, pk):
         return JsonResponse({"success": False, "message": "باید حداقل یک جریمه برای پرداخت انتخاب کنید."}, status=400)
 
     try:
-        # Validate the payment amount against available penalty
-        if penalty_type == 'CANCELLATION':
-            available_amount = (reservation.cancellation_fee or 0) - (reservation.cancellation_fee_paid_amount or 0)
-            penalty_name = 'جریمه لغو'
-        elif penalty_type == 'DAMAGE':
-            available_amount = (reservation.damage_amount or 0) - (reservation.damage_fee_paid_amount or 0)
-            penalty_name = 'جریمه خسارت'
-        else:
-            raise ValidationError(f'نوع جریمه نامعتبر: {penalty_type}')
-
-        if available_amount <= 0:
-            return JsonResponse({
-                "success": False,
-                "message": f"{penalty_name} قبلاً تسویه شده است."
-            }, status=400)
-
-        form.validate_penalty_amount(available_amount)
-
-        for attempt in range(3):
-            try:
-                # Record the penalty payment transaction
-                PaymentService.record_penalty_payment(
-                    reservation=reservation,
-                    amount=amount,
-                    penalty_type=penalty_type,
-                    created_by=request.user,
-                    payment_method=method,
-                    external_reference=code,
-                    transaction_date=timezone.now()
-                )
-                break
-            except OperationalError as e:
-                if 'locked' not in str(e).lower() or attempt == 2:
-                    raise
-                time.sleep(0.25)
+        PaymentService.record_penalty_payment(
+            reservation=reservation,
+            amount=amount,
+            penalty_type=penalty_type,
+            created_by=request.user,
+            payment_method=method,
+            external_reference=code,
+            transaction_date=timezone.now()
+        )
+        penalty_name = 'جریمه لغو' if penalty_type == 'CANCELLATION' else 'جریمه خسارت'
 
         return JsonResponse({
             "success": True,

@@ -25,15 +25,10 @@
   </div>
   <div class="d-flex flex-wrap gap-2 align-items-center">
     <a class="btn btn-primary btn-sm" href="{% url 'reports:export_excel' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">خروجی اکسل</a>
-    <a class="btn btn-outline-secondary btn-sm" href="#operational">عملیاتی</a>
-    <a class="btn btn-outline-secondary btn-sm" href="#financial">مالی</a>
-    <a class="btn btn-outline-secondary btn-sm" href="#customers">مشتری</a>
-    <a class="btn btn-outline-secondary btn-sm" href="#risk">ریسک</a>
-  </div>
-</div>
-
-<div class="card border-0 shadow-sm rounded-4 mb-4 report-panel">
-  <div class="card-body">
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'reports:export_excel' %}?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}report_type=details">جزئیات رزروها</a>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'reports:export_excel' %}?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}report_type=top_customers">مشتریان پرتکرار</a>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'reports:export_excel' %}?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}report_type=top_products">لباس‌های پرفروش</a>
+    <a class="btn btn-outline-primary btn-sm" href="{% url 'reports:export_excel' %}?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}report_type=issues">لغو/بازپرداخت/خسارت</a>
   </div>
 </div>
 
@@ -43,10 +38,6 @@
       <div>
         <h5 class="mb-1">فیلتر گزارش</h5>
         <p class="text-muted small mb-0">بازه زمانی، فروشنده، مشتری، لباس و وضعیت رزرو را برای دیدن داده‌های دقیق انتخاب کنید.</p>
-      </div>
-      <div class="d-flex flex-wrap gap-2">
-        <a class="btn btn-sm btn-outline-secondary" href="{{ reset_url }}">پاک‌کردن فیلترها</a>
-        <button class="btn btn-sm btn-outline-primary" type="button" disabled>فیلترهای ذخیره‌شده</button>
       </div>
     </div>
 

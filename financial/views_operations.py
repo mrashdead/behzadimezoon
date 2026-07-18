@@ -15,6 +15,7 @@ from financial.services.refund_service import RefundService
 from financial.services.cancellation_service import CancellationService
 from financial.services.transaction_service import TransactionService
 from financial.models import Guarantee, DamageRecord, CancellationRecord
+from reservations.constants import ReservationStatus
 
 
 def _user_is_allowed(user, reservation):
@@ -43,8 +44,21 @@ def reservation_financial_view(request, pk):
         'remaining': reservation.remaining_amount or 0,
         'additional_fees': reservation.total_additional_fees(),
     }
-    cancellation_remaining = max((reservation.cancellation_fee or 0) - (reservation.cancellation_fee_paid_amount or 0), 0)
+    cancellation_total = reservation.cancellation_fee or 0
+    if cancellation_total <= 0 and getattr(reservation, 'cancellation_record', None) is not None:
+        cancellation_total = reservation.cancellation_record.penalty_amount or 0
+
+    cancellation_remaining = max(cancellation_total - (reservation.cancellation_fee_paid_amount or 0), 0)
     damage_remaining = max((reservation.damage_amount or 0) - (reservation.damage_fee_paid_amount or 0), 0)
+    can_pay_cancellation_penalty = (
+        (reservation.status == ReservationStatus.CANCELLED or getattr(reservation, 'cancellation_record', None) is not None)
+        and cancellation_total > 0
+        and cancellation_remaining > 0
+    )
+    can_pay_damage_penalty = (
+        (reservation.damage_amount or 0) > 0
+        and damage_remaining > 0
+    )
 
     return render(request, 'financial/partials/_reservation_financial.html', {
         'reservation': reservation,
@@ -60,6 +74,9 @@ def reservation_financial_view(request, pk):
         'additional_fee_items': reservation.active_additional_fees().order_by('-created_at'),
         'cancellation_remaining': cancellation_remaining,
         'damage_remaining': damage_remaining,
+        'cancellation_total': cancellation_total,
+        'can_pay_cancellation_penalty': can_pay_cancellation_penalty,
+        'can_pay_damage_penalty': can_pay_damage_penalty,
     })
 
 

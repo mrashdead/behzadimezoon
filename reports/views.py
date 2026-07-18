@@ -10,6 +10,7 @@ from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
 from openpyxl import Workbook
+from openpyxl.styles import Alignment, Border, Font, PatternFill, Side
 from openpyxl.utils import get_column_letter
 
 from accounts.models import User
@@ -20,6 +21,233 @@ from products.models import Dress
 from reservations.constants import PaymentMethod, ReservationStatus
 from reservations.models import AdditionalFee, Reservation
 from reservations.utils import parse_reservation_date
+
+
+EXPORT_VALUE_TRANSLATIONS = {
+    'CONFIRMED': 'قطعی',
+    'CANCELLED': 'لغو شده',
+    'DELIVERED': 'تحویل شده',
+    'PARTIAL': 'پرداخت جزئی',
+    'PAID': 'پرداخت کامل',
+    'UNPAID': 'پرداخت نشده',
+    'REFUNDED': 'بازپرداخت',
+    'No': 'خیر',
+    'Yes': 'بله',
+    'CASH': 'نقدی',
+    'TRANSFER': 'انتقال بانکی',
+    'POS': 'کارتخوان',
+    'CARD': 'کارت به کارت',
+    'PAYMENT': 'پرداخت',
+    'DEPOSIT': 'بیعانه',
+    'REFUND': 'بازپرداخت',
+    'CANCELLATION_FEE': 'جریمه لغو',
+    'DAMAGE_CHARGE': 'هزینه خسارت',
+    'ACCRUAL': 'تعهدی',
+    'UNKNOWN': 'ناشناخته',
+}
+
+
+def _persian_digits(value):
+    if value in (None, ''):
+        return ''
+    text = str(value)
+    return text.translate(str.maketrans('0123456789', '۰۱۲۳۴۵۶۷۸۹'))
+
+
+def _clean_text(value):
+    if value in (None, ''):
+        return ''
+    if isinstance(value, bool):
+        return 'بله' if value else 'خیر'
+    text = str(value).strip()
+    return ' '.join(text.split())
+
+
+def _translate_export_value(value):
+    if value in (None, ''):
+        return ''
+    if isinstance(value, bool):
+        return 'بله' if value else 'خیر'
+    if isinstance(value, (int, float)):
+        return value
+    text = str(value).strip()
+    if not text:
+        return ''
+    translated = EXPORT_VALUE_TRANSLATIONS.get(text, EXPORT_VALUE_TRANSLATIONS.get(text.upper(), None))
+    if translated is not None:
+        return translated
+
+    try:
+        from reservations.constants import ReservationStatus, PaymentMethod
+        status_lookup = dict(ReservationStatus.CHOICES)
+        method_lookup = dict(PaymentMethod.CHOICES)
+        if text in status_lookup:
+            return status_lookup[text]
+        if text in method_lookup:
+            return method_lookup[text]
+    except Exception:
+        pass
+
+    return _clean_text(text)
+
+
+def _format_export_date(value):
+    if value in (None, ''):
+        return ''
+    if isinstance(value, datetime):
+        try:
+            return _persian_digits(jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d'))
+        except Exception:
+            return _persian_digits(value.strftime('%Y/%m/%d'))
+    if isinstance(value, date):
+        try:
+            return _persian_digits(jdatetime.date.fromgregorian(date=value).strftime('%Y/%m/%d'))
+        except Exception:
+            return _persian_digits(value.strftime('%Y/%m/%d'))
+    if isinstance(value, str):
+        parsed = parse_reservation_date(value)
+        if parsed:
+            return _format_export_date(parsed)
+        return _clean_text(value)
+    if hasattr(value, 'togregorian'):
+        try:
+            return _persian_digits(value.strftime('%Y/%m/%d'))
+        except Exception:
+            return _clean_text(value)
+    return _clean_text(value)
+
+
+def _format_export_datetime(value):
+    if value in (None, ''):
+        return ''
+    if isinstance(value, datetime):
+        try:
+            return _persian_digits(jdatetime.datetime.fromgregorian(datetime=value).strftime('%Y/%m/%d %H:%M:%S'))
+        except Exception:
+            return _persian_digits(value.strftime('%Y/%m/%d %H:%M:%S'))
+    if isinstance(value, date):
+        return _format_export_date(value)
+    return _clean_text(value)
+
+
+def _sanitize_tracking_code(value):
+    if value in (None, ''):
+        return '-'
+    text = str(value).strip().replace('\n', ' ').replace('\r', ' ')
+    text = ''.join(ch for ch in text if ch not in {'\t', '\u200c'})
+    return ' '.join(text.split()) or '-'
+
+
+def _user_label(user):
+    if not user:
+        return '-'
+    if hasattr(user, 'get_full_name'):
+        name = user.get_full_name() or ''
+        if name:
+            return _clean_text(name)
+    if hasattr(user, 'username') and user.username:
+        return _clean_text(user.username)
+    return _clean_text(str(user))
+
+
+def _excel_display_value(value):
+    if value in (None, ''):
+        return '-'
+    if isinstance(value, bool):
+        return 'بله' if value else 'خیر'
+    if isinstance(value, (int, float)) and not isinstance(value, bool):
+        return value
+    text = str(value).strip()
+    return text if text else '-'
+
+
+def _excel_number_format_for_header(header):
+    label = str(header or '').strip()
+    if any(keyword in label for keyword in ['مبلغ', 'درآمد', 'قیمت', 'بیعانه', 'مانده', 'خسارت', 'جریمه', 'بازپرداخت', 'نهایی', 'هزینه', 'جمع']):
+        return '#,##0'
+    if any(keyword in label for keyword in ['درصد', 'نرخ']):
+        return '0.0%'
+    return '0'
+
+
+def _excel_column_alignment(header):
+    label = str(header or '').strip()
+    if any(keyword in label for keyword in ['مبلغ', 'درآمد', 'قیمت', 'بیعانه', 'مانده', 'خسارت', 'جریمه', 'بازپرداخت', 'نهایی', 'هزینه', 'جمع', 'تعداد', 'روز', 'رتبه']):
+        return 'right'
+    return 'left'
+
+
+def _append_excel_rows(ws, title_text, headers, rows, metadata=None):
+    ws.append([title_text])
+    for label, value in (metadata or []):
+        ws.append([label, value])
+    ws.append([])
+    ws.append([_excel_display_value(header) for header in headers])
+    for row in rows:
+        ws.append([_excel_display_value(value) for value in row])
+
+
+def _apply_excel_sheet_style(ws, title_text, header_row, metadata_count=0):
+    ws.sheet_view.rightToLeft = True
+
+    title_fill = PatternFill(fill_type='solid', fgColor='E8F1FB')
+    title_font = Font(bold=True, size=14, color='1F4E78')
+    header_fill = PatternFill(fill_type='solid', fgColor='DDEBF7')
+    header_font = Font(bold=True, color='1F2937')
+    meta_fill = PatternFill(fill_type='solid', fgColor='F7FAFC')
+    alt_fill = PatternFill(fill_type='solid', fgColor='FCFDFF')
+    thin = Side(border_style='thin', color='D0D7DE')
+    border = Border(left=thin, right=thin, top=thin, bottom=thin)
+
+    title_cell = ws['A1']
+    title_cell.value = title_text
+    title_cell.fill = title_fill
+    title_cell.font = title_font
+    title_cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+    title_cell.border = border
+
+    for row_index in range(2, header_row):
+        for cell in ws[row_index]:
+            cell.fill = meta_fill
+            cell.font = Font(bold=False, color='334155')
+            cell.alignment = Alignment(vertical='center', wrap_text=True)
+            cell.border = border
+
+    for cell in ws[header_row]:
+        cell.fill = header_fill
+        cell.font = header_font
+        cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+        cell.border = border
+
+    for row_index in range(header_row + 1, ws.max_row + 1):
+        row_fill = alt_fill if row_index % 2 == 0 else None
+        for col_index, cell in enumerate(ws[row_index], start=1):
+            cell.border = border
+            cell.alignment = Alignment(vertical='center', wrap_text=True)
+            if row_fill:
+                cell.fill = row_fill
+            if cell.value in (None, '-', ''):
+                cell.value = '-'
+            header_value = ws.cell(row=header_row, column=col_index).value
+            if isinstance(cell.value, (int, float)) and not isinstance(cell.value, bool):
+                if _excel_column_alignment(header_value) == 'right':
+                    cell.alignment = Alignment(horizontal='right', vertical='center', wrap_text=True)
+                else:
+                    cell.alignment = Alignment(horizontal='center', vertical='center', wrap_text=True)
+                cell.number_format = _excel_number_format_for_header(header_value)
+            else:
+                cell.alignment = Alignment(horizontal='left', vertical='center', wrap_text=True)
+
+    for column_index in range(1, ws.max_column + 1):
+        column_letter = get_column_letter(column_index)
+        values = [cell.value for cell in ws[column_letter] if cell.value is not None]
+        if not values:
+            continue
+        max_length = max(len(str(value)) for value in values)
+        ws.column_dimensions[column_letter].width = min(max_length + 2, 40)
+
+    ws.auto_filter.ref = f'A{header_row}:{get_column_letter(ws.max_column)}{ws.max_row}'
+    ws.freeze_panes = f'A{header_row + 1}'
 
 
 @method_decorator(login_required, name='dispatch')
@@ -224,7 +452,11 @@ class ReportsIndexView(TemplateView):
             ]
         ).aggregate(total=Sum('amount'))['total'] or 0
         cancellation_fee_income = transaction_qs.filter(transaction_type=Transaction.TransactionType.CANCELLATION_FEE).aggregate(total=Sum('amount'))['total'] or 0
-        damage_income = transaction_qs.filter(transaction_type=Transaction.TransactionType.DAMAGE_PAYMENT).aggregate(total=Sum('amount'))['total'] or 0
+        damage_income = (
+            transaction_qs.filter(transaction_type=Transaction.TransactionType.DAMAGE_PAYMENT).aggregate(total=Sum('amount'))['total'] or 0
+        ) + (
+            transaction_qs.filter(transaction_type=Transaction.TransactionType.PENALTY_INCOME).aggregate(total=Sum('amount'))['total'] or 0
+        )
         refund_total = transaction_qs.filter(transaction_type=Transaction.TransactionType.REFUND).aggregate(total=Sum('amount'))['total'] or 0
         outstanding_total = reservation_qs.aggregate(total=Sum('remaining_amount'))['total'] or 0
         additional_fee_total = AdditionalFee.objects.filter(is_deleted=False, reservation__in=reservation_qs).aggregate(total=Sum('amount'))['total'] or 0
@@ -420,99 +652,285 @@ class ReportsIndexView(TemplateView):
 
 @login_required
 def export_reports_excel(request):
+    report_type = (request.GET.get('report_type') or '').strip().lower()
     view = ReportsIndexView()
-    date_from = view._parse_date(request.GET.get('date_from'))
-    date_to = view._parse_date(request.GET.get('date_to'))
-    if not date_from:
-        date_from = timezone.localdate() - timedelta(days=7)
-    if not date_to:
-        date_to = timezone.localdate()
-
-    filters = {
-        'date_from': date_from,
-        'date_to': date_to,
-        'seller_id': request.GET.get('seller_id') or request.GET.get('seller') or '',
-        'customer_id': request.GET.get('customer_id') or '',
-        'dress_id': request.GET.get('dress_id') or '',
-        'status': request.GET.get('status') or '',
-        'payment_method': request.GET.get('payment_method') or '',
-    }
-
-    reservation_qs = view._apply_filters(Reservation.objects.filter(is_deleted=False), filters)
-
-    headers = [
-        'شناسه رزرو',
-        'ثبت کننده',
-        'مشتری',
-        'لباس',
-        'تاریخ شروع',
-        'تاریخ پایان',
-        'روزهای اجاره',
-        'وضعیت رزرو',
-        'وضعیت پرداخت',
-        'روش پرداخت',
-        'قیمت روزانه',
-        'مبلغ تخفیف',
-        'مبلغ نهایی',
-        'بیعانه',
-        'باقی‌مانده',
-        'هزینه‌های جانبی',
-        'خسارت',
-        'جریمه لغو',
-        'بازپرداخت',
-        'کد رهگیری پرداخت',
-    ]
+    view.setup(request)
+    context = view.get_context_data()
 
     wb = Workbook()
-    ws = wb.active
-    ws.title = 'گزارش رزروها'
-    ws.sheet_view.rightToLeft = True
-    ws.append(headers)
+    wb.remove(wb.active)
 
-    def format_cell(value):
-        if isinstance(value, jdatetime.date):
-            return value.togregorian()
-        return value
+    def _build_single_report_sheet(title, headers, rows, metadata=None):
+        sheet = wb.create_sheet(title=title)
+        _append_excel_rows(sheet, title, headers, rows, metadata=metadata)
+        _apply_excel_sheet_style(sheet, title, header_row=5, metadata_count=(len(metadata or []) + 1))
+        return sheet
 
-    for reservation in reservation_qs.select_related('customer', 'dress', 'created_by'):
-        customer = getattr(reservation, 'customer', None)
-        dress = getattr(reservation, 'dress', None)
-        start_date = format_cell(getattr(reservation, 'start_date', ''))
-        end_date = format_cell(getattr(reservation, 'end_date', ''))
-        row = [
-            reservation.pk,
-            str(getattr(reservation, 'created_by', '')),
-            str(customer) if customer else '',
-            getattr(dress, 'code', ''),
-            start_date,
-            end_date,
-            getattr(reservation, 'rental_days', 0),
-            reservation.status,
-            reservation.payment_status,
-            reservation.payment_method,
-            getattr(dress, 'daily_rent_price', 0),
-            reservation.discount_amount or 0,
-            reservation.final_price or 0,
-            reservation.deposit_amount or 0,
-            reservation.remaining_amount or 0,
-            reservation.total_additional_fees(),
-            reservation.damage_amount or 0,
-            reservation.cancellation_fee or 0,
-            reservation.refunded_amount or 0,
-            reservation.payment_tracking_code or '',
+    if report_type:
+        if report_type == 'details':
+            headers = [
+                'شناسه رزرو',
+                'شماره قرارداد',
+                'مشتری',
+                'لباس',
+                'تاریخ شروع',
+                'تاریخ پایان',
+                'روزهای اجاره',
+                'وضعیت رزرو',
+                'وضعیت پرداخت',
+                'روش پرداخت',
+                'قیمت روزانه',
+                'مبلغ تخفیف',
+                'مبلغ نهایی',
+                'بیعانه',
+                'باقی‌مانده',
+                'هزینه‌های جانبی',
+                'خسارت',
+                'جریمه لغو',
+                'بازپرداخت',
+                'کد رهگیری پرداخت',
+            ]
+            rows = []
+            for reservation in Reservation.objects.filter(is_deleted=False).select_related('customer', 'dress', 'created_by'):
+                customer = getattr(reservation, 'customer', None)
+                dress = getattr(reservation, 'dress', None)
+                rows.append([
+                    reservation.pk,
+                    _clean_text(getattr(reservation, 'contract_number', '') or '-'),
+                    _clean_text(str(customer) if customer else '-'),
+                    _clean_text(getattr(dress, 'code', '') or '-'),
+                    _format_export_date(getattr(reservation, 'start_date', '')),
+                    _format_export_date(getattr(reservation, 'end_date', '')),
+                    getattr(reservation, 'rental_days', 0),
+                    _translate_export_value(getattr(reservation, 'status', '')),
+                    _translate_export_value(getattr(reservation, 'payment_status', '')),
+                    _translate_export_value(getattr(reservation, 'payment_method', '')),
+                    getattr(dress, 'daily_rent_price', 0) if dress else 0,
+                    reservation.discount_amount or 0,
+                    reservation.final_price or 0,
+                    reservation.deposit_amount or 0,
+                    reservation.remaining_amount or 0,
+                    reservation.total_additional_fees(),
+                    reservation.damage_amount or 0,
+                    reservation.cancellation_fee or 0,
+                    reservation.refunded_amount or 0,
+                    _sanitize_tracking_code(getattr(reservation, 'payment_tracking_code', '')),
+                ])
+            _build_single_report_sheet(
+                'جزئیات رزروها',
+                headers,
+                rows,
+                metadata=[
+                    ('تاریخ تولید', timezone.localtime(timezone.now()).strftime('%Y/%m/%d %H:%M')),
+                    ('بازه زمانی', f"{context['summary']['period_label'] or '-'}"),
+                ],
+            )
+        elif report_type == 'top_customers':
+            headers = ['مشتری', 'تعداد رزرو', 'درآمد کل', 'آخرین تاریخ رزرو']
+            rows = []
+            for row in context.get('repeat_customers', []):
+                rows.append([
+                    _clean_text(f"{row.get('customer__bride_first_name') or ''} {row.get('customer__bride_last_name') or ''}".strip() or '-'),
+                    row.get('reservation_count') or 0,
+                    row.get('total_revenue') or 0,
+                    _format_export_date(row.get('last_reservation_date')),
+                ])
+            _build_single_report_sheet(
+                'مشتریان پرتکرار',
+                headers,
+                rows,
+                metadata=[
+                    ('تاریخ تولید', timezone.localtime(timezone.now()).strftime('%Y/%m/%d %H:%M')),
+                    ('بازه زمانی', f"{context['summary']['period_label'] or '-'}"),
+                ],
+            )
+        elif report_type == 'top_products':
+            headers = ['کد لباس', 'رتبه', 'تعداد رزرو', 'درآمد کل']
+            rows = []
+            for index, row in enumerate(context.get('top_dresses', []), start=1):
+                rows.append([
+                    _clean_text(row.get('dress__code') or '-'),
+                    index,
+                    row.get('reservation_count') or 0,
+                    row.get('total_revenue') or 0,
+                ])
+            _build_single_report_sheet(
+                'لباس‌های پرفروش',
+                headers,
+                rows,
+                metadata=[
+                    ('تاریخ تولید', timezone.localtime(timezone.now()).strftime('%Y/%m/%d %H:%M')),
+                    ('بازه زمانی', f"{context['summary']['period_label'] or '-'}"),
+                ],
+            )
+        elif report_type == 'issues':
+            headers = ['نوع', 'شناسه رزرو', 'مبلغ', 'بازپرداخت', 'تاریخ']
+            rows = []
+            for record in context.get('cancellation_records', []):
+                rows.append(['لغو', record.reservation_id, record.penalty_amount or 0, record.refund_amount or 0, _format_export_date(getattr(record, 'cancelled_at', None))])
+            for record in context.get('damage_records', []):
+                rows.append(['خسارت', record.reservation_id, record.amount or 0, 0, _format_export_date(getattr(record, 'created_at', None))])
+            _build_single_report_sheet(
+                'لغو، بازپرداخت و خسارت',
+                headers,
+                rows,
+                metadata=[
+                    ('تاریخ تولید', timezone.localtime(timezone.now()).strftime('%Y/%m/%d %H:%M')),
+                    ('بازه زمانی', f"{context['summary']['period_label'] or '-'}"),
+                ],
+            )
+        else:
+            report_type = ''
+
+    if not report_type:
+        ws = wb.create_sheet(title='خلاصه مدیریتی')
+        summary_rows = [
+            ('بازه زمانی', f"{context['summary']['period_label']}"),
+            ('درآمد بازه انتخابی', context['summary']['month_revenue']),
+            ('تعداد رزروها', context['summary']['active_reservations'] + context['summary']['cancelled_reservations']),
+            ('رزروهای فعال', context['summary']['active_reservations']),
+            ('رزروهای لغو شده', context['summary']['cancelled_reservations']),
+            ('تعداد بازپرداخت', context['summary']['refund_cases']),
+            ('مبلغ بازپرداخت', context['summary']['refund_amount']),
+            ('جمع خسارت و جریمه', context['summary']['damage_penalty_total']),
+            ('پرفروش‌ترین لباس', context['summary']['top_dress_label']),
+            ('پرمشتری‌ترین مشتری', context['summary']['top_customer_label']),
+            ('نرخ لغو', f"{context['analysis']['cancellation_rate']}٪"),
+            ('میانگین بازپرداخت', context['analysis']['avg_refund']),
+            ('میانگین جریمه', context['analysis']['avg_penalty']),
         ]
-        ws.append(row)
+        _append_excel_rows(
+            ws,
+            'خلاصه مدیریتی',
+            ['متریک', 'ارزش'],
+            [(label, value) for label, value in summary_rows],
+            metadata=[
+                ('تاریخ تولید', timezone.localtime(timezone.now()).strftime('%Y/%m/%d %H:%M')),
+                ('بازه زمانی', f"{context['summary']['period_label'] or '-'}"),
+            ],
+        )
+        _apply_excel_sheet_style(ws, 'خلاصه مدیریتی', header_row=5)
 
-    for idx, column_cells in enumerate(ws.columns, 1):
-        max_length = 0
-        for cell in column_cells:
-            if cell.value is not None:
-                value = str(cell.value)
-                if len(value) > max_length:
-                    max_length = len(value)
-        ws.column_dimensions[get_column_letter(idx)].width = min(max_length + 2, 40)
+        def _append_sheet(title, headers, rows):
+            sheet = wb.create_sheet(title=title)
+            _append_excel_rows(sheet, title, headers, rows, metadata=[
+                ('تاریخ تولید', timezone.localtime(timezone.now()).strftime('%Y/%m/%d %H:%M')),
+                ('بازه زمانی', f"{context['summary']['period_label'] or '-'}"),
+            ])
+            _apply_excel_sheet_style(sheet, title, header_row=5)
+            return sheet
 
-    ws.freeze_panes = 'A2'
+        reservation_rows = []
+        for reservation in Reservation.objects.filter(is_deleted=False).select_related('customer', 'dress', 'created_by'):
+            customer = getattr(reservation, 'customer', None)
+            dress = getattr(reservation, 'dress', None)
+            reservation_rows.append([
+                reservation.pk,
+                _clean_text(getattr(reservation, 'contract_number', '') or '-'),
+                _clean_text(str(customer) if customer else '-'),
+                _clean_text(getattr(dress, 'code', '') or '-'),
+                _format_export_date(getattr(reservation, 'start_date', '')),
+                _format_export_date(getattr(reservation, 'end_date', '')),
+                getattr(reservation, 'rental_days', 0),
+                _translate_export_value(getattr(reservation, 'status', '')),
+                _translate_export_value(getattr(reservation, 'payment_status', '')),
+                _translate_export_value(getattr(reservation, 'payment_method', '')),
+                getattr(dress, 'daily_rent_price', 0) if dress else 0,
+                reservation.discount_amount or 0,
+                reservation.final_price or 0,
+                reservation.deposit_amount or 0,
+                reservation.remaining_amount or 0,
+                reservation.total_additional_fees(),
+                reservation.damage_amount or 0,
+                reservation.cancellation_fee or 0,
+                reservation.refunded_amount or 0,
+                _sanitize_tracking_code(getattr(reservation, 'payment_tracking_code', '')),
+            ])
+
+        _append_sheet(
+            'جزئیات رزروها',
+            [
+                'شناسه رزرو',
+                'شماره قرارداد',
+                'مشتری',
+                'لباس',
+                'تاریخ شروع',
+                'تاریخ پایان',
+                'روزهای اجاره',
+                'وضعیت رزرو',
+                'وضعیت پرداخت',
+                'روش پرداخت',
+                'قیمت روزانه',
+                'مبلغ تخفیف',
+                'مبلغ نهایی',
+                'بیعانه',
+                'باقی‌مانده',
+                'هزینه‌های جانبی',
+                'خسارت',
+                'جریمه لغو',
+                'بازپرداخت',
+                'کد رهگیری پرداخت',
+            ],
+            reservation_rows,
+        )
+
+        trend_labels = context.get('trend_labels', [])
+        trend_revenue = context.get('trend_revenue', [])
+        trend_reservations = context.get('trend_reservations', [])
+        daily_rows = [
+            [label, revenue, reservation_count]
+            for label, revenue, reservation_count in zip(trend_labels, trend_revenue, trend_reservations)
+        ]
+        _append_sheet('روند روزانه', ['روز', 'درآمد', 'تعداد رزرو'], daily_rows)
+
+        repeat_customer_rows = []
+        for row in context.get('repeat_customers', []):
+            repeat_customer_rows.append([
+                _clean_text(f"{row.get('customer__bride_first_name') or ''} {row.get('customer__bride_last_name') or ''}".strip() or '-'),
+                row.get('reservation_count') or 0,
+                row.get('total_revenue') or 0,
+            ])
+        _append_sheet('مشتریان پرتکرار', ['مشتری', 'تعداد رزرو', 'درآمد کل'], repeat_customer_rows)
+
+        top_dress_rows = []
+        for row in context.get('top_dresses', []):
+            top_dress_rows.append([
+                _clean_text(row.get('dress__code') or '-'),
+                row.get('reservation_count') or 0,
+                row.get('total_revenue') or 0,
+            ])
+        _append_sheet('لباس‌های پرفروش', ['کد لباس', 'تعداد رزرو', 'درآمد کل'], top_dress_rows)
+
+        seller_rows = []
+        for row in context.get('employee_rows', []):
+            seller_rows.append([
+                _user_label(User.objects.filter(pk=row.get('created_by__id')).first()) if row.get('created_by__id') else '-',
+                row.get('reservation_count') or 0,
+                row.get('total_revenue') or 0,
+                row.get('cancelled_count') or 0,
+                row.get('damage_total') or 0,
+            ])
+        _append_sheet('عملکرد فروشندگان', ['فروشنده', 'تعداد رزرو', 'درآمد کل', 'لغو شده', 'خسارت'], seller_rows)
+
+        analysis_rows = []
+        for record in context.get('cancellation_records', []):
+            analysis_rows.append([
+                'لغو',
+                record.reservation_id,
+                record.penalty_amount or 0,
+                record.refund_amount or 0,
+                _format_export_date(getattr(record, 'cancelled_at', None)),
+            ])
+        for record in context.get('damage_records', []):
+            analysis_rows.append([
+                'خسارت',
+                record.reservation_id,
+                record.amount or 0,
+                0,
+                _format_export_date(getattr(record, 'created_at', None)),
+            ])
+        _append_sheet('لغو، بازپرداخت و خسارت', ['نوع', 'شناسه رزرو', 'مبلغ', 'بازپرداخت', 'تاریخ'], analysis_rows)
+
     output = BytesIO()
     wb.save(output)
     output.seek(0)
