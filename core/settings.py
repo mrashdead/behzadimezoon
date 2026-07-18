@@ -162,6 +162,10 @@ STATICFILES_DIRS = [BASE_DIR / 'static']
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
 
+# Backup directory for database dumps. Only .dump files are allowed.
+BACKUP_DIR = Path('/opt/backups/behzadimezoon')
+BACKUP_DOWNLOAD_SECRET = config('BACKUP_DOWNLOAD_SECRET', default='')
+
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.2/ref/settings/#default-auto-field
 
