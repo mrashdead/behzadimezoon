@@ -11,6 +11,7 @@ urlpatterns = [
     path('', views.FinancialDashboardView.as_view(), name='list'),
     path('dashboard/', views.FinancialDashboardView.as_view(), name='dashboard'),
     path('export/excel/', views.export_financial_excel, name='export_excel'),
+    path('export/reports/', views.export_financial_excel, name='export_reports'),
 
     # API Endpoints
     path('api/reservation-search/', views.api_reservation_search, name='api_reservation_search'),

@@ -1,12 +1,16 @@
 from datetime import date, datetime, timedelta
+from io import BytesIO
 from urllib.parse import urlencode
 import jdatetime
 
 from django.contrib.auth.decorators import login_required
 from django.db.models import Case, Count, IntegerField, Q, Sum, When
+from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.decorators import method_decorator
 from django.views.generic import TemplateView
+from openpyxl import Workbook
+from openpyxl.utils import get_column_letter
 
 from accounts.models import User
 from customers.models import Customer
@@ -141,11 +145,13 @@ class ReportsIndexView(TemplateView):
         context = super().get_context_data(**kwargs)
         request = self.request
         today = timezone.localdate()
+        today_jalali = jdatetime.date.fromgregorian(date=today)
+        current_month_start = jdatetime.date(today_jalali.year, today_jalali.month, 1).togregorian()
 
         date_from = self._parse_date(request.GET.get('date_from'))
         date_to = self._parse_date(request.GET.get('date_to'))
         if not date_from:
-            date_from = today - timedelta(days=7)
+            date_from = current_month_start
         if not date_to:
             date_to = today
 
@@ -357,9 +363,18 @@ class ReportsIndexView(TemplateView):
         context['dresses'] = Dress.objects.order_by('code')[:200]
         context['statuses'] = ReservationStatus.CHOICES
         context['payment_methods'] = PaymentMethod.CHOICES
+        context['report_tabs'] = [
+            {'label': 'عملیاتی', 'href': '#operational'},
+            {'label': 'مالی', 'href': '#financial'},
+            {'label': 'مشتری', 'href': '#customers'},
+            {'label': 'ریسک', 'href': '#risk'},
+        ]
         top_customer_label = '—'
         if top_customer:
             top_customer_label = f"{top_customer.get('customer__bride_first_name', '')} {top_customer.get('customer__bride_last_name', '')}".strip() or '—'
+
+        is_current_month_to_date = (date_from == current_month_start and date_to == today)
+        period_title = 'این ماه' if is_current_month_to_date else 'درآمد بازه انتخابی'
 
         context['summary'] = {
             'month_revenue': month_revenue,
@@ -370,6 +385,7 @@ class ReportsIndexView(TemplateView):
             'damage_penalty_total': damage_penalty_total,
             'top_dress_label': f"{top_dress['dress__code']}" if top_dress else '—',
             'top_customer_label': top_customer_label,
+            'period_title': period_title,
             'period_label': f"{self._format_jalali_date(date_from)} تا {self._format_jalali_date(date_to)}",
         }
         context['financial_rows'] = [
@@ -400,3 +416,107 @@ class ReportsIndexView(TemplateView):
             'avg_penalty': round((sum(record.penalty_amount or 0 for record in cancellation_records) / cancellation_total) if cancellation_total else 0, 0),
         }
         return context
+
+
+@login_required
+def export_reports_excel(request):
+    view = ReportsIndexView()
+    date_from = view._parse_date(request.GET.get('date_from'))
+    date_to = view._parse_date(request.GET.get('date_to'))
+    if not date_from:
+        date_from = timezone.localdate() - timedelta(days=7)
+    if not date_to:
+        date_to = timezone.localdate()
+
+    filters = {
+        'date_from': date_from,
+        'date_to': date_to,
+        'seller_id': request.GET.get('seller_id') or request.GET.get('seller') or '',
+        'customer_id': request.GET.get('customer_id') or '',
+        'dress_id': request.GET.get('dress_id') or '',
+        'status': request.GET.get('status') or '',
+        'payment_method': request.GET.get('payment_method') or '',
+    }
+
+    reservation_qs = view._apply_filters(Reservation.objects.filter(is_deleted=False), filters)
+
+    headers = [
+        'شناسه رزرو',
+        'ثبت کننده',
+        'مشتری',
+        'لباس',
+        'تاریخ شروع',
+        'تاریخ پایان',
+        'روزهای اجاره',
+        'وضعیت رزرو',
+        'وضعیت پرداخت',
+        'روش پرداخت',
+        'قیمت روزانه',
+        'مبلغ تخفیف',
+        'مبلغ نهایی',
+        'بیعانه',
+        'باقی‌مانده',
+        'هزینه‌های جانبی',
+        'خسارت',
+        'جریمه لغو',
+        'بازپرداخت',
+        'کد رهگیری پرداخت',
+    ]
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'گزارش رزروها'
+    ws.sheet_view.rightToLeft = True
+    ws.append(headers)
+
+    def format_cell(value):
+        if isinstance(value, jdatetime.date):
+            return value.togregorian()
+        return value
+
+    for reservation in reservation_qs.select_related('customer', 'dress', 'created_by'):
+        customer = getattr(reservation, 'customer', None)
+        dress = getattr(reservation, 'dress', None)
+        start_date = format_cell(getattr(reservation, 'start_date', ''))
+        end_date = format_cell(getattr(reservation, 'end_date', ''))
+        row = [
+            reservation.pk,
+            str(getattr(reservation, 'created_by', '')),
+            str(customer) if customer else '',
+            getattr(dress, 'code', ''),
+            start_date,
+            end_date,
+            getattr(reservation, 'rental_days', 0),
+            reservation.status,
+            reservation.payment_status,
+            reservation.payment_method,
+            getattr(dress, 'daily_rent_price', 0),
+            reservation.discount_amount or 0,
+            reservation.final_price or 0,
+            reservation.deposit_amount or 0,
+            reservation.remaining_amount or 0,
+            reservation.total_additional_fees(),
+            reservation.damage_amount or 0,
+            reservation.cancellation_fee or 0,
+            reservation.refunded_amount or 0,
+            reservation.payment_tracking_code or '',
+        ]
+        ws.append(row)
+
+    for idx, column_cells in enumerate(ws.columns, 1):
+        max_length = 0
+        for cell in column_cells:
+            if cell.value is not None:
+                value = str(cell.value)
+                if len(value) > max_length:
+                    max_length = len(value)
+        ws.column_dimensions[get_column_letter(idx)].width = min(max_length + 2, 40)
+
+    ws.freeze_panes = 'A2'
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    response = HttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="reports_export.xlsx"'
+    return response
