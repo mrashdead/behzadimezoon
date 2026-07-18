@@ -6,7 +6,7 @@ from django.core import signing
 from django.core.exceptions import PermissionDenied
 from django.http import FileResponse, Http404, HttpResponseForbidden
 from django.shortcuts import render
-from django.views.decorators.http import require_http_methods
+from django.views.decorators.http import require_GET, require_http_methods
 from django.views.generic import TemplateView
 from django.db.models import Sum
 from customers.models import Customer
