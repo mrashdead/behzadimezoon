@@ -214,6 +214,35 @@ class ReservationStatusTransitionTests(TestCase):
         self.assertTrue(response.json()['success'], response.json())
         self.assertTrue(Reservation.objects.filter(created_by=self.manager).exists())
 
+    def test_create_reservation_accepts_step_one_payload_without_session(self):
+        self.client.login(username='manager_user', password='password123')
+
+        response = self.client.post(
+            reverse('reservations:create'),
+            {
+                'customer': str(self.customer.id),
+                'dress': str(self.dress.id),
+                'start_date': '1402/01/01',
+                'rental_days': '3',
+                'contract_number': 'CN-STEP1-FALLBACK',
+                'payment_method': 'CASH',
+                'payment_tracking_code': 'PAY-FALLBACK',
+                'guarantee1_type': 'CASH',
+                'guarantee1_tracking_code': 'G1',
+                'guarantee2_type': '',
+                'guarantee2_tracking_code': '',
+                'guarantee2_payee': '',
+                'deposit_amount': str(self.dress.daily_rent_price),
+                'discount_type': 'NONE',
+                'discount_value': '0',
+            },
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertTrue(response.json()['success'], response.json())
+        self.assertTrue(Reservation.objects.filter(contract_number='CN-STEP1-FALLBACK').exists())
+
     def test_manager_can_edit_reservation_via_ajax(self):
         reservation = Reservation.objects.create(
             customer=self.customer,

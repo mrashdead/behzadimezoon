@@ -50,6 +50,51 @@ document.addEventListener('DOMContentLoaded', function () {
 
   if (!step1Form || !step2Form) return
 
+  function parseJsonResponse(response) {
+    return response.text().then(text => {
+      if (!text) {
+        return { success: false, message: "پاسخ خالی از سرور دریافت شد." }
+      }
+      try {
+        return JSON.parse(text)
+      } catch (error) {
+        return { success: false, message: text.slice(0, 200) }
+      }
+    })
+  }
+
+  function populateContractNumberSuggestion() {
+    const contractInputs = [
+      document.getElementById('contractNumberInput')
+    ].filter(Boolean)
+
+    if (!contractInputs.length) return
+
+    const hasValue = contractInputs.some(input => (input.value || '').trim())
+    if (hasValue) return
+
+    return fetch('/reservations/contract-number-suggest/', {
+      method: 'GET',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json'
+      }
+    })
+      .then(parseJsonResponse)
+      .then(data => {
+        if (data && data.contract_number) {
+          contractInputs.forEach(input => {
+            if (!input.value) {
+              input.value = data.contract_number
+            }
+          })
+        }
+      })
+      .catch(error => {
+        console.error('Contract number suggestion failed:', error)
+      })
+  }
+
   // Wait for SearchableSelect to be initialized, then get the hidden selects
   function initializeReservationForm() {
     const customerSelect = step1Form.querySelector("select[name='customer']")
@@ -200,6 +245,21 @@ document.addEventListener('DOMContentLoaded', function () {
         })
     }
 
+    function syncStepOneContextToStepTwoForm() {
+      const hiddenCustomer = document.getElementById("step2CustomerHidden")
+      const hiddenDress = document.getElementById("step2DressHidden")
+      const hiddenStartDate = document.getElementById("step2StartDateHidden")
+      const hiddenRentalDays = document.getElementById("step2RentalDaysHidden")
+      const hiddenContractNumber = document.getElementById("step2ContractNumberHidden")
+      const contractNumberInput = step1Form.querySelector("input[name='contract_number']")
+
+      if (hiddenCustomer) hiddenCustomer.value = customerSelect.value || ""
+      if (hiddenDress) hiddenDress.value = dressSelect.value || ""
+      if (hiddenStartDate) hiddenStartDate.value = startDateInput.value || ""
+      if (hiddenRentalDays) hiddenRentalDays.value = rentalDaysInput.value || ""
+      if (hiddenContractNumber) hiddenContractNumber.value = contractNumberInput ? contractNumberInput.value : ""
+    }
+
     function saveReservationStepOne() {
       const contractNumberInput = step1Form.querySelector("input[name='contract_number']")
       const formData = new URLSearchParams({
@@ -218,39 +278,7 @@ document.addEventListener('DOMContentLoaded', function () {
           "X-Requested-With": "XMLHttpRequest"
         },
         body: formData
-      }).then(response => response.json())
-    }
-
-    function populateContractNumberSuggestion() {
-      const contractInputs = [
-        document.getElementById('contractNumberInput')
-      ].filter(Boolean)
-
-      if (!contractInputs.length) return
-
-      const hasValue = contractInputs.some(input => (input.value || '').trim())
-      if (hasValue) return
-
-      return fetch('/reservations/contract-number-suggest/', {
-        method: 'GET',
-        headers: {
-          'X-Requested-With': 'XMLHttpRequest',
-          'Accept': 'application/json'
-        }
-      })
-        .then(response => response.json())
-        .then(data => {
-          if (data && data.contract_number) {
-            contractInputs.forEach(input => {
-              if (!input.value) {
-                input.value = data.contract_number
-              }
-            })
-          }
-        })
-        .catch(error => {
-          console.error('Contract number suggestion failed:', error)
-        })
+      }).then(parseJsonResponse)
     }
 
     customerSelect.addEventListener("change", checkAvailability)
@@ -267,6 +295,7 @@ document.addEventListener('DOMContentLoaded', function () {
     nextBtn.addEventListener("click", function () {
       saveReservationStepOne().then(data => {
         if (data.success) {
+          syncStepOneContextToStepTwoForm()
           const bsStep1 = bootstrap.Modal.getInstance(createStep1ModalElement)
           if (bsStep1) {
             bsStep1.hide()
@@ -314,17 +343,20 @@ document.addEventListener('DOMContentLoaded', function () {
         submitBtn.classList.add('disabled')
       }
 
+      syncStepOneContextToStepTwoForm()
       const formData = new FormData(step2Form)
 
       fetch("/reservations/create/", {
         method: "POST",
+        credentials: "same-origin",
         headers: {
+          "Accept": "application/json",
           "X-CSRFToken": getCookie("csrftoken"),
           "X-Requested-With": "XMLHttpRequest"
         },
         body: formData
       })
-        .then(res => res.json())
+        .then(parseJsonResponse)
         .then(data => {
           if (data.success) {
             location.reload()

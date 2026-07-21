@@ -143,6 +143,11 @@
     <div class="modal-content border-0 shadow">
       <form id="reservationCreateForm" class="no-ajax" action="{% url 'reservations:create' %}" method="post">
         {% csrf_token %}
+        <input type="hidden" name="customer" id="step2CustomerHidden">
+        <input type="hidden" name="dress" id="step2DressHidden">
+        <input type="hidden" name="start_date" id="step2StartDateHidden">
+        <input type="hidden" name="rental_days" id="step2RentalDaysHidden">
+        <input type="hidden" name="contract_number" id="step2ContractNumberHidden">
         <div class="modal-header">
           <h5 class="modal-title">مرحله دوم - اطلاعات مالی</h5>
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>

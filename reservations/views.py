@@ -306,6 +306,8 @@ def reservation_archive_list(request):
 def reservation_step_one(request):
 
     if not can_create_reservation(request.user):
+        if request.META.get("HTTP_X_REQUESTED_WITH") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "message": "شما اجازه ایجاد رزرو را ندارید."}, status=403)
         return HttpResponseForbidden()
 
     # Debug: emit session keys to stderr for AJAX calls to trace missing step1_data
@@ -353,6 +355,8 @@ def reservation_step_one(request):
 def reservation_create(request):
 
     if not can_create_reservation(request.user):
+        if request.META.get("HTTP_X_REQUESTED_WITH") == "XMLHttpRequest":
+            return JsonResponse({"success": False, "message": "شما اجازه ایجاد رزرو را ندارید."}, status=403)
         return HttpResponseForbidden()
 
     # Debug: log session keys for AJAX requests to help diagnose missing step1_data
@@ -367,6 +371,36 @@ def reservation_create(request):
 
     step1_data = _get_reservation_step1_data(request)
     step1_form = None
+
+    # Fallback: if the step-one data is missing from the session, use the values sent
+    # explicitly in the step-two POST payload. This covers cases where the browser
+    # loses the session state or the form is submitted in a different request context.
+    if not step1_data:
+        payload = {
+            "customer": request.POST.get("customer"),
+            "dress": request.POST.get("dress"),
+            "start_date": request.POST.get("start_date"),
+            "rental_days": request.POST.get("rental_days"),
+            "contract_number": request.POST.get("contract_number"),
+        }
+        if any(payload.values()):
+            step1_form = ReservationStepOneForm(payload)
+            if step1_form.is_valid():
+                cleaned = step1_form.cleaned_data
+                step1_data = {
+                    "customer_id": cleaned["customer"].id,
+                    "dress_id": cleaned["dress"].id,
+                    "start_date": str(cleaned["start_date"]),
+                    "rental_days": cleaned["rental_days"],
+                    "end_date": str(cleaned["end_date"]),
+                    "event_date": date_to_iso(getattr(cleaned["customer"], "ceremony_date", None)),
+                    "rent_price": cleaned["dress"].daily_rent_price,
+                    "contract_number": cleaned.get("contract_number"),
+                }
+                try:
+                    request.session["reservation_step1"] = step1_data
+                except Exception:
+                    pass
 
     if not step1_data:
         # Fallback: sometimes the test client saves session data but request.session
@@ -403,34 +437,39 @@ def reservation_create(request):
                 "contract_number": request.POST.get("contract_number"),
             }
             if any(step1_payload.values()):
-                step1_form = ReservationStepOneForm(step1_payload)
-                if not step1_form.is_valid():
-                    if request.META.get("HTTP_X_REQUESTED_WITH") == "XMLHttpRequest":
-                        non_field = step1_form.non_field_errors()
-                        message = str(non_field[0]) if non_field else "اطلاعات رزرو نامعتبر است."
-                        return JsonResponse({"success": False, "message": message})
-                    return render(request, "reservations/list.html", {
-                        "customers": Customer.objects.all(),
-                        "dresses": Dress.objects.filter(status=Dress.STATUS_ACTIVE),
-                        "step1_errors": step1_form.errors
-                    })
-
-                cleaned = step1_form.cleaned_data
-                rent_price = cleaned["dress"].daily_rent_price
-                step1_data = {
-                    "customer_id": cleaned["customer"].id,
-                    "dress_id": cleaned["dress"].id,
-                    "start_date": str(cleaned["start_date"]),
-                    "rental_days": cleaned["rental_days"],
-                    "end_date": str(cleaned["end_date"]),
-                    "event_date": date_to_iso(getattr(cleaned["customer"], "ceremony_date", None)),
-                    "rent_price": rent_price,
-                    "contract_number": cleaned.get("contract_number"),
-                }
                 try:
-                    request.session["reservation_step1"] = step1_data
-                except Exception:
-                    pass
+                    step1_form = ReservationStepOneForm(step1_payload)
+                    if not step1_form.is_valid():
+                        if request.META.get("HTTP_X_REQUESTED_WITH") == "XMLHttpRequest":
+                            non_field = step1_form.non_field_errors()
+                            message = str(non_field[0]) if non_field else "اطلاعات رزرو نامعتبر است."
+                            return JsonResponse({"success": False, "message": message})
+                        return render(request, "reservations/list.html", {
+                            "customers": Customer.objects.all(),
+                            "dresses": Dress.objects.filter(status=Dress.STATUS_ACTIVE),
+                            "step1_errors": step1_form.errors
+                        })
+
+                    cleaned = step1_form.cleaned_data
+                    rent_price = cleaned["dress"].daily_rent_price
+                    step1_data = {
+                        "customer_id": cleaned["customer"].id,
+                        "dress_id": cleaned["dress"].id,
+                        "start_date": str(cleaned["start_date"]),
+                        "rental_days": cleaned["rental_days"],
+                        "end_date": str(cleaned["end_date"]),
+                        "event_date": date_to_iso(getattr(cleaned["customer"], "ceremony_date", None)),
+                        "rent_price": rent_price,
+                        "contract_number": cleaned.get("contract_number"),
+                    }
+                    try:
+                        request.session["reservation_step1"] = step1_data
+                    except Exception:
+                        pass
+                except Exception as exc:
+                    import traceback, sys
+                    traceback.print_exc(file=sys.stderr)
+                    return JsonResponse({"success": False, "message": f"خطا در آماده‌سازی اطلاعات مرحله اول رزرو: {exc}"})
 
     rent_price = step1_data.get("rent_price") if step1_data else None
     if rent_price is None and step1_data and step1_data.get("dress_id"):
