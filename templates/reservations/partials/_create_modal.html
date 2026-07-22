@@ -153,150 +153,202 @@
           <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
         </div>
         <div class="modal-body" style="max-height: calc(70vh); overflow-y: auto;">
-          <div class="card shadow-none border mb-3">
-            <div class="card-body">
-              <div class="row g-3">
-                <div class="col-md-6">
-                  <div class="row align-items-center mb-3">
-                    <label class="col-sm-3 text-sm-end col-form-label">روش پرداخت</label>
-                    <div class="col-sm-9">
-                      <select name="payment_method" class="form-control" required>
-                        <option value="">انتخاب کنید</option>
-                        <option value="CASH">نقدی</option>
-                        <option value="TRANSFER">انتقال بانکی</option>
-                        <option value="POS">کارتخوان</option>
-                      </select>
+          <div class="row g-3">
+            <div class="col-12">
+              <div class="card shadow-none border">
+                <div class="card-header bg-body-tertiary border-bottom py-3">
+                  <h6 class="mb-0 fw-semibold">
+                    <i class="fi fi-rr-wallet me-2"></i>
+                    پرداخت
+                  </h6>
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <div class="row align-items-center mb-3">
+                        <label class="col-sm-3 text-sm-end col-form-label">روش پرداخت</label>
+                        <div class="col-sm-9">
+                          <select name="payment_method" class="form-control" required>
+                            <option value="">انتخاب کنید</option>
+                            <option value="CASH">نقدی</option>
+                            <option value="TRANSFER">انتقال بانکی</option>
+                            <option value="POS">کارتخوان</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-md-6">
+                      <div class="row align-items-center mb-3">
+                        <label class="col-sm-3 text-sm-end col-form-label">کد رهگیری پرداخت</label>
+                        <div class="col-sm-9">
+                          <input type="text" name="payment_tracking_code" class="form-control" required>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                <div class="col-md-6">
-                  <div class="row align-items-center mb-3">
-                    <label class="col-sm-3 text-sm-end col-form-label">کد رهگیری پرداخت</label>
-                    <div class="col-sm-9">
-                      <input type="text" name="payment_tracking_code" class="form-control" required>
+            <div class="col-12">
+              <div class="card shadow-none border">
+                <div class="card-header bg-body-tertiary border-bottom py-3">
+                  <h6 class="mb-0 fw-semibold">
+                    <i class="fi fi-rr-shield-check me-2"></i>
+                    ضمانت‌های اول
+                  </h6>
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <div class="row align-items-center mb-3">
+                        <label class="col-sm-3 text-sm-end col-form-label">نوع ضمانت اول</label>
+                        <div class="col-sm-9">
+                          <select name="guarantee1_type" class="form-control" required>
+                            <option value="CHECK">چک</option>
+                            <option value="CASH">پول</option>
+                            <option value="GOLD">طلا</option>
+                            <option value="PROMISSORY">سفته</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-md-6">
+                      <div class="row align-items-center mb-3">
+                        <label class="col-sm-3 text-sm-end col-form-label">کد رهگیری ضمانت اول</label>
+                        <div class="col-sm-9">
+                          <input type="text" name="guarantee1_tracking_code" class="form-control" required>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-md-6" id="guarantee1PayeeWrapper">
+                      <div class="row align-items-center mb-3">
+                        <label class="col-sm-3 text-sm-end col-form-label">
+                          در وجه ضمانت اول
+                          <span class="text-danger" id="guarantee1PayeeRequired" style="display: none;">*</span>
+                        </label>
+                        <div class="col-sm-9">
+                          <input type="text" name="guarantee1_payee" class="form-control" placeholder="نام گیرنده/سازمان" data-guarantee-payee>
+                          <small class="form-text text-muted">الزامی است اگر نوع ضمانت اول "چک" باشد</small>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                <div class="col-md-6">
-                  <div class="row align-items-center mb-3">
-                    <label class="col-sm-3 text-sm-end col-form-label">نوع ضمانت اول</label>
-                    <div class="col-sm-9">
-                      <select name="guarantee1_type" class="form-control" required>
-                        <option value="CHECK">چک</option>
-                        <option value="CASH">پول</option>
-                        <option value="GOLD">طلا</option>
-                        <option value="PROMISSORY">سفته</option>
-                      </select>
+            <div class="col-12">
+              <div class="card shadow-none border">
+                <div class="card-header bg-body-tertiary border-bottom py-3">
+                  <h6 class="mb-0 fw-semibold">
+                    <i class="fi fi-rr-shield-check me-2"></i>
+                    ضمانت‌های دوم
+                  </h6>
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <div class="row align-items-center mb-3">
+                        <label class="col-sm-3 text-sm-end col-form-label">نوع ضمانت دوم</label>
+                        <div class="col-sm-9">
+                          <select name="guarantee2_type" class="form-control">
+                            <option value="">ندارد</option>
+                            <option value="CHECK">چک</option>
+                            <option value="CASH">پول</option>
+                            <option value="GOLD">طلا</option>
+                            <option value="PROMISSORY">سفته</option>
+                          </select>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-md-6">
+                      <div class="row align-items-center mb-3">
+                        <label class="col-sm-3 text-sm-end col-form-label">کد رهگیری ضمانت دوم</label>
+                        <div class="col-sm-9">
+                          <input type="text" name="guarantee2_tracking_code" class="form-control">
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="col-md-6" id="guarantee2PayeeWrapper">
+                      <div class="row align-items-center mb-3">
+                        <label class="col-sm-3 text-sm-end col-form-label">
+                          در وجه ضمانت دوم
+                          <span class="text-danger" id="guarantee2PayeeRequired" style="display: none;">*</span>
+                        </label>
+                        <div class="col-sm-9">
+                          <input type="text" name="guarantee2_payee" class="form-control" placeholder="نام گیرنده/سازمان" data-guarantee-payee>
+                          <small class="form-text text-muted">الزامی است اگر نوع ضمانت دوم "چک" باشد</small>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
+              </div>
+            </div>
 
-                <div class="col-md-6">
-                  <div class="row align-items-center mb-3">
-                    <label class="col-sm-3 text-sm-end col-form-label">کد رهگیری ضمانت اول</label>
-                    <div class="col-sm-9">
-                      <input type="text" name="guarantee1_tracking_code" class="form-control" required>
-                    </div>
-                  </div>
+            <div class="col-12">
+              <div class="card shadow-none border">
+                <div class="card-header bg-body-tertiary border-bottom py-3">
+                  <h6 class="mb-0 fw-semibold">
+                    <i class="fi fi-rr-receipt me-2"></i>
+                    بیعانه، تخفیف و محاسبات
+                  </h6>
                 </div>
-
-                <div class="col-md-6" id="guarantee1PayeeWrapper">
-                  <div class="row align-items-center mb-3">
-                    <label class="col-sm-3 text-sm-end col-form-label">
-                      در وجه ضمانت اول
-                      <span class="text-danger" id="guarantee1PayeeRequired" style="display: none;">*</span>
-                    </label>
-                    <div class="col-sm-9">
-                      <input type="text" name="guarantee1_payee" class="form-control" placeholder="نام گیرنده/سازمان" data-guarantee-payee>
-                      <small class="form-text text-muted">الزامی است اگر نوع ضمانت اول "چک" باشد</small>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-md-6">
+                      <div class="row align-items-center mb-3">
+                        <label class="col-sm-3 text-sm-end col-form-label">بیعانه</label>
+                        <div class="col-sm-9">
+                          <input type="text" name="deposit_amount" class="form-control money-input" placeholder="0" required>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                <div class="col-md-6">
-                  <div class="row align-items-center mb-3">
-                    <label class="col-sm-3 text-sm-end col-form-label">نوع ضمانت دوم</label>
-                    <div class="col-sm-9">
-                      <select name="guarantee2_type" class="form-control">
-                        <option value="">ندارد</option>
-                        <option value="CHECK">چک</option>
-                        <option value="CASH">پول</option>
-                        <option value="GOLD">طلا</option>
-                        <option value="PROMISSORY">سفته</option>
-                      </select>
+                    <div class="col-md-6">
+                      <div class="row align-items-center mb-3">
+                        <label class="col-sm-3 text-sm-end col-form-label">نوع تخفیف</label>
+                        <div class="col-sm-9">
+                          <select name="discount_type" class="form-control">
+                            <option value="NONE">بدون تخفیف</option>
+                            <option value="AMOUNT">مبلغ ثابت</option>
+                            <option value="PERCENT">درصد</option>
+                          </select>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                <div class="col-md-6">
-                  <div class="row align-items-center mb-3">
-                    <label class="col-sm-3 text-sm-end col-form-label">کد رهگیری ضمانت دوم</label>
-                    <div class="col-sm-9">
-                      <input type="text" name="guarantee2_tracking_code" class="form-control">
+                    <div class="col-md-6">
+                      <div class="row align-items-center mb-3">
+                        <label class="col-sm-3 text-sm-end col-form-label">مقدار تخفیف</label>
+                        <div class="col-sm-9">
+                          <input type="text" name="discount_value" class="form-control money-input" value="0" placeholder="0">
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                <div class="col-md-6" id="guarantee2PayeeWrapper">
-                  <div class="row align-items-center mb-3">
-                    <label class="col-sm-3 text-sm-end col-form-label">
-                      در وجه ضمانت دوم
-                      <span class="text-danger" id="guarantee2PayeeRequired" style="display: none;">*</span>
-                    </label>
-                    <div class="col-sm-9">
-                      <input type="text" name="guarantee2_payee" class="form-control" placeholder="نام گیرنده/سازمان" data-guarantee-payee>
-                      <small class="form-text text-muted">الزامی است اگر نوع ضمانت دوم "چک" باشد</small>
+                    <div class="col-md-6">
+                      <div class="row align-items-center mb-3">
+                        <label class="col-sm-3 text-sm-end col-form-label">هزینه اجاره</label>
+                        <div class="col-sm-9">
+                          <input type="text" id="rent_price" class="form-control money-input" readonly>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                </div>
 
-                <div class="col-md-6">
-                  <div class="row align-items-center mb-3">
-                    <label class="col-sm-3 text-sm-end col-form-label">بیعانه</label>
-                    <div class="col-sm-9">
-                      <input type="text" name="deposit_amount" class="form-control money-input" placeholder="0" required>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="col-md-6">
-                  <div class="row align-items-center mb-3">
-                    <label class="col-sm-3 text-sm-end col-form-label">نوع تخفیف</label>
-                    <div class="col-sm-9">
-                      <select name="discount_type" class="form-control">
-                        <option value="NONE">بدون تخفیف</option>
-                        <option value="AMOUNT">مبلغ ثابت</option>
-                        <option value="PERCENT">درصد</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="col-md-6">
-                  <div class="row align-items-center mb-3">
-                    <label class="col-sm-3 text-sm-end col-form-label">مقدار تخفیف</label>
-                    <div class="col-sm-9">
-                      <input type="text" name="discount_value" class="form-control money-input" value="0" placeholder="0">
-                    </div>
-                  </div>
-                </div>
-
-                <div class="col-md-6">
-                  <div class="row align-items-center mb-3">
-                    <label class="col-sm-3 text-sm-end col-form-label">هزینه اجاره</label>
-                    <div class="col-sm-9">
-                      <input type="text" id="rent_price" class="form-control money-input" readonly>
-                    </div>
-                  </div>
-                </div>
-
-                <div class="col-md-6">
-                  <div class="row align-items-center mb-3">
-                    <label class="col-sm-3 text-sm-end col-form-label">باقی مانده</label>
-                    <div class="col-sm-9">
-                      <input type="text" id="remaining_amount" class="form-control money-input" readonly>
+                    <div class="col-md-6">
+                      <div class="row align-items-center mb-3">
+                        <label class="col-sm-3 text-sm-end col-form-label">باقی مانده</label>
+                        <div class="col-sm-9">
+                          <input type="text" id="remaining_amount" class="form-control money-input" readonly>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>

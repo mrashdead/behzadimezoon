@@ -154,7 +154,7 @@
                       </div>
                     </div>
                     <div class="col-md-6">
-                      <label for="id_preferred_consultant_{{ customer.id }}" class="form-label">مشاور ترجیحی</label>
+                      <label for="id_preferred_consultant_{{ customer.id }}" class="form-label">نوع مشاوره مورد نیاز</label>
                       <select name="preferred_consultant" id="id_preferred_consultant_{{ customer.id }}" class="form-select">
                         <option value="">انتخاب کنید</option>
                         <option value="مشاوره تخصصی لباس" {% if customer.preferred_consultant == 'مشاوره تخصصی لباس' %}selected{% endif %}>مشاوره تخصصی لباس</option>
@@ -163,8 +163,8 @@
                       </select>
                     </div>
                     <div class="col-md-6">
-                      <label for="id_preferred_consultant_name_{{ customer.id }}" class="form-label">نام مشاور ترجیحی</label>
-                      <input type="text" name="preferred_consultant_name" id="id_preferred_consultant_name_{{ customer.id }}" class="form-control" value="{{ customer.preferred_consultant_name|default:'' }}" placeholder="نام مشاور ترجیحی" />
+                      <label for="id_preferred_consultant_name_{{ customer.id }}" class="form-label">نام مشاور</label>
+                      <input type="text" name="preferred_consultant_name" id="id_preferred_consultant_name_{{ customer.id }}" class="form-control" value="{{ customer.preferred_consultant_name|default:'' }}" placeholder="نام مشاور" />
                     </div>
                     <div class="col-md-6">
                       <label for="id_estimated_budget_{{ customer.id }}" class="form-label">بودجه تقریبی</label>
