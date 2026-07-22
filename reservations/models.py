@@ -636,6 +636,16 @@ class Reservation(models.Model):
         # Update snapshot of collected cash
         self.total_cash_collected_snapshot = self.total_received_amount()
 
+        # The create-step form now treats the first guarantee as optional.
+        # Because the model fields themselves are still non-null/non-blank,
+        # normalize empty values before full_clean() to keep persistence
+        # compatible without any migration/schema change.
+        if not self.guarantee1_type or not str(self.guarantee1_type).strip():
+            self.guarantee1_type = GuaranteeType.CASH
+
+        if not self.guarantee1_tracking_code or not str(self.guarantee1_tracking_code).strip():
+            self.guarantee1_tracking_code = 'N/A'
+
         self.full_clean()
 
         super().save(*args, **kwargs)

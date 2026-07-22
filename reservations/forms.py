@@ -146,6 +146,24 @@ class ReservationStepTwoForm(forms.ModelForm):
         label="شماره قرارداد"
     )
 
+    guarantee1_type = forms.ChoiceField(
+        choices=[('', 'ندارد')] + list(GuaranteeType.CHOICES),
+        required=False,
+        label="نوع ضمانت اول"
+    )
+
+    guarantee1_tracking_code = forms.CharField(
+        max_length=100,
+        required=False,
+        label="کد رهگیری ضمانت اول"
+    )
+
+    guarantee1_payee = forms.CharField(
+        max_length=100,
+        required=False,
+        label="در وجه ضمانت اول"
+    )
+
     class Meta:
         model = Reservation
 
@@ -284,14 +302,14 @@ class ReservationEditForm(forms.ModelForm):
     )
 
     guarantee1_type = forms.ChoiceField(
-        choices=GuaranteeType.CHOICES,
-        required=True,
+        choices=[('', 'ندارد')] + list(GuaranteeType.CHOICES),
+        required=False,
         label="نوع ضمانت اول"
     )
 
     guarantee1_tracking_code = forms.CharField(
         max_length=100,
-        required=True,
+        required=False,
         label="کد رهگیری ضمانت اول"
     )
 

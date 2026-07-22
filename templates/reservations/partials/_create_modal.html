@@ -205,7 +205,8 @@
                       <div class="row align-items-center mb-3">
                         <label class="col-sm-3 text-sm-end col-form-label">نوع ضمانت اول</label>
                         <div class="col-sm-9">
-                          <select name="guarantee1_type" class="form-control" required>
+                          <select name="guarantee1_type" class="form-control">
+                            <option value="">ندارد</option>
                             <option value="CHECK">چک</option>
                             <option value="CASH">پول</option>
                             <option value="GOLD">طلا</option>
@@ -219,7 +220,7 @@
                       <div class="row align-items-center mb-3">
                         <label class="col-sm-3 text-sm-end col-form-label">کد رهگیری ضمانت اول</label>
                         <div class="col-sm-9">
-                          <input type="text" name="guarantee1_tracking_code" class="form-control" required>
+                          <input type="text" name="guarantee1_tracking_code" class="form-control">
                         </div>
                       </div>
                     </div>
@@ -228,11 +229,9 @@
                       <div class="row align-items-center mb-3">
                         <label class="col-sm-3 text-sm-end col-form-label">
                           در وجه ضمانت اول
-                          <span class="text-danger" id="guarantee1PayeeRequired" style="display: none;">*</span>
                         </label>
                         <div class="col-sm-9">
                           <input type="text" name="guarantee1_payee" class="form-control" placeholder="نام گیرنده/سازمان" data-guarantee-payee>
-                          <small class="form-text text-muted">الزامی است اگر نوع ضمانت اول "چک" باشد</small>
                         </div>
                       </div>
                     </div>

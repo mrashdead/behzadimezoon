@@ -38,6 +38,56 @@ class ReservationFormBehaviorTests(TestCase):
         self.assertEqual(form.cleaned_data['deposit_amount'], 1000)
         self.assertEqual(form.cleaned_data['discount_value'], 2500)
 
+    def test_step_two_form_allows_optional_first_guarantee_details(self):
+        form = ReservationStepTwoForm(data={
+            'payment_method': 'CASH',
+            'payment_tracking_code': 'PAY-2',
+            'guarantee1_type': '',
+            'guarantee1_tracking_code': '',
+            'guarantee2_type': '',
+            'guarantee2_tracking_code': '',
+            'deposit_amount': '5000',
+            'discount_type': 'NONE',
+            'discount_value': '0',
+        }, rent_price=100000)
+
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_reservation_model_defaults_blank_first_guarantee_values_before_save(self):
+        customer = Customer.objects.create(
+            bride_first_name='Default',
+            bride_last_name='Customer',
+            bride_phone='09120000003',
+            ceremony_date=jdatetime.date(1402, 1, 3),
+            how_to_know='test',
+            allow_contact=True,
+        )
+        dress = Dress.objects.create(code='D004', daily_rent_price=100000)
+
+        reservation = Reservation(
+            customer=customer,
+            dress=dress,
+            start_date=jdatetime.date(1402, 1, 3),
+            rental_days=3,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=100000,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=50000,
+            payment_method='CASH',
+            payment_tracking_code='PAY-DEFAULT',
+            guarantee1_type='',
+            guarantee1_tracking_code='',
+            guarantee1_payee='',
+            created_by=create_user('default_owner', 'MANAGER'),
+        )
+
+        reservation.save()
+
+        self.assertEqual(reservation.guarantee1_type, 'CASH')
+        self.assertEqual(reservation.guarantee1_tracking_code, 'N/A')
+
     def test_step_two_form_requires_payee_when_check_guarantee_selected(self):
         form = ReservationStepTwoForm(data={
             'payment_method': 'CASH',
