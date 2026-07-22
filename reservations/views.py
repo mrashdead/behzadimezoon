@@ -495,9 +495,11 @@ def reservation_create(request):
         except Exception:
             return JsonResponse({"success": False, "message": "اطلاعات رزرو نامعتبر است."})
 
-        # Check availability BEFORE form validation when we have step1_data
+        # Check availability BEFORE form validation when we have step1_data.
+        # Use a normal read here; the locking is done only inside the final
+        # atomic reservation creation block where the write transaction exists.
         try:
-            dress = Dress.objects.select_for_update().get(id=step1_data["dress_id"])
+            dress = Dress.objects.get(id=step1_data["dress_id"])
 
             is_available, _ = ReservationAvailabilityService.is_dress_available(
                 dress=dress, start_date=start_date, rental_days=rental_days,
