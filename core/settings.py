@@ -26,8 +26,10 @@ SECRET_KEY = config('SECRET_KEY')
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = config('DEBUG', default=False, cast=bool)
 
-ALLOWED_HOSTS = ["juliette.ir","www.juliette.ir","185.8.172.33","127.0.0.1","localhost", "testserver"]
+ALLOWED_HOSTS = ["www.behzadi-panel.ir","behzadi-panel.ir","juliette.ir","www.juliette.ir","185.8.172.33","127.0.0.1","localhost", "testserver"]
 CSRF_TRUSTED_ORIGINS = [
+    "https://behzadi-panel.ir",
+    "https://www.behzadi-panel.ir",
     "https://juliette.ir/",
     "https://www.juliette.ir/",
     "http://185.8.172.33",

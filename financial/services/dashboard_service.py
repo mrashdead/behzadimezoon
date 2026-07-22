@@ -147,6 +147,7 @@ class DashboardService:
         filters = filters or {}
         qs = Transaction.objects.filter(
             reservation__status__in=DashboardService.ACTIVE_STATUSES,
+            reservation__is_deleted=False,
             reservation__isnull=False,
             transaction_status=Transaction.TransactionStatus.POSTED, # Only posted transactions
             is_voided=False

@@ -83,6 +83,7 @@ class ReconciliationService:
         filters = filters or {}
 
         reservations_qs = Reservation.objects.filter(
+            is_deleted=False,
             status__in=[ReservationStatus.CONFIRMED, ReservationStatus.DELIVERED, ReservationStatus.RETURNED]
         )
         reservations_qs = DashboardService._apply_reservation_filters(reservations_qs, filters) # Apply filters if provided

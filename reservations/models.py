@@ -4,6 +4,8 @@ from django.core.exceptions import ValidationError
 from django.db import models
 from django.conf import settings
 from django.utils import timezone
+from django.db.models.signals import pre_delete
+from django.dispatch import receiver
 from datetime import timedelta
 
 from django_jalali.db import models as jmodels
@@ -757,6 +759,14 @@ class ReservationManager(models.Manager):
 # attach manager to model dynamically to avoid migration churn when not applied
 Reservation.add_to_class('objects', ReservationManager())
 Reservation.add_to_class('all_objects', models.Manager())
+
+
+@receiver(pre_delete, sender=Reservation)
+def cleanup_related_financial_records(sender, instance, **kwargs):
+    from financial.models import Transaction, PaymentAllocation
+
+    Transaction.objects.filter(reservation_id=instance.pk).delete()
+    PaymentAllocation.objects.filter(reservation_id=instance.pk).delete()
 
 
 class ReservationArchiveSnapshot(models.Model):

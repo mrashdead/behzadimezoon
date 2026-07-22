@@ -43,7 +43,7 @@ class KPIService:
         posted_transactions = Transaction.objects.filter(
             transaction_status=Transaction.TransactionStatus.POSTED,
             is_voided=False,
-        )
+        ).exclude(reservation__is_deleted=True)
 
         total_revenue = (
             posted_transactions.filter(
@@ -58,6 +58,7 @@ class KPIService:
         net_profit = total_revenue - total_expenses
 
         receivables = Reservation.objects.filter(
+            is_deleted=False,
             payment_status__in=[Reservation.PAYMENT_PARTIAL, Reservation.PAYMENT_UNPAID],
             status__in=[ReservationStatus.CONFIRMED, ReservationStatus.DELIVERED],
         ).aggregate(total_receivables=Sum('remaining_amount'))['total_receivables'] or 0

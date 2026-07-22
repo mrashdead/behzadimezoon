@@ -4,7 +4,7 @@ import jdatetime
 
 from accounts.models import User
 from customers.models import Customer
-from financial.models import CancellationRecord, DamageRecord, Transaction
+from financial.models import CancellationRecord, DamageRecord, Transaction, PaymentAllocation
 from products.models import Dress
 from reservations.models import Reservation, AdditionalFee
 from reservations.constants import ReservationStatus
@@ -856,8 +856,7 @@ class ReservationStatusTransitionTests(TestCase):
         with self.assertRaises(Reservation.DoesNotExist):
             Reservation.objects.get(pk=reservation.pk)
 
-        tx.refresh_from_db()
-        self.assertIsNone(tx.reservation_id)
+        self.assertFalse(Transaction.objects.filter(pk=tx.pk).exists())
 
         snapshot = ReservationArchiveSnapshot.objects.get(original_reservation_id=reservation.pk)
         self.assertEqual(snapshot.data['reservation']['id'], reservation.pk)
@@ -865,6 +864,50 @@ class ReservationStatusTransitionTests(TestCase):
         self.assertEqual(len(snapshot.data['transactions']), 1)
         self.assertEqual(snapshot.data['transactions'][0]['id'], tx.pk)
         self.assertEqual(snapshot.data['transactions'][0]['amount'], tx.amount)
+
+    def test_permanent_delete_cascades_related_financial_records(self):
+        reservation = Reservation.objects.create(
+            customer=self.customer,
+            dress=self.dress,
+            start_date=jdatetime.date(1402, 1, 1),
+            rental_days=3,
+            status=ReservationStatus.ARCHIVED,
+            previous_status=ReservationStatus.CONFIRMED,
+            archived_at=jdatetime.datetime(1402, 1, 5, 12, 0, 0),
+            archived_by=self.admin,
+            rent_price=self.dress.daily_rent_price,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=50000,
+            payment_method='CASH',
+            payment_tracking_code='PAY123',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=self.admin
+        )
+
+        tx = Transaction.objects.create(
+            reservation=reservation,
+            amount=100000,
+            transaction_type=Transaction.TransactionType.DEPOSIT,
+            transaction_status=Transaction.TransactionStatus.POSTED,
+            created_by=self.admin,
+        )
+        PaymentAllocation.objects.create(
+            payment_transaction=tx,
+            reservation=reservation,
+            allocated_amount=100000,
+        )
+
+        self.client.login(username='admin_user', password='password123')
+        delete_url = reverse('reservations:delete_permanent', args=[reservation.pk])
+        response = self.client.post(delete_url, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+
+        self.assertEqual(response.status_code, 200)
+        self.assertFalse(Transaction.objects.filter(pk=tx.pk).exists())
+        self.assertFalse(PaymentAllocation.objects.filter(reservation_id=reservation.pk).exists())
+        self.assertFalse(Reservation.all_objects.filter(pk=reservation.pk).exists())
 
     def test_permanent_delete_rejects_non_archived_reservation(self):
         reservation = Reservation.objects.create(
