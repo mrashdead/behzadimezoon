@@ -1172,12 +1172,17 @@ def check_availability(request):
         dress=dress, start_date=start_date_obj, rental_days=rental_days
     )
 
+    event_date_matches = False
+    if event_date and end_date:
+        event_date_matches = start_date_obj <= event_date <= end_date
+
     return JsonResponse({
         "success": True,
         "available": is_available,
         "end_date": end_date.isoformat() if end_date else None,
         "rent_price": str(dress.daily_rent_price),
         "event_date": date_to_iso(event_date),
+        "ceremony_date_matches": event_date_matches,
     })
 
 

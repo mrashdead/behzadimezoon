@@ -12,9 +12,12 @@ class ReservationAvailabilityService:
     @staticmethod
     def calculate_end_date(start_date, rental_days):
         """
-        محاسبه تاریخ پایان رزرو
+        محاسبه تاریخ تحویل/پایان رزرو با فرمول شامل روز اول.
+        اگر شروع اجاره 28 باشد و مدت 1 روز باشد، تحویل 28 است.
         """
-        return start_date + timedelta(days=rental_days)
+        if rental_days < 1:
+            return start_date
+        return start_date + timedelta(days=rental_days - 1)
 
 
     @staticmethod
@@ -50,10 +53,10 @@ class ReservationAvailabilityService:
         if exclude_reservation_id:
             reservations = reservations.exclude(id=exclude_reservation_id)
 
-        # بررسی تداخل بازه‌ها
+        # بررسی تداخل بازه‌ها با بازه بسته شامل روز شروع و روز تحویل.
         overlap = reservations.filter(
-            Q(start_date__lt=end_date) &
-            Q(end_date__gt=start_date)
+            Q(start_date__lte=end_date) &
+            Q(end_date__gte=start_date)
         ).exists()
 
         return not overlap, end_date

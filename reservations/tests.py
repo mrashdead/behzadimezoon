@@ -8,7 +8,7 @@ from financial.models import CancellationRecord, DamageRecord, Transaction
 from products.models import Dress
 from reservations.models import Reservation, AdditionalFee
 from reservations.constants import ReservationStatus
-from reservations.forms import ReservationStepTwoForm, RemainingPaymentForm
+from reservations.forms import ReservationStepOneForm, ReservationStepTwoForm, RemainingPaymentForm
 
 
 def create_user(username, role, password='password123'):
@@ -38,6 +38,49 @@ class ReservationFormBehaviorTests(TestCase):
         self.assertEqual(form.cleaned_data['deposit_amount'], 1000)
         self.assertEqual(form.cleaned_data['discount_value'], 2500)
 
+    def test_step_one_form_rejects_reservation_outside_customer_ceremony_date(self):
+        customer = Customer.objects.create(
+            bride_first_name='Ceremony',
+            bride_last_name='Customer',
+            bride_phone='09120000005',
+            ceremony_date=jdatetime.date(1402, 1, 10),
+            how_to_know='test',
+            allow_contact=True,
+        )
+        dress = Dress.objects.create(code='D006', daily_rent_price=100000, status=Dress.STATUS_ACTIVE)
+
+        form = ReservationStepOneForm(data={
+            'customer': customer.pk,
+            'dress': dress.pk,
+            'start_date': '1402/01/01',
+            'rental_days': '3',
+            'contract_number': 'CN-TEST-1',
+        })
+
+        self.assertFalse(form.is_valid())
+        self.assertIn('تاریخ رزرو با مراسم مغایرت دارد لطفا تاریخ مراسم عروس را ادیت کنید', str(form.errors))
+
+    def test_step_one_form_allows_reservation_covering_customer_ceremony_date(self):
+        customer = Customer.objects.create(
+            bride_first_name='Match',
+            bride_last_name='Customer',
+            bride_phone='09120000006',
+            ceremony_date=jdatetime.date(1402, 1, 10),
+            how_to_know='test',
+            allow_contact=True,
+        )
+        dress = Dress.objects.create(code='D007', daily_rent_price=100000, status=Dress.STATUS_ACTIVE)
+
+        form = ReservationStepOneForm(data={
+            'customer': customer.pk,
+            'dress': dress.pk,
+            'start_date': '1402/01/08',
+            'rental_days': '3',
+            'contract_number': 'CN-TEST-2',
+        })
+
+        self.assertTrue(form.is_valid(), form.errors)
+
     def test_step_two_form_allows_optional_first_guarantee_details(self):
         form = ReservationStepTwoForm(data={
             'payment_method': 'CASH',
@@ -52,6 +95,49 @@ class ReservationFormBehaviorTests(TestCase):
         }, rent_price=100000)
 
         self.assertTrue(form.is_valid(), form.errors)
+
+    def test_reservation_model_uses_inclusive_return_date_formula(self):
+        customer = Customer.objects.create(
+            bride_first_name='Inclusive',
+            bride_last_name='Customer',
+            bride_phone='09120000004',
+            ceremony_date=jdatetime.date(1402, 1, 3),
+            how_to_know='test',
+            allow_contact=True,
+        )
+        dress = Dress.objects.create(code='D005', daily_rent_price=100000)
+
+        reservation = Reservation(
+            customer=customer,
+            dress=dress,
+            start_date=jdatetime.date(1402, 1, 28),
+            rental_days=1,
+            status=ReservationStatus.CONFIRMED,
+            rent_price=100000,
+            deposit_amount=50000,
+            discount_amount=0,
+            final_price=100000,
+            remaining_amount=50000,
+            payment_method='CASH',
+            payment_tracking_code='PAY-DEFAULT-1',
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G1',
+            created_by=create_user('inclusive_owner', 'MANAGER'),
+        )
+
+        reservation.save()
+
+        self.assertEqual(reservation.end_date, jdatetime.date(1402, 1, 28))
+
+    def test_availability_service_uses_inclusive_return_date_formula(self):
+        from reservations.services.availability_service import ReservationAvailabilityService
+
+        end_date = ReservationAvailabilityService.calculate_end_date(
+            jdatetime.date(1402, 1, 28),
+            2,
+        )
+
+        self.assertEqual(end_date, jdatetime.date(1402, 1, 29))
 
     def test_reservation_model_defaults_blank_first_guarantee_values_before_save(self):
         customer = Customer.objects.create(

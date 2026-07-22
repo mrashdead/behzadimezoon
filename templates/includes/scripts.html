@@ -111,6 +111,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
     const eventDateField = document.getElementById("event_date")
     const endDateField = document.getElementById("end_date")
+    const reservationCeremonyMismatchMessage = document.getElementById("reservationCeremonyMismatchMessage")
     const rentPriceField = document.getElementById("rent_price")
     const remainingAmountField = document.getElementById("remaining_amount")
 
@@ -152,6 +153,65 @@ document.addEventListener('DOMContentLoaded', function () {
         month: "2-digit",
         day: "2-digit"
       }).format(parsed)
+    }
+
+    function normalizeComparableDate(value) {
+      if (!value) return null
+      const normalized = String(value)
+        .replace(/-/g, "/")
+        .replace(/\s+/g, "")
+      if (window.UIHelpers && typeof window.UIHelpers.normalizeDigits === 'function') {
+        return window.UIHelpers.normalizeDigits(normalized)
+      }
+      return normalized
+    }
+
+    function toComparableDateKey(value) {
+      const normalized = normalizeComparableDate(value)
+      if (!normalized) return null
+
+      const parts = normalized.split("/").map(part => part.trim()).filter(Boolean)
+      if (parts.length !== 3) return null
+
+      const [year, month, day] = parts.map(Number)
+      if ([year, month, day].some(part => Number.isNaN(part))) return null
+
+      return `${String(year).padStart(4, "0")}${String(month).padStart(2, "0")}${String(day).padStart(2, "0")}`
+    }
+
+    function isReservationRangeInsideCeremony(startDateValue, endDateValue, ceremonyDateValue) {
+      const startKey = toComparableDateKey(startDateValue)
+      const endKey = toComparableDateKey(endDateValue)
+      const ceremonyKey = toComparableDateKey(ceremonyDateValue)
+
+      if (!startKey || !endKey || !ceremonyKey) return true
+      return startKey <= ceremonyKey && ceremonyKey <= endKey
+    }
+
+    function setReservationCeremonyMismatchState(isMismatch) {
+      if (reservationCeremonyMismatchMessage) {
+        reservationCeremonyMismatchMessage.classList.toggle('d-none', !isMismatch)
+      }
+    }
+
+    function calculateInclusiveReturnDate(startDateValue, rentalDaysValue) {
+      if (!startDateValue || !rentalDaysValue) return ""
+
+      const normalized = String(startDateValue).replace(/-/g, "/")
+      const parts = normalized.split("/").map(part => Number(part))
+      if (parts.length !== 3 || parts.some(part => Number.isNaN(part))) {
+        return ""
+      }
+
+      const days = Number(rentalDaysValue)
+      if (!Number.isFinite(days) || days < 1) {
+        return ""
+      }
+
+      const inclusiveDayOffset = days - 1
+      const jalaliDate = new persianDate([parts[0], parts[1], parts[2]])
+      jalaliDate.add('day', inclusiveDayOffset)
+      return jalaliDate.format('YYYY/MM/DD')
     }
 
     function calculateRemaining() {
@@ -202,6 +262,13 @@ document.addEventListener('DOMContentLoaded', function () {
         return
       }
 
+      const previewReturnDate = calculateInclusiveReturnDate(start_date, rental_days)
+      if (previewReturnDate && endDateField) {
+        endDateField.value = previewReturnDate
+      }
+
+      setReservationCeremonyMismatchState(false)
+
       fetch("/reservations/check-availability/", {
         method: "POST",
         headers: {
@@ -227,6 +294,15 @@ document.addEventListener('DOMContentLoaded', function () {
           if (data.available) {
             endDateField.value = formatJalaliDate(data.end_date) || ""
             eventDateField.value = formatJalaliDate(data.event_date) || ""
+
+            const ceremonyMatches = data.ceremony_date_matches !== false
+            const mismatch = data.ceremony_date_matches === false
+            setReservationCeremonyMismatchState(mismatch)
+
+            if (mismatch) {
+              nextBtn.disabled = true
+              return
+            }
 
             rentPrice = parseFloat(data.rent_price) || 0
             rentPriceField.value = formatCurrency(rentPrice)

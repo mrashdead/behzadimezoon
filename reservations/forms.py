@@ -115,6 +115,13 @@ class ReservationStepOneForm(forms.Form):
 
         cleaned_data["end_date"] = end_date
 
+        customer = cleaned_data.get("customer")
+        ceremony_date = getattr(customer, "ceremony_date", None) if customer else None
+        if ceremony_date:
+            reservation_range_includes_ceremony = start_date <= ceremony_date <= end_date
+            if not reservation_range_includes_ceremony:
+                raise ValidationError("تاریخ رزرو با مراسم مغایرت دارد لطفا تاریخ مراسم عروس را ادیت کنید")
+
         return cleaned_data
 
 
