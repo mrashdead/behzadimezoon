@@ -60,36 +60,7 @@
       </form>
 
       {% if 'CANCELLED' in reservation.allowed_transitions %}
-      <script>
-        (function () {
-          const modalId = 'deleteReservationModal{{ reservation.id }}';
-          const modal = document.getElementById(modalId);
-          if (!modal) {
-            return;
-          }
-
-          const checkbox = modal.querySelector('#id_item_damaged_{{ reservation.id }}');
-          const details = modal.querySelector('.damage-details');
-          if (!checkbox || !details) {
-            return;
-          }
-
-          const updateVisibility = function () {
-            if (checkbox.checked) {
-              details.classList.remove('d-none');
-            } else {
-              details.classList.add('d-none');
-            }
-          };
-
-          checkbox.addEventListener('change', updateVisibility);
-          updateVisibility();
-
-          modal.addEventListener('shown.bs.modal', function () {
-            updateVisibility();
-          });
-        })();
-      </script>
+      {% include 'includes/scripts/reservation_delete_modal_js.html' %}
       {% endif %}
     </div>
   </div>

@@ -1,0 +1,57 @@
+<script>
+(function () {
+  function setupGuaranteePayeeVisibility() {
+    const guarantee1Select = document.querySelector('select[name="guarantee1_type"]');
+    const guarantee2Select = document.querySelector('select[name="guarantee2_type"]');
+
+    const guarantee1Input = document.querySelector('input[name="guarantee1_payee"]');
+    const guarantee2Input = document.querySelector('input[name="guarantee2_payee"]');
+
+    const guarantee1RequiredIcon = document.querySelector('#guarantee1PayeeRequired');
+    const guarantee2RequiredIcon = document.querySelector('#guarantee2PayeeRequired');
+
+    function updateGuaranteeRequirement(select, input, requiredIcon) {
+      if (!select || !input) return;
+
+      const isCheck = select.value === 'CHECK';
+      input.required = isCheck;
+
+      if (requiredIcon) {
+        requiredIcon.style.display = isCheck ? 'inline' : 'none';
+      }
+
+      if (!isCheck) {
+        input.value = '';
+        input.classList.remove('is-invalid');
+      }
+    }
+
+    updateGuaranteeRequirement(guarantee1Select, guarantee1Input, guarantee1RequiredIcon);
+    updateGuaranteeRequirement(guarantee2Select, guarantee2Input, guarantee2RequiredIcon);
+
+    if (guarantee1Select) {
+      guarantee1Select.addEventListener('change', function () {
+        updateGuaranteeRequirement(this, guarantee1Input, guarantee1RequiredIcon);
+      });
+    }
+
+    if (guarantee2Select) {
+      guarantee2Select.addEventListener('change', function () {
+        updateGuaranteeRequirement(this, guarantee2Input, guarantee2RequiredIcon);
+      });
+    }
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', setupGuaranteePayeeVisibility);
+  } else {
+    setupGuaranteePayeeVisibility();
+  }
+
+  document.addEventListener('shown.bs.modal', function (event) {
+    if (event.target && event.target.id === 'createReservationStep2Modal') {
+      setupGuaranteePayeeVisibility();
+    }
+  });
+})();
+</script>

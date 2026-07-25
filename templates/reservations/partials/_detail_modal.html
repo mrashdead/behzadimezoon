@@ -154,26 +154,3 @@
   </div>
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function(){
-  const btn = document.getElementById('loadFinancialBtn{{ reservation.id }}');
-  if (!btn) return;
-  btn.addEventListener('click', function(){
-    const container = document.getElementById('reservationFinancialContainer{{ reservation.id }}');
-    if (!container) return;
-    fetch('{% url "financial:reservation_financial" reservation.pk %}')
-      .then(r => r.text())
-      .then(html => {
-        container.innerHTML = html;
-        const scripts = Array.from(container.querySelectorAll('script'));
-        scripts.forEach(oldScript => {
-          const newScript = document.createElement('script');
-          Array.from(oldScript.attributes).forEach(attr => newScript.setAttribute(attr.name, attr.value));
-          newScript.textContent = oldScript.textContent;
-          oldScript.replaceWith(newScript);
-        });
-      })
-      .catch(() => { alert('خطا در بارگذاری خلاصه مالی'); });
-  });
-});
-</script>

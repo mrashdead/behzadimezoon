@@ -12,16 +12,5 @@
     {% endfor %}
 </div>
 
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-    const toasts = document.querySelectorAll('.toast');
-    toasts.forEach(function(toastEl) {
-        const delay = 5000;
-        setTimeout(function () {
-            toastEl.classList.remove('show');
-            toastEl.classList.add('hide');
-        }, delay);
-    });
-});
-</script>
+{% include 'includes/scripts/alerts_js.html' %}
 {% endif %}

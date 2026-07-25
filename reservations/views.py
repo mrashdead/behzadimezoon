@@ -33,11 +33,13 @@ from reservations.forms import (
     DamageReturnForm,
     AdditionalFeeForm,
     PenaltyPaymentForm,
+    FinalizeDeliveryGuaranteeForm,
     parse_amount_value,
 )
 from reservations.services.availability_service import ReservationAvailabilityService
 from reservations.services.change_status import ReservationStatusService
 from reservations.constants import ReservationStatus, PaymentMethod, GuaranteeType
+from core.pagination import build_pagination_items, build_pagination_url
 
 # Import financial services and models
 from financial.services.payment_service import PaymentService
@@ -239,6 +241,9 @@ def reservation_list(request):
         "paginator": paginator,
         "is_paginated": reservations.has_other_pages(),
         "search_query": search_query,
+        "pagination_items": build_pagination_items(reservations, paginator, request),
+        "prev_page_url": build_pagination_url(request, reservations.previous_page_number) if reservations.has_previous() else None,
+        "next_page_url": build_pagination_url(request, reservations.next_page_number) if reservations.has_next() else None,
         "customers": Customer.objects.all(),
         "dresses": Dress.objects.filter(status=Dress.STATUS_ACTIVE),
         "payment_methods": PaymentMethod.CHOICES,
@@ -295,6 +300,9 @@ def reservation_archive_list(request):
         "can_delete_reservation": False,
         "can_change_reservation_status": False,
         "can_restore_reservation": request.user.is_superuser,
+        "pagination_items": build_pagination_items(reservations, paginator, request),
+        "prev_page_url": build_pagination_url(request, reservations.previous_page_number) if reservations.has_previous() else None,
+        "next_page_url": build_pagination_url(request, reservations.next_page_number) if reservations.has_next() else None,
         "damage_return_form": DamageReturnForm(),
     }
 
@@ -844,6 +852,16 @@ def reservation_finalize_delivery(request, pk):
             return JsonResponse({"success": False, "message": f'خطا در افزودن هزینه: {str(e)}'}, status=500)
 
     # Otherwise, handle finalization of delivery with remaining payment
+    # First validate guarantee fields
+    guarantee_form = FinalizeDeliveryGuaranteeForm(request.POST)
+
+    if not guarantee_form.is_valid():
+        return JsonResponse({
+            "success": False,
+            "message": "اطلاعات ضمانت نامعتبر است. لطفاً دوباره بررسی کنید.",
+            "errors": guarantee_form.errors
+        }, status=400)
+
     form = RemainingPaymentForm(request.POST)
 
     if not form.is_valid():
@@ -853,6 +871,15 @@ def reservation_finalize_delivery(request, pk):
     method = form.cleaned_data.get("remaining_payment_method")
     code = form.cleaned_data.get("remaining_payment_tracking_code")
     tailor_name = request.POST.get("tailor_name", "").strip()
+
+    # Get guarantee data from form (already validated)
+    guarantee1_type = guarantee_form.cleaned_data.get("guarantee1_type", "")
+    guarantee1_tracking_code = guarantee_form.cleaned_data.get("guarantee1_tracking_code", "")
+    guarantee1_payee = guarantee_form.cleaned_data.get("guarantee1_payee", "").strip()
+    guarantee2_type = guarantee_form.cleaned_data.get("guarantee2_type", "").strip()
+    guarantee2_tracking_code = guarantee_form.cleaned_data.get("guarantee2_tracking_code", "").strip()
+    guarantee2_payee = guarantee_form.cleaned_data.get("guarantee2_payee", "").strip()
+
     if tailor_name:
         reservation.tailor_name = tailor_name
 
@@ -865,7 +892,16 @@ def reservation_finalize_delivery(request, pk):
 
                 if tailor_name:
                     reservation.tailor_name = tailor_name
-                    reservation.save(update_fields=['tailor_name'])
+
+                # Update guarantee fields
+                reservation.guarantee1_type = guarantee1_type
+                reservation.guarantee1_tracking_code = guarantee1_tracking_code
+                reservation.guarantee1_payee = guarantee1_payee
+                reservation.guarantee2_type = guarantee2_type or ""
+                reservation.guarantee2_tracking_code = guarantee2_tracking_code or ""
+                reservation.guarantee2_payee = guarantee2_payee or ""
+
+                reservation.save(update_fields=['tailor_name', 'guarantee1_type', 'guarantee1_tracking_code', 'guarantee1_payee', 'guarantee2_type', 'guarantee2_tracking_code', 'guarantee2_payee'])
 
                 if reservation.status == ReservationStatus.DELIVERED:
                     return JsonResponse({"success": True, "message": "رزرو قبلاً تحویل شده است."})

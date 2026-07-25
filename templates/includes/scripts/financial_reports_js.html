@@ -1,0 +1,41 @@
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const labels = {{ chart_labels|safe }};
+  const revenueData = {{ revenue_data|safe }};
+  const expenseData = {{ expense_data|safe }};
+
+  const options = {
+    chart: {
+      type: 'line',
+      height: 350,
+      toolbar: { show: false },
+    },
+    series: [
+      { name: 'درآمد', data: revenueData },
+      { name: 'هزینه', data: expenseData },
+    ],
+    xaxis: {
+      categories: labels,
+    },
+    yaxis: {
+      labels: {
+        formatter: function (value) {
+          return value.toLocaleString('fa-IR');
+        }
+      }
+    },
+    tooltip: {
+      y: {
+        formatter: function (value) {
+          return value.toLocaleString('fa-IR') + ' تومان';
+        }
+      }
+    }
+  };
+
+  if (typeof ApexCharts !== 'undefined') {
+    const chart = new ApexCharts(document.querySelector('#financialTrendChart'), options);
+    chart.render();
+  }
+});
+</script>

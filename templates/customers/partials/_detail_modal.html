@@ -29,7 +29,7 @@
                   </div>
                   <div class="col-md-6">
                     <div class="small text-muted mb-1">شماره تماس عروس</div>
-                    <div class="fw-semibold" dir="ltr">{{ customer.bride_phone|default:"-" }}</div>
+                    <div class="fw-semibold customer-phone-number" dir="ltr">{{ customer.bride_phone|default:"-"|persian_digits }}</div>
                   </div>
                   <div class="col-md-6">
                     <div class="small text-muted mb-1">تاریخ مراسم</div>
@@ -79,7 +79,7 @@
                   </div>
                   <div class="col-md-6">
                     <div class="small text-muted mb-1">شماره تماس داماد</div>
-                    <div class="fw-semibold" dir="ltr">{{ customer.groom_phone|default:"-" }}</div>
+                    <div class="fw-semibold customer-phone-number" dir="ltr">{{ customer.groom_phone|default:"-"|persian_digits }}</div>
                   </div>
                 </div>
               </div>

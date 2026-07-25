@@ -143,3 +143,21 @@ class ProductPermissionAndStatusTests(TestCase):
         self.assertEqual(response.status_code, 200)
         codes = [dress.code for dress in response.context['dresses']]
         self.assertEqual(codes, ['A100', 'M100', 'Z100'])
+
+    def test_page_below_one_redirects_to_first_page(self):
+        for i in range(25):
+            Dress.objects.create(code=f'Q{i:03d}', daily_rent_price=100000)
+
+        response = self.client.get(reverse('products:list'), {'page': 0})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('page=1', response.url)
+
+    def test_out_of_range_page_redirects_to_last_available_page(self):
+        for i in range(25):
+            Dress.objects.create(code=f'P{i:03d}', daily_rent_price=100000)
+
+        response = self.client.get(reverse('products:list'), {'page': 999})
+
+        self.assertEqual(response.status_code, 302)
+        self.assertIn('page=2', response.url)

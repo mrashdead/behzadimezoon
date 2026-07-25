@@ -1,0 +1,22 @@
+<script>
+  function toggleLeaveTimeSection() {
+    const leaveType = document.querySelector('select[name="leave_type"]');
+    const timeSection = document.querySelector('.time-section');
+
+    if (leaveType && timeSection) {
+      if (leaveType.value === 'HOURLY') {
+        timeSection.style.display = '';
+      } else {
+        timeSection.style.display = 'none';
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    toggleLeaveTimeSection();
+    const leaveTypeSelect = document.querySelector('select[name="leave_type"]');
+    if (leaveTypeSelect) {
+      leaveTypeSelect.addEventListener('change', toggleLeaveTimeSection);
+    }
+  });
+</script>

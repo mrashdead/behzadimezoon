@@ -1,0 +1,25 @@
+{% load static %}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    function toggleHowToKnowDetail(select, detailInput) {
+      const shouldShow = select && (select.value === 'سالن زیبایی' || select.value === 'سایر');
+      if (detailInput) {
+        detailInput.closest('.col-md-6').style.display = shouldShow ? '' : 'none';
+        if (!shouldShow) {
+          detailInput.value = '';
+        }
+      }
+    }
+
+    document.querySelectorAll('[id^="id_how_to_know"]').forEach(function (select) {
+      if (!select.id.includes('detail')) {
+        const baseId = select.id.replace('id_how_to_know', 'id_how_to_know_detail');
+        const detailInput = document.getElementById(baseId) || document.querySelector('[name="how_to_know_detail"]');
+        toggleHowToKnowDetail(select, detailInput);
+        select.addEventListener('change', function () {
+          toggleHowToKnowDetail(select, detailInput);
+        });
+      }
+    });
+  });
+</script>

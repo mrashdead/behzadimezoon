@@ -1,0 +1,321 @@
+<script>
+(function () {
+  let toastContainer = document.getElementById('financeToastContainer');
+  if (!toastContainer) {
+    toastContainer = document.createElement('div');
+    toastContainer.id = 'financeToastContainer';
+    toastContainer.style.position = 'fixed';
+    toastContainer.style.top = '1rem';
+    toastContainer.style.left = '50%';
+    toastContainer.style.transform = 'translateX(-50%)';
+    toastContainer.style.zIndex = 1080;
+    document.body.appendChild(toastContainer);
+  }
+
+  function showToast(message, variant = 'info') {
+    const toast = document.createElement('div');
+    toast.className = `toast align-items-center text-bg-${variant} border-0 show`;
+    toast.setAttribute('role', 'alert');
+    toast.innerHTML = `<div class="d-flex"><div class="toast-body">${message}</div><button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast"></button></div>`;
+    toastContainer.appendChild(toast);
+    setTimeout(function () { toast.remove(); }, 4000);
+  }
+
+  function getCookie(name) {
+    let cookieValue = null;
+    if (document.cookie && document.cookie !== '') {
+      const cookies = document.cookie.split(';');
+      for (let i = 0; i < cookies.length; i++) {
+        const cookie = cookies[i].trim();
+        if (cookie.substring(0, name.length + 1) === (name + '=')) {
+          cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+          break;
+        }
+      }
+    }
+    return cookieValue;
+  }
+
+  function clearFormErrors(form) {
+    form.querySelectorAll('.is-invalid').forEach(function (element) {
+      element.classList.remove('is-invalid');
+    });
+    form.querySelectorAll('.invalid-feedback').forEach(function (element) {
+      element.remove();
+    });
+  }
+
+  function formatMoneyValue(value) {
+    const persianDigits = { '۰': '0', '۱': '1', '۲': '2', '۳': '3', '۴': '4', '۵': '5', '۶': '6', '۷': '7', '۸': '8', '۹': '9', '٠': '0', '١': '1', '٢': '2', '٣': '3', '٤': '4', '٥': '5', '٦': '6', '٧': '7', '٨': '8', '٩': '9' };
+    const normalized = String(value ?? '').replace(/[۰-۹٠-٩]/g, function (ch) { return persianDigits[ch] || ch; });
+    const digits = normalized.replace(/[^\d]/g, '');
+    if (!digits) return '';
+    return Number(digits).toLocaleString('en-US');
+  }
+
+  function bindMoneyInput(input) {
+    if (!input || input.dataset.moneyBound === '1') return;
+    input.dataset.moneyBound = '1';
+    const applyFormat = function () { input.value = formatMoneyValue(input.value); };
+    input.addEventListener('focus', function () { input.value = String(input.value || '').replace(/,/g, ''); });
+    input.addEventListener('input', function () { input.value = formatMoneyValue(input.value); });
+    input.addEventListener('blur', applyFormat);
+  }
+
+  function showInactiveActionMessage() {
+    window.alert('موقتا غیر فعال');
+  }
+
+  function isTemporarilyDisabledAction(button) {
+    return !!(button && (button.dataset.actionDisabled === 'true' || button.classList.contains('temporarily-disabled-action')));
+  }
+
+  function renderFormErrors(form, errors) {
+    for (const [field, msgs] of Object.entries(errors)) {
+      const input = form.querySelector(`[name="${field}"]`);
+      if (input) {
+        input.classList.add('is-invalid');
+        const feedback = document.createElement('div');
+        feedback.className = 'invalid-feedback';
+        feedback.innerText = msgs.join(' ');
+        input.parentNode && input.parentNode.appendChild(feedback);
+      } else {
+        showToast(msgs.join(' '), 'danger');
+      }
+    }
+  }
+
+  async function refreshFinancialPartial() {
+    try {
+      const url = document.querySelector('[data-financial-url]').dataset.financialUrl;
+      const res = await fetch(url);
+      if (!res.ok) return;
+      const html = await res.text();
+      const temp = document.createElement('div');
+      temp.innerHTML = html;
+      const newCard = temp.querySelector('.card');
+      if (newCard) {
+        const oldCard = document.querySelector('[data-financial-url]');
+        oldCard.parentNode.replaceChild(newCard, oldCard);
+      }
+    } catch (error) {
+      console.warn('refresh failed', error);
+    }
+  }
+
+  async function submitFormAjax(form, onSuccess) {
+    clearFormErrors(form);
+    const btn = form.querySelector('button[type=submit]');
+    if (btn) btn.disabled = true;
+    const data = new URLSearchParams(new FormData(form));
+    try {
+      const res = await fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') }, body: data });
+      const json = await res.json();
+      if (!res.ok || json.error) {
+        if (json.error && typeof json.error === 'object') renderFormErrors(form, json.error);
+        else showToast(json.error || 'خطا در عملیات', 'danger');
+        if (btn) btn.disabled = false;
+        return;
+      }
+      showToast(json.message || 'عملیات موفق', 'success');
+      if (onSuccess) onSuccess(json);
+      setTimeout(function () { refreshFinancialPartial(); }, 1000);
+    } catch (error) {
+      showToast('خطا در ارتباط با سرور', 'danger');
+      if (btn) btn.disabled = false;
+    }
+  }
+
+  (function initDamageBtn() {
+    let maxAttempts = 0;
+    const checkDamageBtn = function () {
+      const damageBtns = document.querySelectorAll('.open-damage-form');
+      if (damageBtns.length) {
+        damageBtns.forEach(function (btn) {
+          btn.removeEventListener('click', handleDamageClick);
+          btn.addEventListener('click', handleDamageClick);
+        });
+      } else if (maxAttempts < 5) {
+        maxAttempts += 1;
+        setTimeout(checkDamageBtn, 100);
+      }
+    };
+    const handleDamageClick = function (e) {
+      const button = e.currentTarget;
+      if (isTemporarilyDisabledAction(button)) {
+        e.preventDefault();
+        e.stopPropagation();
+        showInactiveActionMessage();
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      const damageModal = document.getElementById('damageModal');
+      if (damageModal) {
+        const modal = new bootstrap.Modal(damageModal);
+        modal.show();
+      }
+    };
+    checkDamageBtn();
+  })();
+
+  (function initPenaltyBtn() {
+    let maxAttempts = 0;
+    const checkPenaltyBtn = function () {
+      const penaltyBtns = document.querySelectorAll('.open-penalty-form');
+      if (penaltyBtns.length) {
+        penaltyBtns.forEach(function (btn) {
+          btn.removeEventListener('click', handlePenaltyClick);
+          btn.addEventListener('click', handlePenaltyClick);
+        });
+      } else if (maxAttempts < 5) {
+        maxAttempts += 1;
+        setTimeout(checkPenaltyBtn, 100);
+      }
+    };
+    const handlePenaltyClick = function (e) {
+      const button = e.currentTarget;
+      if (isTemporarilyDisabledAction(button)) {
+        e.preventDefault();
+        e.stopPropagation();
+        showInactiveActionMessage();
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      const penaltyModal = document.getElementById('penaltyPaymentModal');
+      if (penaltyModal) {
+        const typeSelect = document.getElementById('penaltyType');
+        const amountInput = document.getElementById('penaltyAmount');
+        if (typeSelect && button.dataset.penaltyType) {
+          typeSelect.value = button.dataset.penaltyType;
+        }
+        if (amountInput) {
+          const remainingAmount = Number(button.dataset.remainingAmount || 0);
+          amountInput.value = remainingAmount > 0 ? formatMoneyValue(remainingAmount) : '';
+          amountInput.dataset.maxAmount = remainingAmount > 0 ? String(remainingAmount) : '';
+          amountInput.setAttribute('max', remainingAmount > 0 ? remainingAmount : '');
+          bindMoneyInput(amountInput);
+        }
+        const modal = new bootstrap.Modal(penaltyModal);
+        modal.show();
+      }
+    };
+    checkPenaltyBtn();
+  })();
+
+  (function initRefundBtn() {
+    let maxAttempts = 0;
+    const checkRefundBtn = function () {
+      const refundBtns = document.querySelectorAll('.open-refund-form');
+      if (refundBtns.length) {
+        refundBtns.forEach(function (btn) {
+          btn.removeEventListener('click', handleRefundClick);
+          btn.addEventListener('click', handleRefundClick);
+        });
+      } else if (maxAttempts < 5) {
+        maxAttempts += 1;
+        setTimeout(checkRefundBtn, 100);
+      }
+    };
+    const handleRefundClick = function (e) {
+      const button = e.currentTarget;
+      if (isTemporarilyDisabledAction(button)) {
+        e.preventDefault();
+        e.stopPropagation();
+        showInactiveActionMessage();
+        return;
+      }
+      e.preventDefault();
+      e.stopPropagation();
+      const refundModal = document.getElementById('refundModal');
+      if (refundModal) {
+        const modal = new bootstrap.Modal(refundModal);
+        modal.show();
+      }
+    };
+    checkRefundBtn();
+  })();
+
+  (function initDamageForm() {
+    let maxAttempts = 0;
+    const checkDamageForm = function () {
+      const damageForm = document.getElementById('damageForm');
+      if (damageForm) {
+        damageForm.removeEventListener('submit', handleDamageSubmit);
+        damageForm.addEventListener('submit', handleDamageSubmit);
+      } else if (maxAttempts < 5) {
+        maxAttempts += 1;
+        setTimeout(checkDamageForm, 100);
+      }
+    };
+    const handleDamageSubmit = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      submitFormAjax(this, function () {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('damageModal'));
+        if (modal) modal.hide();
+        setTimeout(refreshFinancialPartial, 800);
+      });
+    };
+    checkDamageForm();
+  })();
+
+  (function initPenaltyForm() {
+    let maxAttempts = 0;
+    const checkPenaltyForm = function () {
+      const penaltyForm = document.getElementById('penaltyPaymentForm');
+      if (penaltyForm) {
+        penaltyForm.removeEventListener('submit', handlePenaltySubmit);
+        penaltyForm.addEventListener('submit', handlePenaltySubmit);
+      } else if (maxAttempts < 5) {
+        maxAttempts += 1;
+        setTimeout(checkPenaltyForm, 100);
+      }
+    };
+    const handlePenaltySubmit = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      const amountInput = this.querySelector('#penaltyAmount');
+      const maxAmount = Number(amountInput?.dataset.maxAmount || 0);
+      const enteredAmount = Number(String(amountInput?.value || '').replace(/,/g, '').replace(/[^\d]/g, '')) || 0;
+      if (maxAmount > 0 && enteredAmount > maxAmount) {
+        showToast('مبلغ پرداخت نمی‌تواند از مانده جریمه بیشتر باشد.', 'danger');
+        if (amountInput) { amountInput.classList.add('is-invalid'); }
+        return;
+      }
+      if (amountInput) { amountInput.classList.remove('is-invalid'); }
+      submitFormAjax(this, function () {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('penaltyPaymentModal'));
+        if (modal) modal.hide();
+        setTimeout(refreshFinancialPartial, 800);
+      });
+    };
+    checkPenaltyForm();
+  })();
+
+  (function initRefundForm() {
+    let maxAttempts = 0;
+    const checkRefundForm = function () {
+      const refundForm = document.getElementById('refundForm');
+      if (refundForm) {
+        refundForm.removeEventListener('submit', handleRefundSubmit);
+        refundForm.addEventListener('submit', handleRefundSubmit);
+      } else if (maxAttempts < 5) {
+        maxAttempts += 1;
+        setTimeout(checkRefundForm, 100);
+      }
+    };
+    const handleRefundSubmit = function (e) {
+      e.preventDefault();
+      e.stopPropagation();
+      submitFormAjax(this, function () {
+        const modal = bootstrap.Modal.getInstance(document.getElementById('refundModal'));
+        if (modal) modal.hide();
+        setTimeout(refreshFinancialPartial, 800);
+      });
+    };
+    checkRefundForm();
+  })();
+})();
+</script>

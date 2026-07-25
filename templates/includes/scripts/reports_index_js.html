@@ -1,0 +1,62 @@
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    const labels = JSON.parse(document.getElementById('trend-labels').textContent);
+    const revenueSeries = JSON.parse(document.getElementById('trend-revenue').textContent);
+    const reservationSeries = JSON.parse(document.getElementById('trend-reservations').textContent);
+
+    const options = {
+      chart: {
+        height: 320,
+        type: 'line',
+        toolbar: { show: false },
+        zoom: { enabled: false },
+      },
+      series: [
+        { name: 'درآمد', data: revenueSeries },
+        { name: 'رزروها', data: reservationSeries },
+      ],
+      xaxis: { categories: labels },
+      stroke: { curve: 'smooth', width: [3, 2] },
+      yaxis: [{
+        labels: {
+          formatter: function (value) {
+            return value.toLocaleString('fa-IR');
+          }
+        }
+      }],
+      tooltip: {
+        y: {
+          formatter: function (value) {
+            return value.toLocaleString('fa-IR');
+          }
+        }
+      },
+      colors: ['#4f46e5', '#14b8a6'],
+    };
+
+    if (typeof ApexCharts !== 'undefined') {
+      const chart = new ApexCharts(document.querySelector('#reportsTrendChart'), options);
+      chart.render();
+    }
+
+    const dateFromInput = document.getElementById('dateFromInput');
+    const dateToInput = document.getElementById('dateToInput');
+
+    [dateFromInput, dateToInput].forEach(function (input) {
+      if (!input) return;
+
+      $(input).persianDatepicker({
+        format: 'YYYY/MM/DD',
+        autoClose: true,
+        initialValue: false,
+        onlySelectOnDate: true,
+        observer: true,
+        calendar: {
+          persian: {
+            locale: 'fa',
+          },
+        },
+      });
+    });
+  });
+</script>

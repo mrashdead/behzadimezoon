@@ -8,7 +8,7 @@ from financial.models import CancellationRecord, DamageRecord, Transaction, Paym
 from products.models import Dress
 from reservations.models import Reservation, AdditionalFee
 from reservations.constants import ReservationStatus
-from reservations.forms import ReservationStepOneForm, ReservationStepTwoForm, RemainingPaymentForm
+from reservations.forms import ReservationStepOneForm, ReservationStepTwoForm, RemainingPaymentForm, FinalizeDeliveryGuaranteeForm
 
 
 def create_user(username, role, password='password123'):
@@ -172,7 +172,7 @@ class ReservationFormBehaviorTests(TestCase):
         reservation.save()
 
         self.assertEqual(reservation.guarantee1_type, 'CASH')
-        self.assertEqual(reservation.guarantee1_tracking_code, 'N/A')
+        self.assertEqual(reservation.guarantee1_tracking_code, '')
 
     def test_step_two_form_requires_payee_when_check_guarantee_selected(self):
         form = ReservationStepTwoForm(data={
@@ -587,6 +587,70 @@ class ReservationStatusTransitionTests(TestCase):
             ReservationAvailabilityService.get_blocking_statuses(),
             [ReservationStatus.CONFIRMED, ReservationStatus.DELIVERED]
         )
+
+    def test_finalize_delivery_guarantee_form_validates_required_fields(self):
+        # Test that guarantee1 type and code are required
+        form = FinalizeDeliveryGuaranteeForm(data={
+            'guarantee1_type': '',
+            'guarantee1_tracking_code': '',
+            'guarantee1_payee': '',
+            'guarantee2_type': '',
+            'guarantee2_tracking_code': '',
+            'guarantee2_payee': '',
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('guarantee1_type', form.errors)
+        self.assertIn('guarantee1_tracking_code', form.errors)
+
+    def test_finalize_delivery_guarantee_form_requires_payee_for_check(self):
+        # Test that payee is required when guarantee type is CHECK
+        form = FinalizeDeliveryGuaranteeForm(data={
+            'guarantee1_type': 'CHECK',
+            'guarantee1_tracking_code': 'CHK123',
+            'guarantee1_payee': '',  # Empty payee should fail
+            'guarantee2_type': '',
+            'guarantee2_tracking_code': '',
+            'guarantee2_payee': '',
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('guarantee1_payee', form.errors)
+
+    def test_finalize_delivery_guarantee_form_accepts_valid_data(self):
+        # Test that form accepts valid guarantee data
+        form = FinalizeDeliveryGuaranteeForm(data={
+            'guarantee1_type': 'CASH',
+            'guarantee1_tracking_code': 'CASH123',
+            'guarantee1_payee': '',  # Payee not required for CASH
+            'guarantee2_type': 'GOLD',
+            'guarantee2_tracking_code': 'GOLD456',
+            'guarantee2_payee': '',  # Payee not required for GOLD
+        })
+        self.assertTrue(form.is_valid(), form.errors)
+
+    def test_finalize_delivery_guarantee_form_rejects_placeholder_tracking_code(self):
+        form = FinalizeDeliveryGuaranteeForm(data={
+            'guarantee1_type': 'CASH',
+            'guarantee1_tracking_code': 'N/A',
+            'guarantee1_payee': '',
+            'guarantee2_type': '',
+            'guarantee2_tracking_code': '',
+            'guarantee2_payee': '',
+        })
+        self.assertFalse(form.is_valid())
+        self.assertIn('guarantee1_tracking_code', form.errors)
+        self.assertIn('کد رهگیری معتبر', str(form.errors['guarantee1_tracking_code']))
+
+    def test_finalize_delivery_guarantee_form_validates_check_with_payee(self):
+        # Test that CHECK type with payee passes validation
+        form = FinalizeDeliveryGuaranteeForm(data={
+            'guarantee1_type': 'CHECK',
+            'guarantee1_tracking_code': 'CHK123',
+            'guarantee1_payee': 'Bank Name',  # Payee provided
+            'guarantee2_type': 'CHECK',
+            'guarantee2_tracking_code': 'CHK456',
+            'guarantee2_payee': 'Another Bank',  # Payee provided
+        })
+        self.assertTrue(form.is_valid(), form.errors)
 
     def test_super_admin_can_mark_delivered_and_returned(self):
         reservation = Reservation.objects.create(
@@ -1367,6 +1431,12 @@ class RemainingPaymentTests(TestCase):
 
         response = self.client.post(finalize_url, {
             'tailor_name': 'آرمان',
+            'guarantee1_type': 'CASH',
+            'guarantee1_tracking_code': 'G1',
+            'guarantee1_payee': '',
+            'guarantee2_type': '',
+            'guarantee2_tracking_code': '',
+            'guarantee2_payee': '',
         }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
 
         self.assertEqual(response.status_code, 200)
@@ -1458,6 +1528,12 @@ class RemainingPaymentTests(TestCase):
             'remaining_payment_amount': '50000',
             'remaining_payment_method': 'CASH',
             'remaining_payment_tracking_code': 'REC001',
+            'guarantee1_type': 'CASH',
+            'guarantee1_tracking_code': 'G1',
+            'guarantee1_payee': '',
+            'guarantee2_type': '',
+            'guarantee2_tracking_code': '',
+            'guarantee2_payee': '',
         }
 
         response = self.client.post(finalize_url, post_data, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
@@ -1568,7 +1644,14 @@ class RemainingPaymentTests(TestCase):
         self.client.login(username='manager_user', password='password123')
         finalize_url = reverse('reservations:finalize_delivery', args=[reservation.pk])
 
-        response = self.client.post(finalize_url, {}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        response = self.client.post(finalize_url, {
+            'guarantee1_type': 'CASH',
+            'guarantee1_tracking_code': 'G1',
+            'guarantee1_payee': '',
+            'guarantee2_type': '',
+            'guarantee2_tracking_code': '',
+            'guarantee2_payee': '',
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
         self.assertEqual(response.status_code, 200)
 
         reservation.refresh_from_db()
@@ -1633,7 +1716,14 @@ class RemainingPaymentTests(TestCase):
         self.client.login(username='manager_user', password='password123')
         finalize_url = reverse('reservations:finalize_delivery', args=[reservation.pk])
 
-        response = self.client.post(finalize_url, {}, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
+        response = self.client.post(finalize_url, {
+            'guarantee1_type': 'CASH',
+            'guarantee1_tracking_code': 'G1',
+            'guarantee1_payee': '',
+            'guarantee2_type': '',
+            'guarantee2_tracking_code': '',
+            'guarantee2_payee': '',
+        }, HTTP_X_REQUESTED_WITH='XMLHttpRequest')
 
         self.assertEqual(response.status_code, 200)
         self.assertJSONEqual(response.content, {

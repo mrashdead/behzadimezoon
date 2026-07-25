@@ -2,13 +2,16 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models.deletion import ProtectedError
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect
+from django.utils.translation import gettext_lazy as _
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 
 from .forms import DressForm
 from .models import Dress
+from core.pagination import build_pagination_items, build_pagination_url
 
 
 class ProductManagerPermissionMixin(LoginRequiredMixin, UserPassesTestMixin):
@@ -32,6 +35,40 @@ class DressListView(ListView):
     template_name = 'products/list.html'
     context_object_name = 'dresses'
     paginate_by = 20
+
+    def get(self, request, *args, **kwargs):
+        page_param = request.GET.get('page')
+        if page_param is not None:
+            try:
+                requested_page = int(page_param)
+            except (TypeError, ValueError):
+                params = request.GET.copy()
+                params['page'] = 1
+                return redirect(f"{request.path}?{params.urlencode()}")
+
+            if requested_page < 1:
+                params = request.GET.copy()
+                params['page'] = 1
+                return redirect(f"{request.path}?{params.urlencode()}")
+
+        try:
+            return super().get(request, *args, **kwargs)
+        except Http404:
+            if 'page' not in request.GET:
+                raise
+
+            queryset = self.get_queryset()
+            paginate_by = self.get_paginate_by(queryset)
+            paginator = self.get_paginator(
+                queryset,
+                paginate_by,
+                orphans=self.get_paginate_orphans(),
+                allow_empty_first_page=self.get_allow_empty(),
+            )
+
+            params = request.GET.copy()
+            params['page'] = paginator.num_pages or 1
+            return redirect(f"{request.path}?{params.urlencode()}")
 
     def get_queryset(self):
         queryset = super().get_queryset()
@@ -74,6 +111,9 @@ class DressListView(ListView):
         context['show_reserved_only'] = self.request.GET.get('show_reserved_only') == '1'
         context['sort'] = self.request.GET.get('sort', 'id')
         context['order'] = self.request.GET.get('order', 'desc')
+        context['pagination_items'] = build_pagination_items(context['page_obj'], context['paginator'], self.request)
+        context['prev_page_url'] = build_pagination_url(self.request, context['page_obj'].previous_page_number) if context['page_obj'].has_previous else None
+        context['next_page_url'] = build_pagination_url(self.request, context['page_obj'].next_page_number) if context['page_obj'].has_next else None
         user = self.request.user
         can_create_product = user.is_authenticated and (
             user.is_superuser or getattr(user, 'role', None) in ['SUPER_ADMIN', 'MANAGER', 'SELLER']

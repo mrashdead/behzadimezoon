@@ -196,7 +196,7 @@
                     type="button"
                     class="btn btn-subtle-success btn-sm btn-shadow btn-icon waves-effect"
                     data-bs-toggle="modal"
-                    data-bs-target="#finalizeDeliveryModal{{ reservation.id }}"
+                    data-bs-target="#finalizeDeliveryGuaranteeModal{{ reservation.id }}"
                     title="تایید تحویل"
                   >
                     <i class="fi fi-rr-check"></i>
@@ -289,7 +289,7 @@
                     </li>
                     {% if can_change_reservation_status and 'DELIVERED' in reservation.allowed_transitions %}
                     <li>
-                      <button class="dropdown-item py-2 d-flex align-items-center gap-2" type="button" data-bs-toggle="modal" data-bs-target="#finalizeDeliveryModal{{ reservation.id }}">
+                      <button class="dropdown-item py-2 d-flex align-items-center gap-2" type="button" data-bs-toggle="modal" data-bs-target="#finalizeDeliveryGuaranteeModal{{ reservation.id }}">
                         <i class="fi fi-rr-check text-success"></i>
                         <span>تایید تحویل</span>
                       </button>
@@ -395,4 +395,23 @@
 {% include 'reservations/partials/_create_modal.html' %}
 {% endif %}
 
+{% endblock %}
+
+{% block extra_js %}
+  {% include 'includes/scripts/reservation_create_modal_js.html' %}
+  {% for reservation in reservations %}
+    {% include 'includes/scripts/reservation_detail_modal_js.html' %}
+    {% if can_edit_reservation %}
+      {% include 'includes/scripts/reservation_edit_modal_js.html' %}
+    {% endif %}
+    {% if can_change_reservation_status %}
+      {% include 'includes/scripts/reservation_finalize_delivery_modal_js.html' %}
+    {% endif %}
+    {% if can_change_reservation_status and 'RETURNED' in reservation.allowed_transitions %}
+      {% include 'includes/scripts/reservation_damage_return_modal_js.html' %}
+    {% endif %}
+    {% if can_delete_reservation and 'CANCELLED' in reservation.allowed_transitions or can_delete_reservation and 'ARCHIVED' in reservation.allowed_transitions %}
+      {% include 'includes/scripts/reservation_delete_modal_js.html' %}
+    {% endif %}
+  {% endfor %}
 {% endblock %}

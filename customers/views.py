@@ -14,6 +14,7 @@ from .permissions import (
 )
 from .models import Customer
 from .forms import CustomerForm
+from core.pagination import build_pagination_items, build_pagination_url
 
 
 class CustomerListView(LoginRequiredMixin, ListView):
@@ -73,6 +74,9 @@ class CustomerListView(LoginRequiredMixin, ListView):
         context["show_with_reservations"] = self.request.GET.get('show_with_reservations') == '1'
         context["sort"] = self.request.GET.get('sort', 'id')
         context["order"] = self.request.GET.get('order', 'desc')
+        context["pagination_items"] = build_pagination_items(context['page_obj'], context['paginator'], self.request)
+        context["prev_page_url"] = build_pagination_url(self.request, context['page_obj'].previous_page_number) if context['page_obj'].has_previous else None
+        context["next_page_url"] = build_pagination_url(self.request, context['page_obj'].next_page_number) if context['page_obj'].has_next else None
         return context
 
     def render_to_response(self, context, **response_kwargs):

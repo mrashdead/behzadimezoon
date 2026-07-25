@@ -756,3 +756,92 @@ class PenaltyPaymentForm(forms.Form):
             )
 
 
+class FinalizeDeliveryGuaranteeForm(forms.Form):
+    """
+    فرم مرحله اول نهایی‌سازی تحویل: دریافت اطلاعات ضمانت‌ها (اجباری)
+    برخلاف ایجاد رزرو که ضمانت اختیاری است، در نهایی‌سازی ضمانت‌ها الزامی هستند.
+    """
+
+    guarantee1_type = forms.ChoiceField(
+        choices=GuaranteeType.CHOICES,
+        required=True,
+        label="نوع ضمانت اول"
+    )
+
+    guarantee1_tracking_code = forms.CharField(
+        max_length=100,
+        required=True,
+        label="کد رهگیری ضمانت اول"
+    )
+
+    def clean_guarantee1_tracking_code(self):
+        value = self.cleaned_data.get("guarantee1_tracking_code")
+        normalized = (value or "").strip()
+
+        if not normalized or normalized.lower() == "n/a":
+            raise ValidationError("کد رهگیری معتبر وارد کنید.")
+
+        return normalized
+
+    guarantee1_payee = forms.CharField(
+        max_length=100,
+        required=False,
+        label="در وجه ضمانت اول"
+    )
+
+    guarantee2_type = forms.ChoiceField(
+        choices=[("", "ندارد")] + list(GuaranteeType.CHOICES),
+        required=False,
+        label="نوع ضمانت دوم"
+    )
+
+    guarantee2_tracking_code = forms.CharField(
+        max_length=100,
+        required=False,
+        label="کد رهگیری ضمانت دوم"
+    )
+
+    guarantee2_payee = forms.CharField(
+        max_length=100,
+        required=False,
+        label="در وجه ضمانت دوم"
+    )
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        guarantee1_type = cleaned_data.get("guarantee1_type")
+        guarantee1_payee = (cleaned_data.get("guarantee1_payee") or "").strip()
+        guarantee2_type = cleaned_data.get("guarantee2_type")
+        guarantee2_tracking_code = cleaned_data.get("guarantee2_tracking_code")
+        guarantee2_payee = (cleaned_data.get("guarantee2_payee") or "").strip()
+
+        # Guarantee 1 payee is required if type is CHECK
+        if guarantee1_type == GuaranteeType.CHECK and not guarantee1_payee:
+            raise ValidationError(
+                {"guarantee1_payee": "در صورت انتخاب چک برای ضمانت اول، فیلد «در وجه» الزامی است."}
+            )
+
+        # If guarantee2 type is selected, code is required
+        if guarantee2_type and guarantee2_type.strip():
+            if not guarantee2_tracking_code or not guarantee2_tracking_code.strip():
+                raise ValidationError(
+                    {"guarantee2_tracking_code": "در صورت انتخاب ضمانت دوم، کد رهگیری آن الزامی است."}
+                )
+
+        # Guarantee 2 payee is required if type is CHECK
+        if guarantee2_type == GuaranteeType.CHECK and not guarantee2_payee:
+            raise ValidationError(
+                {"guarantee2_payee": "در صورت انتخاب چک برای ضمانت دوم، فیلد «در وجه» الزامی است."}
+            )
+
+        # If guarantee2 tracking code is provided, type is required
+        if guarantee2_tracking_code and guarantee2_tracking_code.strip():
+            if not guarantee2_type or not guarantee2_type.strip():
+                raise ValidationError(
+                    {"guarantee2_type": "اگر کد رهگیری ضمانت دوم وارد شده است، نوع ضمانت دوم الزامی است."}
+                )
+
+        return cleaned_data
+
+

@@ -1,3 +1,4 @@
+{% load number_filters %}
 <div id="customerListContent">
   <form method="post" action="{% url 'customers:delete_selected' %}" id="bulkCustomerDeleteForm">
     {% csrf_token %}
@@ -68,7 +69,7 @@
             <div class="fw-semibold">{{ customer.bride_first_name }} {{ customer.bride_last_name }}</div>
           </td>
           <td data-label="شماره تماس">
-            <span dir="ltr" class="font-monospace">{{ customer.bride_phone }}</span>
+            <span dir="ltr" class="customer-phone-number">{{ customer.bride_phone|default:"-"|persian_digits }}</span>
           </td>
           <td data-label="تاریخ مراسم">
             <span class="text-muted">{{ customer.ceremony_date|jformat:"%Y/%m/%d" }}</span>

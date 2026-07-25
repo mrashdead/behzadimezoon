@@ -193,6 +193,7 @@ class Reservation(models.Model):
 
     guarantee1_tracking_code = models.CharField(
         max_length=100,
+        blank=True,
         verbose_name="کد رهگیری ضمانت اول"
     )
 
@@ -649,7 +650,7 @@ class Reservation(models.Model):
             self.guarantee1_type = GuaranteeType.CASH
 
         if not self.guarantee1_tracking_code or not str(self.guarantee1_tracking_code).strip():
-            self.guarantee1_tracking_code = 'N/A'
+            self.guarantee1_tracking_code = ''
 
         self.full_clean()
 

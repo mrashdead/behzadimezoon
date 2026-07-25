@@ -1,0 +1,54 @@
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  document.querySelectorAll('.archive-action-form').forEach(function (form) {
+    form.addEventListener('submit', async function (e) {
+      e.preventDefault();
+      const btn = this.querySelector('button[type="submit"]');
+      const originalHtml = btn.innerHTML;
+      btn.disabled = true;
+      btn.innerHTML = '<span class="spinner-border spinner-border-sm"></span>';
+
+      try {
+        const response = await fetch(this.action, {
+          method: 'POST',
+          headers: {
+            'X-CSRFToken': document.querySelector('[name="csrfmiddlewaretoken"]').value,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Accept': 'application/json',
+          },
+        });
+
+        const data = await response.json();
+
+        if (data.success) {
+          if (window.UIHelpers && typeof UIHelpers.showNotification === 'function') {
+            UIHelpers.showNotification(data.message, 'success');
+          } else {
+            alert(data.message);
+          }
+          setTimeout(function () {
+            location.reload();
+          }, 500);
+        } else {
+          if (window.UIHelpers && typeof UIHelpers.showNotification === 'function') {
+            UIHelpers.showNotification(data.message || 'خطایی رخ داد', 'error');
+          } else {
+            alert(data.message || 'خطایی رخ داد');
+          }
+          btn.disabled = false;
+          btn.innerHTML = originalHtml;
+        }
+      } catch (error) {
+        console.error('Error:', error);
+        if (window.UIHelpers && typeof UIHelpers.showNotification === 'function') {
+          UIHelpers.showNotification('خطا در ارتباط با سرور', 'error');
+        } else {
+          alert('خطا در ارتباط با سرور');
+        }
+        btn.disabled = false;
+        btn.innerHTML = originalHtml;
+      }
+    });
+  });
+});
+</script>
