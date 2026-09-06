@@ -174,5 +174,10 @@
 
   {% include 'partials/pagination.html' %}
   </form>
+
+  {% for dress in dresses %}
+    {% include 'products/partials/_edit_modal.html' %}
+    {% include 'products/partials/_delete_modal.html' %}
+  {% endfor %}
 </div>
 

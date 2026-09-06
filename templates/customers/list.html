@@ -80,18 +80,6 @@
   </div>
 </div>
 
-{% for customer in customers %}
-  {% include 'customers/partials/_detail_modal.html' %}
-
-  {% if can_edit_customer %}
-    {% include 'customers/partials/_edit_modal.html' %}
-  {% endif %}
-
-  {% if can_delete_customer %}
-    {% include 'customers/partials/_delete_modal.html' %}
-  {% endif %}
-{% endfor %}
-
 {% if can_create_customer %}
   {% include 'customers/partials/_create_modal.html' %}
 {% endif %}
