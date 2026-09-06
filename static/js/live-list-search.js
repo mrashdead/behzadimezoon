@@ -28,6 +28,7 @@ document.addEventListener('DOMContentLoaded', function () {
       url.searchParams.set('search', input.value.trim());
       const reservedToggle = form.querySelector('button[name="show_reserved_only"]');
       const customerReservedToggle = form.querySelector('button[name="show_with_reservations"]');
+      const customerStatusFilter = form.querySelector('select[name="crm_status"]');
       const reservedValue = reservedToggle && reservedToggle.dataset.active === '1' ? '1' : '';
       const customerReservedValue = customerReservedToggle && customerReservedToggle.dataset.active === '1' ? '1' : '';
       if (reservedValue) {
@@ -39,6 +40,11 @@ document.addEventListener('DOMContentLoaded', function () {
         url.searchParams.set('show_with_reservations', '1');
       } else {
         url.searchParams.delete('show_with_reservations');
+      }
+      if (customerStatusFilter && customerStatusFilter.value) {
+        url.searchParams.set('crm_status', customerStatusFilter.value);
+      } else {
+        url.searchParams.delete('crm_status');
       }
       if (page) {
         url.searchParams.set('page', page);
@@ -55,6 +61,7 @@ document.addEventListener('DOMContentLoaded', function () {
       url.searchParams.set('search', input.value.trim());
       const reservedToggle = form.querySelector('button[name="show_reserved_only"]');
       const customerReservedToggle = form.querySelector('button[name="show_with_reservations"]');
+      const customerStatusFilter = form.querySelector('select[name="crm_status"]');
       const reservedValue = reservedToggle && reservedToggle.dataset.active === '1' ? '1' : '';
       const customerReservedValue = customerReservedToggle && customerReservedToggle.dataset.active === '1' ? '1' : '';
       if (reservedValue) {
@@ -66,6 +73,11 @@ document.addEventListener('DOMContentLoaded', function () {
         url.searchParams.set('show_with_reservations', '1');
       } else {
         url.searchParams.delete('show_with_reservations');
+      }
+      if (customerStatusFilter && customerStatusFilter.value) {
+        url.searchParams.set('crm_status', customerStatusFilter.value);
+      } else {
+        url.searchParams.delete('crm_status');
       }
       if (page) {
         url.searchParams.set('page', page);

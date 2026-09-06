@@ -25,6 +25,7 @@ from .utils import parse_reservation_date, get_reservations_for_user, date_to_is
 from products.models import Dress
 from customers.models import Customer
 from reservations.models import Reservation, AdditionalFee
+from core.search import build_token_search_query
 from reservations.forms import (
     ReservationStepOneForm,
     ReservationStepTwoForm,
@@ -196,14 +197,14 @@ def reservation_list(request):
 
     search_query = request.GET.get('search', '').strip()
     if search_query:
-        reservations = reservations.filter(
-            Q(customer__bride_first_name__icontains=search_query) |
-            Q(customer__bride_last_name__icontains=search_query) |
-            Q(customer__bride_phone__icontains=search_query) |
-            Q(customer__groom_first_name__icontains=search_query) |
-            Q(customer__groom_last_name__icontains=search_query) |
-            Q(dress__code__icontains=search_query) |
-            Q(contract_number__icontains=search_query)
+        reservations = reservations.filter(build_token_search_query(
+            search_query,
+            (
+                'customer__bride_first_name', 'customer__bride_last_name',
+                'customer__bride_phone', 'customer__groom_first_name',
+                'customer__groom_last_name', 'dress__code', 'contract_number',
+            ),
+        )
         )
 
     sort_field = request.GET.get('sort', 'start_date')

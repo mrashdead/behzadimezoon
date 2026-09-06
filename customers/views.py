@@ -2,7 +2,8 @@
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
-from django.db.models import Q
+from django.db.models import Case, CharField, Exists, F, OuterRef, Q, Subquery, Value, When
+from django.db.models.functions import Coalesce
 from django.db.models.deletion import ProtectedError
 from django.shortcuts import redirect, get_object_or_404
 from django.views import View
@@ -15,6 +16,23 @@ from .permissions import (
 from .models import Customer
 from .forms import CustomerForm
 from core.pagination import build_pagination_items, build_pagination_url
+from core.search import build_token_search_query
+
+
+CRM_ONLY = 'CRM_ONLY'
+HAS_RESERVATION = 'HAS_RESERVATION'
+HAS_CONTRACT = 'HAS_CONTRACT'
+COMPLETED = 'COMPLETED'
+CANCELLED = 'CANCELLED'
+
+CRM_STATUS_LABELS = {
+    CRM_ONLY: 'فقط ثبت اطلاعات در CRM',
+    HAS_RESERVATION: 'دارای رزرو',
+    HAS_CONTRACT: 'دارای قرارداد اجاره',
+    COMPLETED: 'پایان‌یافته',
+    CANCELLED: 'لغوشده',
+}
+CRM_STATUS_FILTERS = tuple(CRM_STATUS_LABELS.items())
 
 
 class CustomerListView(LoginRequiredMixin, ListView):
@@ -25,32 +43,79 @@ class CustomerListView(LoginRequiredMixin, ListView):
 
     def get_queryset(self):
         queryset = super().get_queryset()
+        from reservations.constants import ReservationStatus
+        from reservations.models import Reservation
+
+        reservations = Reservation.objects.filter(customer_id=OuterRef('pk'))
+        active_reservations = reservations.filter(
+            status__in=[
+                ReservationStatus.DRAFT,
+                ReservationStatus.CONFIRMED,
+                ReservationStatus.DELIVERED,
+                ReservationStatus.LAUNDRY,
+            ]
+        )
+        contractual_reservations = active_reservations.exclude(
+            Q(contract_number__isnull=True) | Q(contract_number='')
+        )
+        completed_reservations = reservations.filter(
+            status__in=[
+                ReservationStatus.RETURNED,
+                ReservationStatus.READY,
+                ReservationStatus.ARCHIVED,
+            ]
+        )
+        cancelled_reservations = reservations.filter(status=ReservationStatus.CANCELLED)
+        latest_reservation_activity = reservations.order_by('-updated_at', '-pk').values('updated_at')[:1]
+
+        queryset = queryset.annotate(
+            has_reservation=Exists(active_reservations),
+            has_contract=Exists(contractual_reservations),
+            has_completed_reservation=Exists(completed_reservations),
+            has_cancelled_reservation=Exists(cancelled_reservations),
+            latest_reservation_activity=Subquery(latest_reservation_activity),
+        ).annotate(
+            crm_status=Case(
+                When(has_contract=True, then=Value(HAS_CONTRACT)),
+                When(has_reservation=True, then=Value(HAS_RESERVATION)),
+                When(has_completed_reservation=True, then=Value(COMPLETED)),
+                When(has_cancelled_reservation=True, then=Value(CANCELLED)),
+                default=Value(CRM_ONLY),
+                output_field=CharField(),
+            ),
+            last_activity_at=Coalesce(
+                'latest_reservation_activity',
+                F('created_at'),
+            ),
+        )
         search_query = self.request.GET.get('search', '').strip()
         show_with_reservations = self.request.GET.get('show_with_reservations') == '1'
+        crm_status = self.request.GET.get('crm_status', '').strip()
         sort_field = self.request.GET.get('sort', 'id')
         order = self.request.GET.get('order', 'desc')
 
         if search_query:
-            queryset = queryset.filter(
-                Q(bride_first_name__icontains=search_query) |
-                Q(bride_last_name__icontains=search_query) |
-                Q(bride_phone__icontains=search_query) |
-                Q(groom_first_name__icontains=search_query) |
-                Q(groom_last_name__icontains=search_query)
+            queryset = queryset.filter(build_token_search_query(
+                search_query,
+                (
+                    'bride_first_name', 'bride_last_name', 'bride_phone',
+                    'groom_first_name', 'groom_last_name',
+                ),
+            )
             )
 
         if show_with_reservations:
-            from reservations.models import Reservation
             from reservations.services.availability_service import ReservationAvailabilityService
 
             blocking_statuses = ReservationAvailabilityService.get_blocking_statuses()
-            reserved_customer_ids = set(
-                Reservation.objects.filter(
-                    customer_id__in=queryset.values_list('id', flat=True),
-                    status__in=blocking_statuses,
-                ).values_list('customer_id', flat=True)
-            )
+            reserved_customer_ids = Reservation.objects.filter(
+                customer_id__in=queryset.values_list('id', flat=True),
+                status__in=blocking_statuses,
+            ).values('customer_id')
             queryset = queryset.filter(id__in=reserved_customer_ids)
+
+        if crm_status in CRM_STATUS_LABELS:
+            queryset = queryset.filter(crm_status=crm_status)
 
         allowed_sort_fields = {
             'id': 'id',
@@ -58,6 +123,7 @@ class CustomerListView(LoginRequiredMixin, ListView):
             'bride_phone': 'bride_phone',
             'ceremony_date': 'ceremony_date',
             'created_at': 'created_at',
+            'last_activity': 'last_activity_at',
         }
         sort_field = allowed_sort_fields.get(sort_field, 'id')
         ordering = sort_field if order == 'asc' else f'-{sort_field}'
@@ -72,8 +138,12 @@ class CustomerListView(LoginRequiredMixin, ListView):
         context["create_form"] = CustomerForm()
         context["search_query"] = self.request.GET.get('search', '')
         context["show_with_reservations"] = self.request.GET.get('show_with_reservations') == '1'
+        context["crm_status"] = self.request.GET.get('crm_status', '')
+        context["crm_status_filters"] = CRM_STATUS_FILTERS
+        context["selected_crm_status_label"] = CRM_STATUS_LABELS.get(context["crm_status"], '')
         context["sort"] = self.request.GET.get('sort', 'id')
         context["order"] = self.request.GET.get('order', 'desc')
+        context["crm_status_labels"] = CRM_STATUS_LABELS
         context["pagination_items"] = build_pagination_items(context['page_obj'], context['paginator'], self.request)
         context["prev_page_url"] = build_pagination_url(self.request, context['page_obj'].previous_page_number) if context['page_obj'].has_previous else None
         context["next_page_url"] = build_pagination_url(self.request, context['page_obj'].next_page_number) if context['page_obj'].has_next else None

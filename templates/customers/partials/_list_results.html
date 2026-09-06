@@ -21,7 +21,7 @@
             <th class="minw-60px">انتخاب</th>
             <th class="minw-120px">ردیف</th>
             <th class="minw-220px">
-              <a href="?sort=bride_first_name&order={% if sort == 'bride_first_name' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_with_reservations %}&show_with_reservations=1{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
+              <a href="?sort=bride_first_name&order={% if sort == 'bride_first_name' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_with_reservations %}&show_with_reservations=1{% endif %}{% if crm_status %}&crm_status={{ crm_status }}{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
                 نام عروس
                 {% if sort == 'bride_first_name' %}
                   <i class="fi fi-rr-arrow-{% if order == 'asc' %}up{% else %}down{% endif %}"></i>
@@ -31,7 +31,7 @@
               </a>
             </th>
             <th class="minw-180px">
-              <a href="?sort=bride_phone&order={% if sort == 'bride_phone' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_with_reservations %}&show_with_reservations=1{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
+              <a href="?sort=bride_phone&order={% if sort == 'bride_phone' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_with_reservations %}&show_with_reservations=1{% endif %}{% if crm_status %}&crm_status={{ crm_status }}{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
                 شماره تماس
                 {% if sort == 'bride_phone' %}
                   <i class="fi fi-rr-arrow-{% if order == 'asc' %}up{% else %}down{% endif %}"></i>
@@ -41,7 +41,7 @@
               </a>
             </th>
             <th class="minw-160px">
-              <a href="?sort=ceremony_date&order={% if sort == 'ceremony_date' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_with_reservations %}&show_with_reservations=1{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
+              <a href="?sort=ceremony_date&order={% if sort == 'ceremony_date' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query }}{% endif %}{% if show_with_reservations %}&show_with_reservations=1{% endif %}{% if crm_status %}&crm_status={{ crm_status }}{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
                 تاریخ مراسم
                 {% if sort == 'ceremony_date' %}
                   <i class="fi fi-rr-arrow-{% if order == 'asc' %}up{% else %}down{% endif %}"></i>
@@ -51,6 +51,18 @@
               </a>
             </th>
             <th class="minw-200px">نحوه آشنایی</th>
+            <th class="minw-190px">وضعیت رزرو و اجاره</th>
+            <th class="minw-170px">
+              <a href="?sort=last_activity&order={% if sort == 'last_activity' and order == 'asc' %}desc{% else %}asc{% endif %}{% if search_query %}&search={{ search_query|urlencode }}{% endif %}{% if show_with_reservations %}&show_with_reservations=1{% endif %}{% if crm_status %}&crm_status={{ crm_status }}{% endif %}" class="text-decoration-none text-dark d-inline-flex align-items-center gap-1">
+                آخرین فعالیت مشتری
+                {% if sort == 'last_activity' %}
+                  <i class="fi fi-rr-arrow-{% if order == 'asc' %}up{% else %}down{% endif %}"></i>
+                {% else %}
+                  <i class="fi fi-rr-sort-alt"></i>
+                {% endif %}
+              </a>
+              <div class="small text-muted fw-normal mt-1">ثبت CRM یا آخرین تغییر رزرو</div>
+            </th>
             <th class="text-end minw-140px">عملیات</th>
           </tr>
         </thead>
@@ -76,6 +88,22 @@
           </td>
           <td data-label="نحوه آشنایی" class="text-muted">
             {{ customer.how_to_know }}
+          </td>
+          <td data-label="وضعیت رزرو و اجاره">
+            {% if customer.crm_status == 'HAS_CONTRACT' %}
+              <span class="badge bg-primary-subtle text-primary">{{ crm_status_labels.HAS_CONTRACT }}</span>
+            {% elif customer.crm_status == 'HAS_RESERVATION' %}
+              <span class="badge bg-info-subtle text-info">{{ crm_status_labels.HAS_RESERVATION }}</span>
+            {% elif customer.crm_status == 'COMPLETED' %}
+              <span class="badge bg-success-subtle text-success">{{ crm_status_labels.COMPLETED }}</span>
+            {% elif customer.crm_status == 'CANCELLED' %}
+              <span class="badge bg-danger-subtle text-danger">{{ crm_status_labels.CANCELLED }}</span>
+            {% else %}
+              <span class="badge bg-light-subtle text-muted border">{{ crm_status_labels.CRM_ONLY }}</span>
+            {% endif %}
+          </td>
+          <td data-label="آخرین فعالیت مشتری">
+            <span class="text-muted" title="تاریخ ثبت CRM یا آخرین تغییر رزرو">{{ customer.last_activity_at|jformat:"%Y/%m/%d - %H:%M" }}</span>
           </td>
           <td data-label="عملیات" class="text-end">
             <div class="d-none d-md-inline-flex justify-content-end gap-2 flex-wrap table-actions">
@@ -169,7 +197,7 @@
         </tr>
         {% empty %}
         <tr>
-          <td colspan="7" class="text-center py-4 text-muted">
+          <td colspan="9" class="text-center py-4 text-muted">
             {% if search_query %}
             <i class="fi fi-rr-circle-exclamation me-2"></i>
             نتیجه‌ای برای جستجوی «{{ search_query }}» پیدا نشد.

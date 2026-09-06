@@ -40,7 +40,7 @@
                           <select name="customer" class="d-none" required data-combobox-select>
                             <option value="">انتخاب مشتری</option>
                             {% for customer in customers %}
-                            <option value="{{ customer.id }}">{{ customer.bride_first_name }} {{ customer.bride_last_name }} - {{ customer.bride_phone }}</option>
+                            <option value="{{ customer.id }}" data-ceremony-date="{{ customer.ceremony_date|jformat:'%Y/%m/%d' }}">{{ customer.bride_first_name }} {{ customer.bride_last_name }} - {{ customer.bride_phone }}</option>
                             {% endfor %}
                           </select>
                         </div>

@@ -15,12 +15,12 @@
   };
 </script>
 <script src="{% static 'assets/js/main.js' %}?v=2"></script>
-<script src="{% static 'assets/js/plugins/reservation-combobox.js' %}?v=2"></script>
+<script src="{% static 'assets/js/plugins/reservation-combobox.js' %}?v=3"></script>
 <script src="{% static 'assets/libs/persian-datepicker/persian-datepicker.js' %}?v=2"></script>
 <script src="{% static 'assets/libs/persian-datepicker/persian-datepicker.min.js' %}?v=2"></script>
 <script src="{% static 'js/ui-helpers.js' %}?v=3"></script>
 <script src="{% static 'js/search-helpers.js' %}?v=2"></script>
-<script src="{% static 'js/live-list-search.js' %}?v=2"></script>
+<script src="{% static 'js/live-list-search.js' %}?v=3"></script>
 
 <script>
   $(document).ready(function () {
@@ -194,6 +194,13 @@ document.addEventListener('DOMContentLoaded', function () {
       }
     }
 
+    function updateEventDateFromCustomer() {
+      const selectedCustomer = customerSelect.options[customerSelect.selectedIndex]
+      const ceremonyDate = selectedCustomer ? selectedCustomer.dataset.ceremonyDate : ''
+      if (eventDateField) eventDateField.value = ceremonyDate || ''
+      setReservationCeremonyMismatchState(false)
+    }
+
     function calculateInclusiveReturnDate(startDateValue, rentalDaysValue) {
       if (!startDateValue || !rentalDaysValue) return ""
 
@@ -357,7 +364,10 @@ document.addEventListener('DOMContentLoaded', function () {
       }).then(parseJsonResponse)
     }
 
-    customerSelect.addEventListener("change", checkAvailability)
+    customerSelect.addEventListener("change", function () {
+      updateEventDateFromCustomer()
+      checkAvailability()
+    })
     dressSelect.addEventListener("change", checkAvailability)
     startDateInput.addEventListener("change", checkAvailability)
     startDateInput.addEventListener("input", checkAvailability)
@@ -458,6 +468,7 @@ document.addEventListener('DOMContentLoaded', function () {
       })
     }
 
+    updateEventDateFromCustomer()
     checkAvailability()
   }
 

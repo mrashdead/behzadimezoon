@@ -732,6 +732,8 @@ class Reservation(models.Model):
         ordering = ["-id"]
         indexes = [
             models.Index(fields=["status"]),
+            models.Index(fields=["customer", "status"]),
+            models.Index(fields=["customer", "updated_at"]),
             models.Index(fields=["payment_status"]),
             models.Index(fields=["start_date"]),
             models.Index(fields=["event_date"]),

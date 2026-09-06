@@ -61,7 +61,11 @@
                 <i class="fi fi-rr-clock me-1"></i>
                 نمایش مشتریان دارای رزرو فعال
               </button>
-              {% if search_query or show_with_reservations %}
+              <button type="submit" class="btn btn-outline-secondary">
+                <i class="fi fi-rr-filter me-1"></i>
+                اعمال فیلتر
+              </button>
+              {% if search_query or show_with_reservations or crm_status %}
               <a href="{% url 'customers:list' %}" class="btn btn-outline-secondary">
                 <i class="fi fi-rr-refresh me-1"></i>
                 پاک کردن
@@ -69,8 +73,20 @@
               {% endif %}
             </div>
           </div>
+          <div class="col-lg-5">
+            <label for="crmStatusFilter" class="form-label small fw-semibold text-muted mb-2">فیلتر وضعیت مشتری</label>
+            <select class="form-select" id="crmStatusFilter" name="crm_status">
+              <option value="">همه وضعیت‌ها</option>
+              {% for status_key, status_label in crm_status_filters %}
+                <option value="{{ status_key }}" {% if crm_status == status_key %}selected{% endif %}>{{ status_label }}</option>
+              {% endfor %}
+            </select>
+          </div>
           <div class="col-12">
-            <small class="text-muted live-search-status">{% if search_query %}نتایج جستجو برای: <strong>{{ search_query }}</strong>{% endif %}</small>
+            <small class="text-muted live-search-status">
+              {% if search_query %}نتایج جستجو برای: <strong>{{ search_query }}</strong>{% endif %}
+              {% if selected_crm_status_label %}<span class="ms-2">وضعیت: <strong>{{ selected_crm_status_label }}</strong></span>{% endif %}
+            </small>
           </div>
         </form>
       </div>

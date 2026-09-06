@@ -21,6 +21,7 @@ from financial.models import FinancialAccount, TransactionCategory
 from financial.forms import TransactionForm
 from reservations.models import AdditionalFee, Reservation
 from accounts.models import User
+from core.search import build_token_search_query
 
 
 @method_decorator(login_required, name='dispatch')
@@ -89,11 +90,13 @@ def api_reservation_search(request):
         if query.isdigit():
             reservations = reservations.filter(pk=query)
         else:
-            reservations = reservations.filter(
-                Q(customer__bride_first_name__icontains=query)
-                | Q(customer__bride_last_name__icontains=query)
-                | Q(dress__code__icontains=query)
-                | Q(payment_tracking_code__icontains=query)
+            reservations = reservations.filter(build_token_search_query(
+                query,
+                (
+                    'customer__bride_first_name', 'customer__bride_last_name',
+                    'dress__code', 'payment_tracking_code',
+                ),
+            )
             )
 
     reservations = reservations.order_by('-created_at')[:20]

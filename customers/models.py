@@ -45,6 +45,11 @@ class Customer(models.Model):
         verbose_name="اجازه ارتباط با شما؟"
     )
 
+    created_at = models.DateTimeField(
+        auto_now_add=True,
+        verbose_name="تاریخ ثبت در CRM"
+    )
+
     created_by = models.ForeignKey(
         settings.AUTH_USER_MODEL,
         on_delete=models.SET_NULL,

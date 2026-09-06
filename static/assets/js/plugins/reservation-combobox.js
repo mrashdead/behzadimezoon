@@ -75,6 +75,7 @@ document.addEventListener('DOMContentLoaded', function () {
       selectedText = text;
       input.value = text;
       select.value = id;
+      select.dispatchEvent(new Event('change', { bubbles: true }));
       updateList(text);
       setClearVisibility();
       closeList();
@@ -84,6 +85,7 @@ document.addEventListener('DOMContentLoaded', function () {
       selectedId = '';
       selectedText = '';
       select.value = '';
+      select.dispatchEvent(new Event('change', { bubbles: true }));
       input.value = '';
       updateList('');
       setClearVisibility();
