@@ -9,10 +9,12 @@ from django.conf import settings
 from django.db import transaction
 from django.db.models import Q
 from django.db.utils import OperationalError
-from django.http import JsonResponse, HttpResponseForbidden, QueryDict
+from django.http import JsonResponse, HttpResponse, HttpResponseForbidden, QueryDict
 from django.views.decorators.http import require_POST
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from io import BytesIO
+from openpyxl import Workbook
 from django.utils.dateparse import parse_date
 from django.utils import timezone
 from django.core.exceptions import ValidationError, PermissionDenied
@@ -187,6 +189,73 @@ def can_change_reservation_status(user):
 def user_owns_reservation(user, reservation):
     """Check if user owns the reservation (created it)."""
     return reservation.created_by_id == user.id
+
+
+def export_reservations_excel(request):
+    reservations = get_reservations_for_user(request.user).select_related(
+        "customer", "dress"
+    ).exclude(status=ReservationStatus.ARCHIVED)
+
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        reservations = reservations.filter(build_token_search_query(
+            search_query,
+            (
+                'customer__bride_first_name', 'customer__bride_last_name',
+                'customer__bride_phone', 'customer__groom_first_name',
+                'customer__groom_last_name', 'dress__code', 'contract_number',
+            ),
+        ))
+
+    sort_field = request.GET.get('sort', 'start_date')
+    order = request.GET.get('order', 'asc')
+    allowed_sort_fields = {
+        'id': 'id',
+        'customer': 'customer__bride_first_name',
+        'dress': 'dress__code',
+        'contract_number': 'contract_number',
+        'start_date': 'start_date',
+        'end_date': 'end_date',
+        'status': 'status',
+    }
+    sort_field = allowed_sort_fields.get(sort_field, 'start_date')
+    ordering = sort_field if order == 'asc' else f'-{sort_field}'
+    reservations = reservations.order_by(ordering)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'رزروها'
+    headers = ['شناسه', 'شماره قرارداد', 'مشتری', 'لباس', 'تاریخ شروع', 'تاریخ پایان', 'مدت اجاره', 'وضعیت', 'وضعیت پرداخت', 'روش پرداخت', 'رایگان/قیمت نهایی', 'بیعانه', 'باقی مانده', 'تاریخ ثبت']
+    ws.append(headers)
+
+    for reservation in reservations:
+        ws.append([
+            reservation.id,
+            reservation.contract_number or '',
+            str(reservation.customer) if reservation.customer else '',
+            str(reservation.dress) if reservation.dress else '',
+            reservation.start_date.strftime('%Y/%m/%d') if reservation.start_date else '',
+            reservation.end_date.strftime('%Y/%m/%d') if reservation.end_date else '',
+            reservation.rental_days,
+            reservation.get_status_display(),
+            reservation.get_payment_status_display() if hasattr(reservation, 'get_payment_status_display') else '',
+            reservation.get_payment_method_display() if hasattr(reservation, 'get_payment_method_display') else '',
+            reservation.final_price or 0,
+            reservation.deposit_amount or 0,
+            reservation.remaining_amount or 0,
+            reservation.created_at.strftime('%Y/%m/%d %H:%M:%S') if getattr(reservation, 'created_at', None) else '',
+        ])
+
+    for cell in ws[1]:
+        cell.font = cell.font.copy(bold=True)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    response = HttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="reservations_export.xlsx"'
+    return response
 
 
 @login_required

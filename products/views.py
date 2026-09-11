@@ -1,13 +1,16 @@
 #products/views.py
+from io import BytesIO
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models.deletion import ProtectedError
-from django.http import Http404
+from django.http import Http404, HttpResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.translation import gettext_lazy as _
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
+from openpyxl import Workbook
 
 from .forms import DressForm
 from .models import Dress
@@ -137,6 +140,67 @@ class DressListView(ListView):
                 **response_kwargs
             )
         return super().render_to_response(context, **response_kwargs)
+
+def export_products_excel(request):
+    queryset = Dress.objects.all()
+
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        queryset = queryset.filter(code__icontains=search_query)
+
+    show_reserved_only = request.GET.get('show_reserved_only') == '1'
+    if show_reserved_only:
+        from reservations.models import Reservation
+        from reservations.services.availability_service import ReservationAvailabilityService
+
+        blocking_statuses = ReservationAvailabilityService.get_blocking_statuses()
+        reserved_ids = set(
+            Reservation.objects.filter(
+                status__in=blocking_statuses,
+                dress_id__in=queryset.values_list('id', flat=True),
+            ).values_list('dress_id', flat=True)
+        )
+        queryset = queryset.filter(id__in=reserved_ids)
+
+    sort_field = request.GET.get('sort', 'id')
+    order = request.GET.get('order', 'desc')
+    allowed_sort_fields = {
+        'id': 'id',
+        'code': 'code',
+        'daily_rent_price': 'daily_rent_price',
+        'created_at': 'created_at',
+    }
+    sort_field = allowed_sort_fields.get(sort_field, 'id')
+    ordering = sort_field if order == 'asc' else f'-{sort_field}'
+    queryset = queryset.order_by(ordering)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'محصولات'
+    headers = ['شناسه', 'کد لباس', 'قیمت روزانه', 'وضعیت', 'رزرو شده', 'تاریخ ثبت']
+    ws.append(headers)
+
+    for dress in queryset:
+        ws.append([
+            dress.id,
+            dress.code,
+            dress.daily_rent_price,
+            'فعال' if dress.status == Dress.STATUS_ACTIVE else dress.status,
+            'بله' if dress.is_reserved else 'خیر',
+            dress.created_at.strftime('%Y/%m/%d %H:%M:%S') if dress.created_at else '',
+        ])
+
+    for cell in ws[1]:
+        cell.font = cell.font.copy(bold=True)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    response = HttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="products_export.xlsx"'
+    return response
+
 
 class DressCreateView(ProductCreatePermissionMixin, CreateView):
     model = Dress

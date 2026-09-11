@@ -21,6 +21,7 @@ from .views import (
     reservation_delete_permanent,
     check_availability,
     reservation_record_penalty_payment,
+    export_reservations_excel,
 )
 
 app_name = "reservations"
@@ -32,6 +33,11 @@ urlpatterns = [
         "",
         reservation_list,
         name="list"
+    ),
+    path(
+        "export/excel/",
+        export_reservations_excel,
+        name="export_excel"
     ),
 
     # contract number suggestion

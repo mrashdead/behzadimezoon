@@ -143,6 +143,40 @@ class Customer(models.Model):
         verbose_name="یادداشت مشتری"
     )
 
+    @property
+    def reservation_summary(self):
+        from reservations.constants import ReservationStatus
+
+        reservations = self.reservations.select_related('dress').order_by('-created_at', '-id')
+        total_reservations = reservations.count()
+        unique_dress_codes = list(
+            reservations.exclude(dress__isnull=True)
+            .values_list('dress__code', flat=True)
+            .distinct()[:10]
+        )
+
+        latest_reservation = reservations.first()
+        latest_contract = reservations.exclude(
+            contract_number__isnull=True
+        ).exclude(contract_number='').order_by('-created_at', '-id').first()
+        latest_returned = reservations.exclude(end_date__isnull=True).order_by('-end_date', '-created_at').first()
+
+        return {
+            'total_reservations': total_reservations,
+            'unique_dress_count': len(unique_dress_codes),
+            'dress_codes': unique_dress_codes,
+            'latest_reservation': latest_reservation,
+            'latest_contract': latest_contract,
+            'latest_returned': latest_returned,
+            'has_history': total_reservations > 0,
+            'has_contract': bool(latest_contract),
+            'has_rented_dress': bool(unique_dress_codes),
+            'last_status_label': latest_reservation.get_status_display() if latest_reservation else 'بدون رزرو',
+            'is_active_customer': total_reservations > 0 and latest_reservation and latest_reservation.status not in [
+                ReservationStatus.CANCELLED,
+                ReservationStatus.ARCHIVED,
+            ],
+        }
 
     @property
     def how_to_know_option(self):

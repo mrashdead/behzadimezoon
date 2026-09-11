@@ -476,13 +476,13 @@ class Reservation(models.Model):
         return str(base_value).strip() or 'CN-10001'
 
     def calculate_dates(self):
-        """Calculate return and delivery dates for the reservation.
+        """Calculate the rental end date using exact 24-hour duration per day.
 
-        Return date is inclusive: a 1-day rental starting on day 28 returns on day 28.
+        A 1-day rental starting on day 28 ends on day 29.
         """
 
         if self.start_date and self.rental_days:
-            self.end_date = self.start_date + timedelta(days=self.rental_days - 1)
+            self.end_date = self.start_date + timedelta(days=self.rental_days)
 
         if self.start_date:
             self.delivery_date = self.start_date - timedelta(days=1)

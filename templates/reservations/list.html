@@ -14,7 +14,11 @@
         <h6 class="card-title mb-1">لیست رزروها</h6>
         <p class="text-muted small mb-0">مدیریت رزروها، بررسی وضعیت و انجام عملیات سریع در همان صفحه.</p>
       </div>
-      <div class="d-flex gap-2 align-items-center">
+      <div class="d-flex gap-2 align-items-center flex-wrap">
+        <a href="{% url 'reservations:export_excel' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}" class="btn btn-outline-success btn-sm">
+          <i class="fi fi-rr-download me-1"></i>
+          خروجی اکسل
+        </a>
         {% if can_create_reservation %}
         <button
           type="button"

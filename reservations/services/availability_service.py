@@ -12,12 +12,12 @@ class ReservationAvailabilityService:
     @staticmethod
     def calculate_end_date(start_date, rental_days):
         """
-        محاسبه تاریخ تحویل/پایان رزرو با فرمول شامل روز اول.
-        اگر شروع اجاره 28 باشد و مدت 1 روز باشد، تحویل 28 است.
+        محاسبه پایان رزرو با طول دقیق 24 ساعت برای هر روز اجاره.
+        اگر شروع اجاره 28 باشد و مدت 1 روز باشد، پایان رزرو 29 است.
         """
         if rental_days < 1:
             return start_date
-        return start_date + timedelta(days=rental_days - 1)
+        return start_date + timedelta(days=rental_days)
 
 
     @staticmethod

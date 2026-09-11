@@ -309,6 +309,47 @@ class CustomerListFilterTests(TestCase):
         self.assertEqual(filtered_customers, [contract_customer])
         self.assertContains(filtered_response, 'دارای قرارداد اجاره')
 
+    def test_customer_detail_modal_shows_reservation_history_summary(self):
+        customer = Customer.objects.create(
+            bride_first_name='تاریخ', bride_last_name='سابقه', bride_phone='09120000008',
+            ceremony_date=jdatetime.date(1404, 7, 1), how_to_know='اینستاگرام',
+        )
+        dress_one = Dress.objects.create(code='DHIST1', daily_rent_price=150000)
+        dress_two = Dress.objects.create(code='DHIST2', daily_rent_price=160000)
+
+        Reservation.objects.create(
+            customer=customer, dress=dress_one,
+            start_date=jdatetime.date(1404, 7, 1), rental_days=2,
+            end_date=jdatetime.date(1404, 7, 2), rent_price=150000,
+            deposit_amount=0, final_price=150000, remaining_amount=150000,
+            payment_method='CASH', payment_tracking_code='H1',
+            remaining_payment_amount=150000, guarantee1_type='CASH',
+            guarantee1_tracking_code='GH1', status='DELIVERED',
+            contract_number='CN-HIST-1', created_by=self.user,
+        )
+        Reservation.objects.create(
+            customer=customer, dress=dress_two,
+            start_date=jdatetime.date(1404, 7, 8), rental_days=1,
+            end_date=jdatetime.date(1404, 7, 8), rent_price=160000,
+            deposit_amount=0, final_price=160000, remaining_amount=160000,
+            payment_method='CASH', payment_tracking_code='H2',
+            remaining_payment_amount=160000, guarantee1_type='CASH',
+            guarantee1_tracking_code='GH2', status='RETURNED',
+            contract_number='CN-HIST-2', created_by=self.user,
+        )
+
+        response = self.client.get(reverse('customers:list'))
+
+        self.assertContains(response, 'خلاصه سابقه رزروها')
+        self.assertContains(response, 'تعداد رزروها')
+        self.assertContains(response, 'لباس‌های برده‌شده')
+        self.assertContains(response, 'DHIST1')
+        self.assertContains(response, 'DHIST2')
+
+        customer_from_db = Customer.objects.get(pk=customer.pk)
+        self.assertEqual(customer_from_db.reservation_summary['total_reservations'], 2)
+        self.assertEqual(customer_from_db.reservation_summary['unique_dress_count'], 2)
+
     def test_customer_status_filter_supports_all_customer_states_and_ajax(self):
         customers_by_status = {}
         for key, status, contract_number in (

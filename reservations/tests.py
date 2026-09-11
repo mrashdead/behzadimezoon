@@ -96,7 +96,7 @@ class ReservationFormBehaviorTests(TestCase):
 
         self.assertTrue(form.is_valid(), form.errors)
 
-    def test_reservation_model_uses_inclusive_return_date_formula(self):
+    def test_reservation_model_uses_exact_24_hour_return_date_formula(self):
         customer = Customer.objects.create(
             bride_first_name='Inclusive',
             bride_last_name='Customer',
@@ -127,9 +127,9 @@ class ReservationFormBehaviorTests(TestCase):
 
         reservation.save()
 
-        self.assertEqual(reservation.end_date, jdatetime.date(1402, 1, 28))
+        self.assertEqual(reservation.end_date, jdatetime.date(1402, 1, 29))
 
-    def test_availability_service_uses_inclusive_return_date_formula(self):
+    def test_availability_service_uses_exact_24_hour_return_date_formula(self):
         from reservations.services.availability_service import ReservationAvailabilityService
 
         end_date = ReservationAvailabilityService.calculate_end_date(
@@ -137,7 +137,33 @@ class ReservationFormBehaviorTests(TestCase):
             2,
         )
 
+        self.assertEqual(end_date, jdatetime.date(1402, 1, 30))
+
+    def test_availability_service_uses_exact_24_hour_rental_duration(self):
+        from reservations.services.availability_service import ReservationAvailabilityService
+
+        end_date = ReservationAvailabilityService.calculate_end_date(
+            jdatetime.date(1402, 1, 28),
+            1,
+        )
+
         self.assertEqual(end_date, jdatetime.date(1402, 1, 29))
+
+    def test_list_pages_have_excel_export_endpoints(self):
+        user = create_user('export_user', 'MANAGER')
+        self.client.force_login(user)
+
+        product_response = self.client.get(reverse('products:export_excel'))
+        self.assertEqual(product_response.status_code, 200)
+        self.assertIn('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', product_response['Content-Type'])
+
+        customer_response = self.client.get(reverse('customers:export_excel'))
+        self.assertEqual(customer_response.status_code, 200)
+        self.assertIn('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', customer_response['Content-Type'])
+
+        reservation_response = self.client.get(reverse('reservations:export_excel'))
+        self.assertEqual(reservation_response.status_code, 200)
+        self.assertIn('application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', reservation_response['Content-Type'])
 
     def test_reservation_model_defaults_blank_first_guarantee_values_before_save(self):
         customer = Customer.objects.create(

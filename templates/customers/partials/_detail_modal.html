@@ -148,6 +148,65 @@
             </div>
           </div>
 
+          <!-- بخش خلاصه سابقه رزروها -->
+          <div class="col-12">
+            <div class="card shadow-none border">
+              <div class="card-header bg-body-tertiary border-bottom py-3">
+                <h6 class="mb-0 fw-semibold">
+                  <i class="fi fi-rr-history me-2"></i>
+                  خلاصه سابقه رزروها
+                </h6>
+              </div>
+              <div class="card-body">
+                {% with summary=customer.reservation_summary %}
+                <div class="row g-3 mb-3">
+                  <div class="col-md-3">
+                    <div class="small text-muted mb-1">تعداد رزروها</div>
+                    <div class="fw-semibold">{{ summary.total_reservations }}</div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="small text-muted mb-1">تعداد لباس‌های برده‌شده</div>
+                    <div class="fw-semibold">{{ summary.unique_dress_count }}</div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="small text-muted mb-1">آخرین رزرو</div>
+                    <div class="fw-semibold">
+                      {% if summary.latest_reservation %}
+                        {{ summary.latest_reservation.start_date|jformat:"%Y/%m/%d" }}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </div>
+                  </div>
+                  <div class="col-md-3">
+                    <div class="small text-muted mb-1">آخرین قرارداد</div>
+                    <div class="fw-semibold">
+                      {% if summary.latest_contract %}
+                        {{ summary.latest_contract.start_date|jformat:"%Y/%m/%d" }}
+                      {% else %}
+                        -
+                      {% endif %}
+                    </div>
+                  </div>
+                </div>
+
+                {% if summary.dress_codes %}
+                <div>
+                  <div class="small text-muted mb-2">لباس‌های برده‌شده</div>
+                  <div class="d-flex flex-wrap gap-2">
+                    {% for dress_code in summary.dress_codes %}
+                      <span class="badge bg-primary-subtle text-primary border">{{ dress_code }}</span>
+                    {% endfor %}
+                  </div>
+                </div>
+                {% else %}
+                <div class="text-muted small">تا به حال هیچ لباسی برای این مشتری ثبت نشده است.</div>
+                {% endif %}
+                {% endwith %}
+              </div>
+            </div>
+          </div>
+
           <!-- بخش توضیحات تکمیلی -->
           <div class="col-12">
             <div class="card shadow-none border">

@@ -1,13 +1,17 @@
 #customers/vews.py
+from io import BytesIO
+
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.core.exceptions import PermissionDenied
 from django.db.models import Case, CharField, Exists, F, OuterRef, Q, Subquery, Value, When
 from django.db.models.functions import Coalesce
 from django.db.models.deletion import ProtectedError
+from django.http import HttpResponse
 from django.shortcuts import redirect, get_object_or_404
 from django.views import View
 from django.views.generic import ListView, CreateView, UpdateView
+from openpyxl import Workbook
 from .permissions import (
     user_can_create_customer,
     user_can_edit_customer,
@@ -173,6 +177,109 @@ class CustomerListView(LoginRequiredMixin, ListView):
         if user.is_superuser:
             return True
         return getattr(user, "role", None) in ["MANAGER", "SUPER_ADMIN"]
+
+
+def export_customers_excel(request):
+    queryset = Customer.objects.all()
+
+    search_query = request.GET.get('search', '').strip()
+    if search_query:
+        queryset = queryset.filter(build_token_search_query(
+            search_query,
+            (
+                'bride_first_name', 'bride_last_name', 'bride_phone',
+                'groom_first_name', 'groom_last_name',
+            ),
+        ))
+
+    show_with_reservations = request.GET.get('show_with_reservations') == '1'
+    if show_with_reservations:
+        from reservations.constants import ReservationStatus
+        from reservations.models import Reservation
+        from reservations.services.availability_service import ReservationAvailabilityService
+
+        blocking_statuses = ReservationAvailabilityService.get_blocking_statuses()
+        reserved_customer_ids = Reservation.objects.filter(
+            customer_id__in=queryset.values_list('id', flat=True),
+            status__in=blocking_statuses,
+        ).values('customer_id')
+        queryset = queryset.filter(id__in=reserved_customer_ids)
+
+    crm_status = request.GET.get('crm_status', '').strip()
+    if crm_status in CRM_STATUS_LABELS:
+        queryset = queryset.filter(
+            id__in=Customer.objects.filter(
+                id__in=queryset.values_list('id', flat=True)
+            ).annotate(
+                crm_status=Case(
+                    When(Exists(Reservation.objects.filter(customer_id=OuterRef('pk'), status__in=[
+                        ReservationStatus.DRAFT,
+                        ReservationStatus.CONFIRMED,
+                        ReservationStatus.DELIVERED,
+                        ReservationStatus.LAUNDRY,
+                    ], contract_number__isnull=False).exclude(contract_number='')), then=Value(HAS_CONTRACT)),
+                    When(Exists(Reservation.objects.filter(customer_id=OuterRef('pk'), status__in=[
+                        ReservationStatus.DRAFT,
+                        ReservationStatus.CONFIRMED,
+                        ReservationStatus.DELIVERED,
+                        ReservationStatus.LAUNDRY,
+                    ])), then=Value(HAS_RESERVATION)),
+                    When(Exists(Reservation.objects.filter(customer_id=OuterRef('pk'), status__in=[
+                        ReservationStatus.RETURNED,
+                        ReservationStatus.READY,
+                        ReservationStatus.ARCHIVED,
+                    ])), then=Value(COMPLETED)),
+                    When(Exists(Reservation.objects.filter(customer_id=OuterRef('pk'), status=ReservationStatus.CANCELLED)), then=Value(CANCELLED)),
+                    default=Value(CRM_ONLY),
+                    output_field=CharField(),
+                )
+            ).filter(crm_status=crm_status).values_list('id', flat=True)
+        )
+
+    sort_field = request.GET.get('sort', 'id')
+    order = request.GET.get('order', 'desc')
+    allowed_sort_fields = {
+        'id': 'id',
+        'bride_first_name': 'bride_first_name',
+        'bride_phone': 'bride_phone',
+        'ceremony_date': 'ceremony_date',
+        'created_at': 'created_at',
+        'last_activity': 'created_at',
+    }
+    sort_field = allowed_sort_fields.get(sort_field, 'id')
+    ordering = sort_field if order == 'asc' else f'-{sort_field}'
+    queryset = queryset.order_by(ordering)
+
+    wb = Workbook()
+    ws = wb.active
+    ws.title = 'مشتریان'
+    headers = ['شناسه', 'نام عروس', 'نام خانوادگی عروس', 'شماره تماس عروس', 'نام داماد', 'نام خانوادگی داماد', 'شماره تماس داماد', 'تاریخ مراسم', 'تاریخ ثبت', 'وضعیت CRM']
+    ws.append(headers)
+
+    for customer in queryset:
+        ws.append([
+            customer.id,
+            customer.bride_first_name,
+            customer.bride_last_name,
+            customer.bride_phone,
+            customer.groom_first_name,
+            customer.groom_last_name,
+            customer.groom_phone,
+            customer.ceremony_date.strftime('%Y/%m/%d') if customer.ceremony_date else '',
+            customer.created_at.strftime('%Y/%m/%d %H:%M:%S') if customer.created_at else '',
+            CRM_STATUS_LABELS.get(getattr(customer, 'crm_status', CRM_ONLY), CRM_STATUS_LABELS.get(CRM_ONLY, '')),
+        ])
+
+    for cell in ws[1]:
+        cell.font = cell.font.copy(bold=True)
+
+    output = BytesIO()
+    wb.save(output)
+    output.seek(0)
+
+    response = HttpResponse(output.getvalue(), content_type='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
+    response['Content-Disposition'] = 'attachment; filename="customers_export.xlsx"'
+    return response
 
 
 class CustomerCreateView(LoginRequiredMixin, CreateView):
