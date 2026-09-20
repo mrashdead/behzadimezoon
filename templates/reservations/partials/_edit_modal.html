@@ -3,8 +3,9 @@
 <div class="modal fade" id="editReservationModal{{ reservation.id }}" tabindex="-1" aria-hidden="true">
   <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
     <div class="modal-content">
-      <form method="post" action="{% url 'reservations:edit' reservation.pk %}" class="h-100 d-flex flex-column needs-validation" novalidate id="reservationEditForm{{ reservation.id }}">
+      <form method="post" action="{% url 'reservations:edit' reservation.pk %}" class="h-100 d-flex flex-column needs-validation" novalidate id="reservationEditForm{{ reservation.id }}" data-reservation-id="{{ reservation.id }}">
         {% csrf_token %}
+        <input type="hidden" name="payment_revision" value="{{ reservation.payment_revision|default:'' }}" />
 
         {% include 'partials/_modal_header.html' with title='ویرایش اطلاعات رزرو' %}
 
@@ -78,14 +79,14 @@
               </div>
             </div>
 
-            <div class="col-12 col-xl-6">
+            <div class="col-12">
               <div class="card shadow-none border mb-3">
                 <div class="card-header bg-body-tertiary border-bottom py-3">
                   <h6 class="mb-0 fw-semibold">اطلاعات مالی</h6>
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-md-6 col-xl-3">
                       <label for="id_discount_type_{{ reservation.id }}" class="form-label">نوع تخفیف</label>
                       <select id="id_discount_type_{{ reservation.id }}" name="discount_type" class="form-select">
                         <option value="" {% if reservation.discount_type == 'NONE' %}selected{% endif %}>بدون تخفیف</option>
@@ -93,7 +94,7 @@
                         <option value="PERCENT" {% if reservation.discount_type == 'PERCENT' %}selected{% endif %}>درصد</option>
                       </select>
                     </div>
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-md-6 col-xl-3">
                       <label for="id_discount_value_{{ reservation.id }}" class="form-label">مقدار تخفیف</label>
                       <input
                         type="number"
@@ -105,21 +106,8 @@
                       />
                       <div class="invalid-feedback">مقدار تخفیف باید عددی برابر یا بزرگتر از صفر باشد.</div>
                     </div>
-                    <div class="col-12 col-md-6">
-                      <label for="id_deposit_amount_{{ reservation.id }}" class="form-label">بیعانه</label>
-                      <input
-                        type="text"
-                        id="id_deposit_amount_{{ reservation.id }}"
-                        name="deposit_amount"
-                        class="form-control money-input"
-                        value="{{ reservation.deposit_amount|ir_currency }}"
-                        min="0"
-                        required
-                      />
-                      <div class="invalid-feedback">بیعانه باید عددی برابر یا بزرگتر از صفر باشد.</div>
-                    </div>
-                    <div class="col-12 col-md-6">
-                      <label for="id_payment_method_{{ reservation.id }}" class="form-label">روش پرداخت</label>
+                    <div class="col-12 col-md-6 col-xl-3">
+                      <label for="id_payment_method_{{ reservation.id }}" class="form-label">روش پرداخت پیش‌فرض</label>
                       <select id="id_payment_method_{{ reservation.id }}" name="payment_method" class="form-select" required>
                         <option value="">انتخاب کنید</option>
                         {% for value, label in payment_methods %}
@@ -128,7 +116,7 @@
                       </select>
                       <div class="invalid-feedback">لطفا روش پرداخت را انتخاب کنید.</div>
                     </div>
-                    <div class="col-12 col-md-6">
+                    <div class="col-12 col-md-6 col-xl-3">
                       <label for="id_payment_tracking_code_{{ reservation.id }}" class="form-label">کد رهگیری پرداخت</label>
                       <input
                         type="text"
@@ -141,11 +129,138 @@
                       <div class="invalid-feedback">لطفا کد رهگیری پرداخت را وارد کنید.</div>
                     </div>
                   </div>
+
+                  <hr class="my-4" />
+
+                  <!-- ============================
+                       بیعانه‌ها / پرداخت‌های مرحله‌ای
+                       ============================ -->
+                  <div
+                    class="js-staged-payments"
+                    data-prefix="payments-{{ reservation.id }}"
+                    data-reservation-id="{{ reservation.id }}"
+                    data-total-price="{{ reservation.payment_summary.total_price|default:reservation.final_price|default:0 }}"
+                  >
+                    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3">
+                      <div>
+                        <h6 class="mb-1 fw-semibold">بیعانه‌ها</h6>
+                        <p class="text-muted small mb-0">می‌توانید برای این رزرو چند پرداخت مرحله‌ای ثبت کنید. ترتیب مراحل به‌صورت خودکار تعیین می‌شود.</p>
+                      </div>
+                      <button type="button" class="btn btn-sm btn-outline-primary js-add-payment">
+                        <i class="fi fi-rr-plus me-1"></i>
+                        افزودن بیعانه
+                      </button>
+                    </div>
+
+                    <div class="alert alert-danger d-none js-payment-error-summary" role="alert"></div>
+
+                    {{ reservation.payment_formset.management_form }}
+
+                    <div class="js-payment-rows">
+                      {% for form in reservation.payment_formset %}
+                        <div class="border rounded-3 p-3 mb-3 bg-body-tertiary-subtle js-payment-row" data-index="{{ forloop.counter0 }}">
+                          <div class="d-flex justify-content-between align-items-center mb-2">
+                            <span class="badge bg-primary-subtle text-primary js-payment-stage-label">ردیف {{ forloop.counter }}</span>
+                            <button type="button" class="btn btn-sm btn-outline-danger js-remove-payment" title="حذف این پرداخت">
+                              <i class="fi fi-rr-trash me-1"></i>
+                              حذف
+                            </button>
+                          </div>
+                          <div class="d-none">{{ form.id }}{{ form.DELETE }}</div>
+                          <div class="row g-2">
+                            <div class="col-12 col-md-6 col-xl-3">
+                              <label class="form-label small mb-1">مبلغ پرداخت (تومان)</label>
+                              {{ form.amount }}
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-3">
+                              <label class="form-label small mb-1">نوع پرداخت</label>
+                              {{ form.payment_type }}
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-3">
+                              <label class="form-label small mb-1">تاریخ پرداخت</label>
+                              {{ form.payment_date }}
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-3">
+                              <label class="form-label small mb-1">تاریخ سررسید</label>
+                              {{ form.due_date }}
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-3">
+                              <label class="form-label small mb-1">روش پرداخت</label>
+                              {{ form.payment_method }}
+                            </div>
+                            <div class="col-12 col-md-6 col-xl-3">
+                              <label class="form-label small mb-1">کد رهگیری</label>
+                              {{ form.payment_reference }}
+                            </div>
+                            <div class="col-12 col-xl-6">
+                              <label class="form-label small mb-1">توضیحات</label>
+                              {{ form.description }}
+                            </div>
+                          </div>
+                          {% if form.errors %}
+                            <div class="mt-2 small text-danger">
+                              {% for field, errors in form.errors.items %}
+                                {% for error in errors %}<div>{{ error }}</div>{% endfor %}
+                              {% endfor %}
+                            </div>
+                          {% endif %}
+                        </div>
+                      {% endfor %}
+                    </div>
+
+                    <div class="js-payment-empty text-muted small {% if reservation.payment_summary.payments %}d-none{% endif %}">
+                      هنوز پرداختی برای این رزرو ثبت نشده است. با دکمه «افزودن بیعانه» اولین پرداخت را ثبت کنید.
+                    </div>
+
+                    <!-- قالب ردیف خالی برای افزودن بدون Reload -->
+                    <template class="js-payment-template">
+                      <div class="border rounded-3 p-3 mb-3 bg-body-tertiary-subtle js-payment-row" data-index="__prefix__">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                          <span class="badge bg-primary-subtle text-primary js-payment-stage-label"></span>
+                          <button type="button" class="btn btn-sm btn-outline-danger js-remove-payment" title="حذف این پرداخت">
+                            <i class="fi fi-rr-trash me-1"></i>
+                            حذف
+                          </button>
+                        </div>
+                        <div class="d-none">{{ reservation.payment_formset.empty_form.id }}{{ reservation.payment_formset.empty_form.DELETE }}</div>
+                        <div class="row g-2">
+                          <div class="col-12 col-md-6 col-xl-3">
+                            <label class="form-label small mb-1">مبلغ پرداخت (تومان)</label>
+                            {{ reservation.payment_formset.empty_form.amount }}
+                          </div>
+                          <div class="col-12 col-md-6 col-xl-3">
+                            <label class="form-label small mb-1">نوع پرداخت</label>
+                            {{ reservation.payment_formset.empty_form.payment_type }}
+                          </div>
+                          <div class="col-12 col-md-6 col-xl-3">
+                            <label class="form-label small mb-1">تاریخ پرداخت</label>
+                            {{ reservation.payment_formset.empty_form.payment_date }}
+                          </div>
+                          <div class="col-12 col-md-6 col-xl-3">
+                            <label class="form-label small mb-1">تاریخ سررسید</label>
+                            {{ reservation.payment_formset.empty_form.due_date }}
+                          </div>
+                          <div class="col-12 col-md-6 col-xl-3">
+                            <label class="form-label small mb-1">روش پرداخت</label>
+                            {{ reservation.payment_formset.empty_form.payment_method }}
+                          </div>
+                          <div class="col-12 col-md-6 col-xl-3">
+                            <label class="form-label small mb-1">کد رهگیری</label>
+                            {{ reservation.payment_formset.empty_form.payment_reference }}
+                          </div>
+                          <div class="col-12 col-xl-6">
+                            <label class="form-label small mb-1">توضیحات</label>
+                            {{ reservation.payment_formset.empty_form.description }}
+                          </div>
+                        </div>
+                      </div>
+                    </template>
+                  </div>
                 </div>
               </div>
             </div>
 
-            <div class="col-12 col-xl-6">
+            <div class="col-12">
               <div class="card shadow-none border mb-3">
                 <div class="card-header bg-body-tertiary border-bottom py-3">
                   <h6 class="mb-0 fw-semibold">اطلاعات ضمانت</h6>
@@ -238,17 +353,58 @@
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
-                    <div class="col-12 col-md-4">
+                    <div class="col-12 col-md-4 col-xl-2">
                       <label class="form-label">مبلغ تخفیف</label>
                       <input type="text" class="form-control money-input" value="{{ reservation.discount_amount|ir_currency }}" readonly>
                     </div>
-                    <div class="col-12 col-md-4">
-                      <label class="form-label">مبلغ نهایی</label>
-                      <input type="text" class="form-control money-input" value="{{ reservation.final_price|ir_currency }}" readonly>
+                    <div class="col-12 col-md-4 col-xl-2">
+                      <label class="form-label">مبلغ کل رزرو</label>
+                      <input
+                        type="text"
+                        class="form-control money-input js-total-price"
+                        data-raw="{{ reservation.payment_summary.total_price|default:reservation.final_price|default:0 }}"
+                        value="{{ reservation.payment_summary.total_price|default:reservation.final_price|ir_currency }}"
+                        readonly
+                      >
                     </div>
-                    <div class="col-12 col-md-4">
-                      <label class="form-label">باقی‌مانده</label>
-                      <input type="text" class="form-control money-input" value="{{ reservation.remaining_amount|ir_currency }}" readonly>
+                    <div class="col-12 col-md-4 col-xl-2">
+                      <label class="form-label">مجموع پرداخت‌ها</label>
+                      <input
+                        type="text"
+                        class="form-control money-input js-total-paid"
+                        data-raw="{{ reservation.payment_summary.total_paid|default:0 }}"
+                        value="{{ reservation.payment_summary.total_paid|default:0|ir_currency }}"
+                        readonly
+                      >
+                    </div>
+                    <div class="col-12 col-md-4 col-xl-2">
+                      <label class="form-label">مانده</label>
+                      <input
+                        type="text"
+                        class="form-control money-input js-remaining-amount"
+                        data-raw="{{ reservation.payment_summary.remaining_amount|default:0 }}"
+                        value="{{ reservation.payment_summary.remaining_amount|default:0|ir_currency }}"
+                        readonly
+                      >
+                    </div>
+                    <div class="col-12 col-md-4 col-xl-2">
+                      <label class="form-label">وضعیت تسویه</label>
+                      <input
+                        type="text"
+                        class="form-control js-settlement-status"
+                        value="{{ reservation.payment_summary.settlement_label|default:'-' }}"
+                        readonly
+                      >
+                    </div>
+                    <div class="col-12 col-md-4 col-xl-2">
+                      <label class="form-label">اضافه‌پرداخت</label>
+                      <input
+                        type="text"
+                        class="form-control money-input js-overpaid-amount"
+                        data-raw="{{ reservation.payment_summary.overpaid_amount|default:0 }}"
+                        value="{{ reservation.payment_summary.overpaid_amount|default:0|ir_currency }}"
+                        readonly
+                      >
                     </div>
                   </div>
                 </div>
@@ -262,5 +418,3 @@
     </div>
   </div>
 </div>
-
-

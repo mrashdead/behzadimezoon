@@ -31,10 +31,75 @@
         </div>
 
         <div class="row g-3 mb-4">
-          {% include 'partials/_detail_card.html' with label='بیعانه' value=reservation.deposit_amount|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
+          {% include 'partials/_detail_card.html' with label='مجموع بیعانه‌ها' value=reservation.payment_summary.total_deposit|default:0|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
+          {% include 'partials/_detail_card.html' with label='مجموع پرداخت‌شده' value=reservation.payment_summary.total_paid|default:0|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
+          {% include 'partials/_detail_card.html' with label='مانده قابل پرداخت' value=reservation.payment_summary.remaining_amount|default:0|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
+          {% include 'partials/_detail_card.html' with label='وضعیت تسویه' value=reservation.payment_summary.settlement_label|default:'-' %}
+        </div>
+
+        <div class="card shadow-sm border rounded-3 mb-4">
+          <div class="card-header bg-body-tertiary border-bottom py-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">بیعانه‌ها و پرداخت‌های مرحله‌ای</h6>
+            <a href="{% url 'reservations:invoice' reservation.pk %}" class="btn btn-sm btn-outline-primary no-print" target="_blank" rel="noopener">
+              <i class="fi fi-rr-print me-1"></i>
+              مشاهده فاکتور
+            </a>
+          </div>
+          <div class="card-body">
+            {% if reservation.payment_summary.payments %}
+              <div class="table-responsive">
+                <table class="table table-sm align-middle mb-0">
+                  <thead class="table-light">
+                    <tr>
+                      <th>مرحله</th>
+                      <th class="text-end">مبلغ</th>
+                      <th>تاریخ پرداخت</th>
+                      <th>تاریخ سررسید</th>
+                      <th>روش پرداخت</th>
+                      <th>کد رهگیری</th>
+                      <th>توضیحات</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {% for payment in reservation.payment_summary.payments %}
+                      <tr>
+                        <td class="fw-semibold">{{ payment.stage_label }}</td>
+                        <td class="text-end">{{ payment.amount|ir_currency }} تومان</td>
+                        <td>{{ payment.payment_date_jalali|default:'-' }}</td>
+                        <td>{{ payment.due_date_jalali|default:'-' }}</td>
+                        <td>{{ payment.payment_method_label|default:'-' }}</td>
+                        <td>{{ payment.payment_reference|default:'-' }}</td>
+                        <td>{{ payment.description|default:'-' }}</td>
+                      </tr>
+                    {% endfor %}
+                  </tbody>
+                  <tfoot class="table-light">
+                    <tr>
+                      <th class="text-end">مجموع پرداخت‌شده</th>
+                      <th class="text-end">{{ reservation.payment_summary.total_paid|ir_currency }} تومان</th>
+                      <th colspan="5"></th>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            {% else %}
+              <div class="text-muted">هیچ پرداختی برای این رزرو ثبت نشده است.</div>
+            {% endif %}
+          </div>
+        </div>
+
+        <div class="row g-3 mb-4">
+          {% include 'partials/_detail_card.html' with label='قیمت اجاره روزانه' value=reservation.rent_price|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
+          {% include 'partials/_detail_card.html' with label='پرداخت باقی‌مانده' value=reservation.remaining_payment_amount|default:0|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
+          {% include 'partials/_detail_card.html' with label='خسارت' value=reservation.damage_amount|default:0|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
+          {% include 'partials/_detail_card.html' with label='جریمه لغو' value=reservation.cancellation_fee|default:0|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
+        </div>
+
+        <div class="row g-3 mb-4">
           {% include 'partials/_detail_card.html' with label='تخفیف' value=reservation.discount_amount|default:0|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
-          {% include 'partials/_detail_card.html' with label='روش پرداخت' value=reservation.get_payment_method_display %}
+          {% include 'partials/_detail_card.html' with label='روش پرداخت پیش‌فرض' value=reservation.get_payment_method_display %}
           {% include 'partials/_detail_card.html' with label='کد رهگیری پرداخت' value=reservation.payment_tracking_code|default:'-' %}
+          {% include 'partials/_detail_card.html' with label='اضافه‌پرداخت' value=reservation.payment_summary.overpaid_amount|default:0|ir_currency|stringformat:'s'|add:' تومان' amount_style=True %}
         </div>
 
         <div class="row g-3 mb-4">

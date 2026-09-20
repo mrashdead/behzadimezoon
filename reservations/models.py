@@ -701,6 +701,38 @@ class Reservation(models.Model):
         total_collected = self.total_received_amount()
         return total_collected >= total_due
 
+    @property
+    def has_paid_deposit(self):
+        """
+        آیا بیعانه معتبری برای این رزرو پرداخت شده است؟
+
+        ``deposit_amount`` یک کش مشتق‌شده از مجموع تراکنش‌های معتبر بیعانه
+        است و توسط ``ReservationPaymentService`` همگام‌سازی می‌شود؛ بنابراین
+        این بررسی بر پایه پرداخت‌های واقعی و بدون کوئری اضافه انجام می‌شود.
+        """
+        return (self.deposit_amount or 0) > 0
+
+    @property
+    def total_paid_amount(self):
+        """مجموع پرداخت‌های معتبر (بیعانه + تکمیلی + نهایی)."""
+        return self.total_received_amount()
+
+    @property
+    def staged_payment_count(self):
+        """تعداد پرداخت‌های مرحله‌ای معتبر ثبت‌شده برای این رزرو."""
+        if self.pk is None:
+            return 0
+        try:
+            return self.transactions.filter(
+                transaction_type__in=[
+                    'DEPOSIT', 'PARTIAL_PAYMENT', 'FINAL_PAYMENT',
+                ],
+                transaction_status='POSTED',
+                is_voided=False,
+            ).count()
+        except Exception:
+            return 0
+
     def is_partially_paid(self):
         """Check if some payment has been received but not all."""
         collected = self.total_received_amount()

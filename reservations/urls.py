@@ -9,6 +9,7 @@ from .views import (
     reservation_step_one,
     reservation_create,
     reservation_detail,
+    reservation_invoice,
     reservation_mark_delivered,
     reservation_mark_returned,
     reservation_mark_laundry,
@@ -80,6 +81,13 @@ urlpatterns = [
         "<int:pk>/edit/",
         reservation_edit,
         name="edit"
+    ),
+
+    # invoice (فاکتور)
+    path(
+        "<int:pk>/invoice/",
+        reservation_invoice,
+        name="invoice"
     ),
 
     # mark delivered

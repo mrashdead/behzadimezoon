@@ -86,6 +86,16 @@ class PaymentService:
         if not category:
             category = TransactionCategory.objects.filter(name='Deposit').first()
 
+        from reservations.services.payment_stage_service import ReservationPaymentService
+
+        # اگر حالت جایگزینی فعال است، بیعانه‌های قبلی به‌صورت نرم حذف می‌شوند
+        # تا مبلغ جدید جایگزین شود (بدون ایجاد رکورد متناقض).
+        if replace_existing:
+            for existing in ReservationPaymentService.payments_queryset(reservation).filter(
+                transaction_type=Transaction.TransactionType.DEPOSIT
+            ):
+                ReservationPaymentService._void_payment(existing, created_by)
+
         tx = TransactionService.create_deposit(
             reservation=reservation,
             amount=amount,
@@ -97,19 +107,16 @@ class PaymentService:
             note=note or 'دریافت بیعانه',
             transaction_date=transaction_date,
         )
+        tx.sequence_number = ReservationPaymentService.next_sequence_number(reservation)
+        tx.save(update_fields=['sequence_number', 'updated_at'])
 
-        # Update reservation financial fields and status
-        if replace_existing:
-            reservation.deposit_amount = amount
-        else:
-            reservation.deposit_amount = (reservation.deposit_amount or 0) + amount
         if payment_method:
             reservation.payment_method = payment_method
         if external_reference:
             reservation.payment_tracking_code = external_reference
 
-        # Recalculate and update reservation financial status
-        ReservationFinancialService.update_financial_status(reservation)
+        # منبع واحد محاسبات: کش‌ها از مجموع تراکنش‌های معتبر ساخته می‌شوند
+        ReservationPaymentService.sync_reservation_payment_caches(reservation, save=False)
         ReservationFinancialService.capture_financial_snapshot(reservation, 'deposit')
         reservation.save()
 
@@ -147,12 +154,17 @@ class PaymentService:
             transaction_date=transaction_date,
         )
 
-        reservation.remaining_payment_amount = (reservation.remaining_payment_amount or 0) + amount
+        from reservations.services.payment_stage_service import ReservationPaymentService
+
+        tx.sequence_number = ReservationPaymentService.next_sequence_number(reservation)
+        tx.save(update_fields=['sequence_number', 'updated_at'])
+
         reservation.remaining_payment_method = payment_method
         reservation.remaining_payment_tracking_code = external_reference
         reservation.remaining_paid_at = transaction_date
 
-        ReservationFinancialService.update_financial_status(reservation)
+        # منبع واحد محاسبات: کش‌ها از مجموع تراکنش‌های معتبر ساخته می‌شوند
+        ReservationPaymentService.sync_reservation_payment_caches(reservation, save=False)
         ReservationFinancialService.capture_financial_snapshot(reservation, 'balance_payment')
         reservation.save()
         return tx

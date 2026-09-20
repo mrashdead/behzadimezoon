@@ -37,11 +37,21 @@ def reservation_financial_view(request, pk):
     damages = reservation.damage_records.all()
     cancellation = getattr(reservation, 'cancellation_record', None)
 
+    # منبع واحد محاسبات پرداخت‌ها (بیعانه‌های مرحله‌ای)
+    from reservations.services.payment_stage_service import ReservationPaymentService
+    payment_summary = ReservationPaymentService.build_financial_summary(reservation)
+
     totals = {
-        'total_received': TransactionService.reservation_cash_inflow(reservation),
+        'total_received': payment_summary['total_paid'],
+        'total_paid': payment_summary['total_paid'],
+        'total_deposit': payment_summary['total_deposit'],
+        'total_refunded': payment_summary['total_refunded'],
         'final_price': reservation.final_price or 0,
-        'deposit': reservation.deposit_amount or 0,
-        'remaining': reservation.remaining_amount or 0,
+        'total_price': payment_summary['total_price'],
+        'deposit': payment_summary['total_deposit'],
+        'remaining': payment_summary['remaining_amount'],
+        'overpaid': payment_summary['overpaid_amount'],
+        'settlement_label': payment_summary['settlement_label'],
         'additional_fees': reservation.total_additional_fees(),
     }
     cancellation_total = reservation.cancellation_fee or 0
@@ -72,6 +82,8 @@ def reservation_financial_view(request, pk):
         'transaction_form': TransactionForm(),
         'cancellation_form': CancellationForm(),
         'additional_fee_items': reservation.active_additional_fees().order_by('-created_at'),
+        'payment_summary': payment_summary,
+        'staged_payments': payment_summary['payments'],
         'cancellation_remaining': cancellation_remaining,
         'damage_remaining': damage_remaining,
         'cancellation_total': cancellation_total,

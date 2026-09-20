@@ -2,6 +2,7 @@
 
 from django import forms
 from django.core.exceptions import ValidationError
+from django.forms import BaseFormSet, formset_factory
 from django.utils.translation import gettext_lazy as _
 import jdatetime
 
@@ -843,5 +844,274 @@ class FinalizeDeliveryGuaranteeForm(forms.Form):
                 )
 
         return cleaned_data
+
+
+# ---------------------------------------------------------------------------
+# پرداخت‌های مرحله‌ای (بیعانه‌ها)
+# ---------------------------------------------------------------------------
+
+# انواع پرداختی که کاربر می‌تواند در بخش «بیعانه‌ها» ثبت کند
+PAYMENT_TYPE_CHOICES = (
+    ('DEPOSIT', 'بیعانه'),
+    ('PARTIAL_PAYMENT', 'پرداخت تکمیلی'),
+    ('FINAL_PAYMENT', 'پرداخت نهایی'),
+)
+
+_PAYMENT_TYPE_VALUES = {value for value, _ in PAYMENT_TYPE_CHOICES}
+
+
+class ReservationPaymentForm(forms.Form):
+    """
+    یک ردیف پرداخت مرحله‌ای رزرو (بیعانه اول/دوم/...).
+
+    این فرم عمداً یک ``forms.Form`` ساده است (نه ModelForm) تا ذخیره‌سازی
+    منحصراً از طریق ``ReservationPaymentService`` و به‌صورت اتمیک انجام شود.
+    """
+
+    id = forms.IntegerField(
+        required=False,
+        widget=forms.HiddenInput(attrs={'class': 'js-payment-id'}),
+    )
+
+    amount = forms.CharField(
+        required=False,
+        label='مبلغ پرداخت',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control money-input js-payment-amount',
+            'inputmode': 'numeric',
+            'placeholder': '0',
+            'autocomplete': 'off',
+            'dir': 'ltr',
+        }),
+    )
+
+    payment_type = forms.ChoiceField(
+        choices=PAYMENT_TYPE_CHOICES,
+        required=False,
+        label='نوع پرداخت',
+        error_messages={'invalid_choice': 'نوع پرداخت نامعتبر است.'},
+        widget=forms.Select(attrs={'class': 'form-select js-payment-type'}),
+    )
+
+    payment_date = forms.CharField(
+        required=False,
+        label='تاریخ پرداخت',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control p-date-only js-payment-date',
+            'placeholder': '۱۴۰۵/۰۶/۲۹',
+            'autocomplete': 'off',
+        }),
+    )
+
+    due_date = forms.CharField(
+        required=False,
+        label='تاریخ سررسید',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control p-date-only js-payment-due-date',
+            'placeholder': 'اختیاری',
+            'autocomplete': 'off',
+        }),
+    )
+
+    payment_method = forms.ChoiceField(
+        choices=[('', 'انتخاب کنید')] + list(PaymentMethod.CHOICES),
+        required=False,
+        label='روش پرداخت',
+        error_messages={'invalid_choice': 'روش پرداخت نامعتبر است.'},
+        widget=forms.Select(attrs={'class': 'form-select js-payment-method'}),
+    )
+
+    payment_reference = forms.CharField(
+        required=False,
+        max_length=200,
+        label='کد رهگیری',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control js-payment-reference',
+            'placeholder': 'کد رهگیری / شماره رسید',
+            'autocomplete': 'off',
+        }),
+    )
+
+    description = forms.CharField(
+        required=False,
+        max_length=500,
+        label='توضیحات',
+        widget=forms.TextInput(attrs={
+            'class': 'form-control js-payment-description',
+            'placeholder': 'اختیاری',
+            'autocomplete': 'off',
+        }),
+    )
+
+    def clean_amount(self):
+        raw = self.cleaned_data.get('amount')
+        if raw in (None, ''):
+            return None
+        try:
+            value = parse_amount_value(raw)
+        except ValidationError:
+            raise ValidationError('مبلغ پرداخت باید یک عدد صحیح باشد.')
+        if value < 0:
+            raise ValidationError('مبلغ پرداخت نمی‌تواند منفی باشد.')
+        return value
+
+    def clean_payment_type(self):
+        value = self.cleaned_data.get('payment_type') or 'DEPOSIT'
+        if value not in _PAYMENT_TYPE_VALUES:
+            raise ValidationError('نوع پرداخت نامعتبر است.')
+        return value
+
+    def clean_payment_date(self):
+        raw = self.cleaned_data.get('payment_date')
+        if raw in (None, ''):
+            return ''
+        if parse_reservation_date(raw) is None:
+            raise ValidationError('تاریخ پرداخت نامعتبر است.')
+        return str(raw).strip()
+
+    def clean_due_date(self):
+        raw = self.cleaned_data.get('due_date')
+        if raw in (None, ''):
+            return ''
+        if parse_reservation_date(raw) is None:
+            raise ValidationError('تاریخ سررسید نامعتبر است.')
+        return str(raw).strip()
+
+    def clean(self):
+        cleaned_data = super().clean()
+
+        amount = cleaned_data.get('amount')
+        method = cleaned_data.get('payment_method') or ''
+        reference = (cleaned_data.get('payment_reference') or '').strip()
+        payment_date = cleaned_data.get('payment_date') or ''
+        due_date = cleaned_data.get('due_date') or ''
+        description = (cleaned_data.get('description') or '').strip()
+
+        # ردیف کاملاً خالی (و علامت‌گذاری‌نشده برای حذف) -> نادیده گرفته می‌شود
+        if amount is None:
+            if not (method or reference or payment_date or due_date or description):
+                return cleaned_data
+            raise ValidationError('مبلغ پرداخت الزامی است.')
+
+        if amount <= 0:
+            raise ValidationError('مبلغ پرداخت باید بیشتر از صفر باشد.')
+
+        if method and method != PaymentMethod.CASH and not reference:
+            raise ValidationError('برای روش پرداخت غیرنقدی باید کد رهگیری وارد شود.')
+
+        if due_date and payment_date:
+            parsed_due = parse_reservation_date(due_date)
+            parsed_pay = parse_reservation_date(payment_date)
+            if parsed_due and parsed_pay and parsed_due < parsed_pay:
+                raise ValidationError('تاریخ سررسید نمی‌تواند قبل از تاریخ پرداخت باشد.')
+
+        cleaned_data['payment_method'] = method
+        cleaned_data['payment_reference'] = reference
+        cleaned_data['description'] = description
+        return cleaned_data
+
+
+class BaseReservationPaymentFormSet(BaseFormSet):
+    """Formset پرداخت‌های مرحله‌ای با پیام خطای فارسی برای management_form."""
+
+    def total_amount(self):
+        total = 0
+        for form in self.forms:
+            data = getattr(form, 'cleaned_data', None)
+            if not data or data.get('DELETE'):
+                continue
+            total += data.get('amount') or 0
+        return total
+
+    def active_rows(self):
+        rows = []
+        for form in self.forms:
+            data = getattr(form, 'cleaned_data', None)
+            if not data:
+                continue
+            if data.get('DELETE'):
+                continue
+            if data.get('amount') in (None, 0):
+                continue
+            rows.append(data)
+        return rows
+
+    def full_clean(self):
+        super().full_clean()
+        try:
+            errors = [str(error) for error in self._non_form_errors]
+        except Exception:
+            return
+        if errors and any('ManagementForm' in error for error in errors):
+            self._non_form_errors = self.error_class(
+                ['فرم پرداخت‌ها ناقص ارسال شده است. لطفاً صفحه را دوباره بارگذاری کنید.'],
+                renderer=getattr(self, 'renderer', None),
+            )
+
+
+ReservationPaymentFormSet = formset_factory(
+    ReservationPaymentForm,
+    formset=BaseReservationPaymentFormSet,
+    extra=0,
+    can_delete=True,
+)
+
+
+def payment_formset_prefix(reservation_id):
+    """پیشوند یکتا برای formset هر رزرو (جلوگیری از Duplicate ID)."""
+    return f"payments-{reservation_id}"
+
+
+def build_payment_formset(reservation, data=None, payments=None):
+    """
+    ساخت formset پرداخت‌های مرحله‌ای برای یک رزرو.
+
+    ``initial`` از تراکنش‌های معتبر همان رزرو ساخته می‌شود تا داده‌های
+    قبلی حفظ شوند و هیچ‌گاه مقدار ساختگی ثبت نشود.
+    """
+    from reservations.services.payment_stage_service import ReservationPaymentService
+
+    if payments is None:
+        payments = ReservationPaymentService.serialize_payments(reservation)
+
+    initial = []
+    for payment in payments:
+        initial.append({
+            'id': payment['id'],
+            'amount': payment['amount'],
+            'payment_type': payment['payment_type'],
+            'payment_date': payment['payment_date_jalali'],
+            'due_date': payment['due_date_jalali'],
+            'payment_method': payment['payment_method'],
+            'payment_reference': payment['payment_reference'],
+            'description': payment['description'],
+        })
+
+    return ReservationPaymentFormSet(
+        data,
+        initial=initial,
+        prefix=payment_formset_prefix(reservation.pk),
+    )
+
+
+def payment_rows_from_formset(formset):
+    """تبدیل formset معتبر به لیست ردیف‌های قابل استفاده در سرویس."""
+    rows = []
+    for form in formset.forms:
+        data = getattr(form, 'cleaned_data', None)
+        if not data:
+            continue
+        rows.append({
+            'id': data.get('id'),
+            'amount': data.get('amount'),
+            'payment_type': data.get('payment_type') or 'DEPOSIT',
+            'payment_date': data.get('payment_date') or '',
+            'due_date': data.get('due_date') or '',
+            'payment_method': data.get('payment_method') or '',
+            'payment_reference': data.get('payment_reference') or '',
+            'description': data.get('description') or '',
+            'deleted': bool(data.get('DELETE')),
+        })
+    return rows
 
 

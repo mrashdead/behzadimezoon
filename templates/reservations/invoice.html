@@ -1,0 +1,200 @@
+{% extends 'base.html' %}
+{% load jformat %}
+{% load humanize %}
+
+{% block title %}
+فاکتور رزرو #{{ reservation.pk }}
+{% endblock %}
+
+{% block extra_css %}
+<style>
+  .invoice-page {
+    max-width: 900px;
+    margin: 0 auto;
+  }
+  .invoice-table th,
+  .invoice-table td {
+    vertical-align: middle;
+  }
+  @media print {
+    .no-print { display: none !important; }
+    .card { border: 0 !important; box-shadow: none !important; }
+    body { background: #fff !important; }
+  }
+</style>
+{% endblock %}
+
+{% block breadcrumb %}
+<div class="d-flex align-items-center gap-2">
+  <a href="{% url 'reservations:list' %}" class="text-muted text-decoration-none">رزروها</a>
+  <span class="text-muted">/</span>
+  <span class="fw-semibold">فاکتور رزرو #{{ reservation.pk }}</span>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+  <div class="invoice-page">
+    <div class="d-flex flex-wrap gap-2 justify-content-between align-items-center mb-3 no-print">
+      <div>
+        <h5 class="mb-1">فاکتور رزرو</h5>
+        <p class="text-muted small mb-0">جزئیات مبلغ کل، بیعانه‌ها و مانده حساب</p>
+      </div>
+      <div class="d-flex gap-2">
+        <button type="button" class="btn btn-sm btn-primary" onclick="window.print()">
+          <i class="fi fi-rr-print me-1"></i>
+          چاپ فاکتور
+        </button>
+        <a href="{% url 'reservations:list' %}" class="btn btn-sm btn-outline-secondary">بازگشت</a>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-3">
+      <div class="card-body">
+        <div class="d-flex flex-wrap justify-content-between gap-3 mb-4">
+          <div>
+            <h4 class="mb-1">فاکتور رزرو لباس</h4>
+            <div class="text-muted small">شماره فاکتور: #{{ reservation.pk }}</div>
+          </div>
+          <div class="text-end">
+            <div class="small text-muted">شماره قرارداد</div>
+            <div class="fw-semibold">{{ reservation.contract_number|default:'-' }}</div>
+          </div>
+        </div>
+
+        <div class="row g-3">
+          <div class="col-12 col-md-4">
+            <div class="small text-muted">مشتری</div>
+            <div class="fw-semibold">{{ reservation.customer }}</div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="small text-muted">لباس</div>
+            <div class="fw-semibold">{{ reservation.dress }}</div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="small text-muted">وضعیت رزرو</div>
+            <div class="fw-semibold">{{ reservation.get_status_display }}</div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="small text-muted">تاریخ شروع اجاره</div>
+            <div class="fw-semibold">{{ reservation.start_date|jformat:"%Y/%m/%d" }}</div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="small text-muted">تاریخ پایان اجاره</div>
+            <div class="fw-semibold">{{ reservation.end_date|jformat:"%Y/%m/%d" }}</div>
+          </div>
+          <div class="col-12 col-md-4">
+            <div class="small text-muted">تاریخ صدور فاکتور</div>
+            <div class="fw-semibold">{% now "Y/m/d" %}</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-3">
+      <div class="card-header bg-body-tertiary border-bottom py-3">
+        <h6 class="mb-0">جزئیات پرداخت‌ها</h6>
+      </div>
+      <div class="card-body">
+        <div class="table-responsive">
+          <table class="table table-bordered invoice-table mb-0">
+            <thead class="table-light">
+              <tr>
+                <th style="width: 60px;">ردیف</th>
+                <th>عنوان پرداخت</th>
+                <th class="text-end">مبلغ (تومان)</th>
+                <th>تاریخ پرداخت</th>
+                <th>تاریخ سررسید</th>
+                <th>روش پرداخت</th>
+                <th>کد رهگیری</th>
+                <th>توضیحات</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for payment in summary.payments %}
+                <tr>
+                  <td>{{ forloop.counter }}</td>
+                  <td class="fw-semibold">{{ payment.stage_label }}</td>
+                  <td class="text-end">{{ payment.amount|ir_currency }}</td>
+                  <td>{{ payment.payment_date_jalali|default:'-' }}</td>
+                  <td>{{ payment.due_date_jalali|default:'-' }}</td>
+                  <td>{{ payment.payment_method_label|default:'-' }}</td>
+                  <td>{{ payment.payment_reference|default:'-' }}</td>
+                  <td>{{ payment.description|default:'-' }}</td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="8" class="text-center text-muted py-3">هیچ پرداختی برای این رزرو ثبت نشده است.</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot class="table-light">
+              <tr>
+                <th colspan="2" class="text-end">مجموع پرداخت‌شده</th>
+                <th class="text-end">{{ summary.total_paid|ir_currency }}</th>
+                <th colspan="5"></th>
+              </tr>
+            </tfoot>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <div class="card shadow-sm border-0 mb-3">
+      <div class="card-header bg-body-tertiary border-bottom py-3">
+        <h6 class="mb-0">خلاصه مالی</h6>
+      </div>
+      <div class="card-body">
+        <div class="row g-3">
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="small text-muted">مبلغ اجاره</div>
+            <div class="fw-semibold">{{ reservation.rent_price|ir_currency }} تومان</div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="small text-muted">تخفیف</div>
+            <div class="fw-semibold">{{ reservation.discount_amount|default:0|ir_currency }} تومان</div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="small text-muted">مبلغ کل رزرو</div>
+            <div class="fw-semibold">{{ summary.total_price|ir_currency }} تومان</div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="small text-muted">مجموع پرداخت‌شده</div>
+            <div class="fw-semibold text-success">{{ summary.total_paid|ir_currency }} تومان</div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="small text-muted">مانده قابل پرداخت</div>
+            <div class="fw-semibold {% if summary.remaining_amount > 0 %}text-danger{% else %}text-success{% endif %}">
+              {{ summary.remaining_amount|ir_currency }} تومان
+            </div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="small text-muted">اضافه‌پرداخت</div>
+            <div class="fw-semibold">{{ summary.overpaid_amount|default:0|ir_currency }} تومان</div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="small text-muted">هزینه‌های جانبی</div>
+            <div class="fw-semibold">{{ summary.additional_fees|default:0|ir_currency }} تومان</div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="small text-muted">وضعیت تسویه</div>
+            <div class="fw-semibold">
+              {% if summary.settlement_code == 'SETTLED' %}
+                <span class="badge bg-success-subtle text-success">{{ summary.settlement_label }}</span>
+              {% elif summary.settlement_code == 'OVERPAID' %}
+                <span class="badge bg-info-subtle text-info">{{ summary.settlement_label }}</span>
+              {% else %}
+                <span class="badge bg-danger-subtle text-danger">{{ summary.settlement_label }}</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="text-muted small text-center mb-4">
+      این فاکتور بر اساس مجموع پرداخت‌های معتبر ثبت‌شده برای رزرو صادر شده است.
+    </div>
+  </div>
+</div>
+{% endblock %}

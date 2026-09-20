@@ -1,56 +1,306 @@
 <script>
 (function () {
-  function setupEditGuaranteeRequirement() {
-    const guarantee1Select = document.querySelector('select[name="guarantee1_type"]');
-    const guarantee2Select = document.querySelector('select[name="guarantee2_type"]');
+  if (window.__stagedPaymentsSetupDone) {
+    return;
+  }
+  window.__stagedPaymentsSetupDone = true;
 
-    const guarantee1Input = document.querySelector('input[name="guarantee1_payee"]');
-    const guarantee2Input = document.querySelector('input[name="guarantee2_payee"]');
+  var PERSIAN_ORDINALS = [
+    'اول', 'دوم', 'سوم', 'چهارم', 'پنجم', 'ششم', 'هفتم', 'هشتم', 'نهم', 'دهم',
+    'یازدهم', 'دوازدهم', 'سیزدهم', 'چهاردهم', 'پانزدهم', 'شانزدهم', 'هفدهم',
+    'هجدهم', 'نوزدهم', 'بیستم'
+  ];
 
-    const guarantee1RequiredIcon = document.querySelector('[id*="guarantee1PayeeRequired"]');
-    const guarantee2RequiredIcon = document.querySelector('[id*="guarantee2PayeeRequired"]');
+  var TYPE_LABELS = {
+    DEPOSIT: 'بیعانه',
+    PARTIAL_PAYMENT: 'پرداخت تکمیلی',
+    FINAL_PAYMENT: 'پرداخت نهایی'
+  };
 
-    function updateGuaranteeRequirement(select, input, requiredIcon) {
+  function toInt(value) {
+    if (value === null || value === undefined) return 0;
+    var text = String(value)
+      .replace(/[۰-۹]/g, function (d) { return String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); })
+      .replace(/[٠-٩]/g, function (d) { return String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)); })
+      .replace(/[,\u066C\u066B\u200c\u202f\s]/g, '');
+    var parsed = parseInt(text, 10);
+    return isNaN(parsed) ? 0 : parsed;
+  }
+
+  function formatMoney(value) {
+    var num = toInt(value);
+    return num.toString().replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function ordinal(index) {
+    if (index >= 1 && index <= PERSIAN_ORDINALS.length) {
+      return PERSIAN_ORDINALS[index - 1];
+    }
+    return String(index);
+  }
+
+  function getContainer(form) {
+    return form.querySelector('.js-staged-payments');
+  }
+
+  function getRows(container) {
+    return Array.prototype.slice.call(container.querySelectorAll('.js-payment-rows .js-payment-row'));
+  }
+
+  function totalFormsInput(container) {
+    var prefix = container.dataset.prefix;
+    return container.querySelector('input[name="' + prefix + '-TOTAL_FORMS"]');
+  }
+
+  function rowIsDeleted(row) {
+    var box = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+    return !!(box && box.checked);
+  }
+
+  function updateLabels(container) {
+    var counters = {};
+    getRows(container).forEach(function (row) {
+      var typeSelect = row.querySelector('select.js-payment-type');
+      var label = row.querySelector('.js-payment-stage-label');
+      if (!label) return;
+      if (rowIsDeleted(row)) {
+        label.className = 'badge bg-danger-subtle text-danger js-payment-stage-label';
+        label.textContent = 'حذف خواهد شد';
+        return;
+      }
+      var type = typeSelect ? typeSelect.value : 'DEPOSIT';
+      counters[type] = (counters[type] || 0) + 1;
+      var base = TYPE_LABELS[type] || 'پرداخت';
+      var text = base;
+      if (type !== 'FINAL_PAYMENT' || counters[type] > 1) {
+        text = base + ' ' + ordinal(counters[type]);
+      }
+      label.className = 'badge bg-primary-subtle text-primary js-payment-stage-label';
+      label.textContent = text;
+    });
+  }
+
+  function updateTotals(container) {
+    var form = container.closest('form');
+    if (!form) return;
+
+    var totalPrice = toInt(container.dataset.totalPrice);
+    var totalPaid = 0;
+
+    getRows(container).forEach(function (row) {
+      if (rowIsDeleted(row)) return;
+      var amountInput = row.querySelector('.js-payment-amount');
+      totalPaid += toInt(amountInput ? amountInput.value : 0);
+    });
+
+    var remaining = totalPrice - totalPaid;
+    var settlementLabel = 'تسویه کامل';
+    var remainingDisplay = 0;
+    var overpaid = 0;
+
+    if (remaining > 0) {
+      settlementLabel = 'دارای بدهی';
+      remainingDisplay = remaining;
+    } else if (remaining < 0) {
+      settlementLabel = 'اضافه‌پرداخت';
+      overpaid = -remaining;
+    }
+
+    var totalPaidEl = form.querySelector('.js-total-paid');
+    var remainingEl = form.querySelector('.js-remaining-amount');
+    var settlementEl = form.querySelector('.js-settlement-status');
+    var overpaidEl = form.querySelector('.js-overpaid-amount');
+
+    if (totalPaidEl) totalPaidEl.value = formatMoney(totalPaid);
+    if (remainingEl) remainingEl.value = formatMoney(remainingDisplay);
+    if (settlementEl) settlementEl.value = settlementLabel;
+    if (overpaidEl) overpaidEl.value = formatMoney(overpaid);
+
+    var emptyNote = container.querySelector('.js-payment-empty');
+    if (emptyNote) {
+      emptyNote.classList.toggle('d-none', getRows(container).length > 0);
+    }
+  }
+
+  function initRowDatePickers(row) {
+    if (window.UIHelpers && typeof window.UIHelpers.initPersianDatepickers === 'function') {
+      window.UIHelpers.initPersianDatepickers();
+    }
+  }
+
+  function addRow(container) {
+    var template = container.querySelector('.js-payment-template');
+    var rowsWrapper = container.querySelector('.js-payment-rows');
+    var totalInput = totalFormsInput(container);
+    if (!template || !rowsWrapper || !totalInput) return;
+
+    var index = parseInt(totalInput.value, 10);
+    if (isNaN(index)) index = 0;
+
+    var html = template.innerHTML.replace(/__prefix__/g, String(index));
+    var holder = document.createElement('div');
+    holder.innerHTML = html.trim();
+    var newRow = holder.firstElementChild;
+    if (!newRow) return;
+
+    newRow.dataset.index = String(index);
+    rowsWrapper.appendChild(newRow);
+    totalInput.value = String(index + 1);
+
+    // پیش‌فرض روش پرداخت: همان روش پیش‌فرض رزرو
+    var form = container.closest('form');
+    var defaultMethod = form ? form.querySelector('select[name="payment_method"]') : null;
+    var methodSelect = newRow.querySelector('select.js-payment-method');
+    if (defaultMethod && methodSelect && !methodSelect.value) {
+      methodSelect.value = defaultMethod.value;
+    }
+
+    initRowDatePickers(newRow);
+    updateLabels(container);
+    updateTotals(container);
+
+    var amountInput = newRow.querySelector('.js-payment-amount');
+    if (amountInput) {
+      amountInput.focus();
+    }
+  }
+
+  function removeRow(container, row) {
+    var idInput = row.querySelector('input.js-payment-id');
+    var hasId = idInput && idInput.value && idInput.value !== '';
+
+    if (hasId) {
+      // ردیف ذخیره‌شده: علامت حذف می‌خورد تا سابقه حفظ شود و اندیس‌ها خراب نشوند
+      var deleteBox = row.querySelector('input[type="checkbox"][name$="-DELETE"]');
+      if (deleteBox) {
+        deleteBox.checked = true;
+      }
+      row.classList.add('opacity-50');
+      // فقط فیلدهای داده غیرفعال می‌شوند؛ id و DELETE باید ارسال شوند
+      row.querySelectorAll(
+        '.js-payment-amount, .js-payment-type, .js-payment-date, ' +
+        '.js-payment-due-date, .js-payment-method, .js-payment-reference, .js-payment-description'
+      ).forEach(function (el) {
+        el.disabled = true;
+      });
+    } else {
+      // ردیف جدید: از DOM حذف می‌شود (اندیس خالی توسط فرم‌ست نادیده گرفته می‌شود)
+      row.remove();
+    }
+
+    updateLabels(container);
+    updateTotals(container);
+  }
+
+  // -------------------- رویدادها (Delegate) --------------------
+  document.addEventListener('click', function (event) {
+    var addButton = event.target.closest('.js-add-payment');
+    if (addButton) {
+      var container = addButton.closest('.js-staged-payments');
+      if (container) {
+        event.preventDefault();
+        addRow(container);
+      }
+      return;
+    }
+
+    var removeButton = event.target.closest('.js-remove-payment');
+    if (removeButton) {
+      var row = removeButton.closest('.js-payment-row');
+      var rowContainer = removeButton.closest('.js-staged-payments');
+      if (row && rowContainer) {
+        event.preventDefault();
+        removeRow(rowContainer, row);
+      }
+    }
+  });
+
+  document.addEventListener('input', function (event) {
+    if (event.target.classList && event.target.classList.contains('js-payment-amount')) {
+      // قالب‌بندی نمایشی؛ پاک‌سازی نهایی هنگام ارسال انجام می‌شود
+      var raw = event.target.value.replace(/,/g, '');
+      if (/^\d*$/.test(raw) && raw !== '') {
+        event.target.value = formatMoney(raw);
+      }
+      var container = event.target.closest('.js-staged-payments');
+      if (container) updateTotals(container);
+    }
+  });
+
+  document.addEventListener('change', function (event) {
+    var container = event.target.closest ? event.target.closest('.js-staged-payments') : null;
+    if (container && (event.target.classList.contains('js-payment-type'))) {
+      updateLabels(container);
+      updateTotals(container);
+    }
+  });
+
+  document.addEventListener('shown.bs.modal', function (event) {
+    if (!event.target || !event.target.id) return;
+    if (event.target.id.indexOf('editReservationModal') !== 0) return;
+
+    var form = event.target.querySelector('form');
+    if (!form) return;
+    var container = getContainer(form);
+    if (container) {
+      updateLabels(container);
+      updateTotals(container);
+    }
+
+    // اطمینان از قالب‌بندی و تاریخ‌گزین برای ردیف‌های موجود
+    if (window.UIHelpers) {
+      if (typeof window.UIHelpers.initPersianDatepickers === 'function') {
+        window.UIHelpers.initPersianDatepickers();
+      }
+      if (typeof window.UIHelpers.initMoneyInputs === 'function') {
+        window.UIHelpers.initMoneyInputs();
+      }
+    }
+  });
+
+  // -------------------- ضمانت‌ها (رفتار قبلی، محدود به همان فرم) --------------------
+  function updateGuaranteeRequirement(form) {
+    [1, 2].forEach(function (n) {
+      var select = form.querySelector('select[name="guarantee' + n + '_type"]');
+      var input = form.querySelector('input[name="guarantee' + n + '_payee"]');
+      var requiredIcon = form.querySelector('[id*="guarantee' + n + 'PayeeRequired"]');
       if (!select || !input) return;
 
-      const isCheck = select.value === 'CHECK';
+      var isCheck = select.value === 'CHECK';
       input.required = isCheck;
-
       if (requiredIcon) {
         requiredIcon.style.display = isCheck ? 'inline' : 'none';
       }
-
       if (!isCheck) {
         input.value = '';
         input.classList.remove('is-invalid');
       }
-    }
+    });
+  }
 
-    updateGuaranteeRequirement(guarantee1Select, guarantee1Input, guarantee1RequiredIcon);
-    updateGuaranteeRequirement(guarantee2Select, guarantee2Input, guarantee2RequiredIcon);
+  document.addEventListener('change', function (event) {
+    if (!event.target.name) return;
+    if (event.target.name.indexOf('guarantee') !== 0) return;
+    var form = event.target.closest('form');
+    if (form) updateGuaranteeRequirement(form);
+  });
 
-    if (guarantee1Select) {
-      guarantee1Select.addEventListener('change', function () {
-        updateGuaranteeRequirement(this, guarantee1Input, guarantee1RequiredIcon);
-      });
-    }
-
-    if (guarantee2Select) {
-      guarantee2Select.addEventListener('change', function () {
-        updateGuaranteeRequirement(this, guarantee2Input, guarantee2RequiredIcon);
-      });
-    }
+  function setupAllGuaranteeForms() {
+    document.querySelectorAll('form[id^="reservationEditForm"]').forEach(function (form) {
+      updateGuaranteeRequirement(form);
+    });
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', setupEditGuaranteeRequirement);
+    document.addEventListener('DOMContentLoaded', setupAllGuaranteeForms);
   } else {
-    setupEditGuaranteeRequirement();
+    setupAllGuaranteeForms();
   }
 
   document.addEventListener('shown.bs.modal', function (event) {
-    if (event.target && event.target.id && event.target.id.startsWith('editReservationModal')) {
-      setupEditGuaranteeRequirement();
+    if (event.target && event.target.id && event.target.id.indexOf('editReservationModal') === 0) {
+      var form = event.target.querySelector('form');
+      if (form) updateGuaranteeRequirement(form);
     }
   });
 })();

@@ -38,9 +38,16 @@ from reservations.forms import (
     PenaltyPaymentForm,
     FinalizeDeliveryGuaranteeForm,
     parse_amount_value,
+    build_payment_formset,
+    payment_formset_prefix,
+    payment_rows_from_formset,
 )
 from reservations.services.availability_service import ReservationAvailabilityService
 from reservations.services.change_status import ReservationStatusService
+from reservations.services.payment_stage_service import (
+    ReservationPaymentService,
+    PaymentStageError,
+)
 from reservations.constants import ReservationStatus, PaymentMethod, GuaranteeType
 from core.pagination import build_pagination_items, build_pagination_url
 
@@ -327,7 +334,29 @@ def reservation_list(request):
         "order": request.GET.get('order', 'desc'),
     }
 
+    # داده‌های پرداخت‌های مرحله‌ای (بیعانه) برای هر رزرو
+    attach_staged_payment_context(reservations)
+
     return render(request, "reservations/list.html", context)
+
+
+def attach_staged_payment_context(reservations):
+    """
+    برای هر رزرو، formset پرداخت‌های مرحله‌ای، خلاصه مالی و توکن هم‌زمانی
+    را به‌عنوان attribute ضمیمه می‌کند (بدون تغییر context قالب).
+    """
+    for reservation in reservations:
+        try:
+            summary = ReservationPaymentService.build_financial_summary(reservation)
+        except Exception:
+            summary = {'payments': [], 'total_paid': 0, 'remaining_amount': 0}
+
+        reservation.payment_summary = summary
+        reservation.payment_formset = build_payment_formset(
+            reservation, payments=summary.get('payments')
+        )
+        reservation.payment_revision = ReservationPaymentService.payment_revision(reservation)
+    return reservations
 
 
 @login_required
@@ -1035,18 +1064,35 @@ def reservation_detail(request, pk):
 
     # Fetch financial details to display
     financial_data = ReservationFinancialService.get_financial_context(reservation)
+    reservation.payment_summary = ReservationPaymentService.build_financial_summary(reservation)
 
     return render(request,
                     "reservations/partials/_detail_modal.html",
                     {
                         "reservation": reservation,
-                        "financial_data": financial_data
+                        "financial_data": financial_data,
                     })
+
+
+@login_required
+def reservation_invoice(request, pk):
+    """فاکتور رزرو با جزئیات تمام پرداخت‌های مرحله‌ای (از همان منبع محاسباتی مشترک)."""
+    reservation = get_object_or_404(Reservation, pk=pk)
+
+    if get_user_role(request.user) == 'SELLER' and not user_owns_reservation(request.user, reservation):
+        return HttpResponseForbidden()
+
+    summary = ReservationPaymentService.build_financial_summary(reservation)
+
+    return render(request, "reservations/invoice.html", {
+        "reservation": reservation,
+        "summary": summary,
+    })
+
 
 @login_required
 @require_POST
 def reservation_edit(request, pk):
-
     if not can_edit_reservation(request.user):
         return JsonResponse({"success": False, "message": "شما مجوز ویرایش رزرو را ندارید."}, status=403)
 
@@ -1061,6 +1107,10 @@ def reservation_edit(request, pk):
     if reservation.status in locked_statuses:
         return JsonResponse({"success": False, "errors": {"__all__": ["اطلاعات پرداخت بعد از تحویل قابل تغییر نیست."]}})
 
+    # مقادیر کش‌شده فعلی (پیش از اعمال فرم) برای سازگاری با داده‌های قدیمی
+    original_deposit_amount = reservation.deposit_amount or 0
+    original_remaining_payment_amount = reservation.remaining_payment_amount or 0
+
     form = ReservationEditForm(
         request.POST,
         instance=reservation,
@@ -1070,27 +1120,139 @@ def reservation_edit(request, pk):
         reservation_id=reservation.id
     )
 
+    # formset پرداخت‌های مرحله‌ای (بیعانه‌ها)
+    payment_formset = build_payment_formset(reservation, data=request.POST)
+    payments_submitted = _has_payment_payload(request.POST, reservation.pk)
+
+    errors = {}
     if not form.is_valid():
-        return JsonResponse({"success": False, "errors": form.errors})
+        errors.update(form.errors)
+
+    if payments_submitted and not payment_formset.is_valid():
+        errors['payments'] = _payment_formset_errors(payment_formset)
+
+    if errors:
+        return JsonResponse({"success": False, "errors": errors})
 
     try:
-        # Save changes and update financials
         reservation = form.save(commit=False)
         reservation.contract_number = form.cleaned_data.get('contract_number')
         reservation.updated_by = request.user
+        reservation.calculate_dates()
+        # محاسبه تخفیف/مبلغ نهایی بر اساس مقادیر همین فرم
+        reservation.calculate_financials()
+
+        if payments_submitted:
+            # formset منبع حقیقت بیعانه است؛ فیلد قدیمی «بیعانه» فرم نباید
+            # مقدار کش‌شده قدیمی را پاک کند (جلوگیری از از دست رفتن داده).
+            reservation.deposit_amount = original_deposit_amount
+            reservation.remaining_payment_amount = original_remaining_payment_amount
+            payment_rows = payment_rows_from_formset(payment_formset)
+        else:
+            # سازگاری با فراخوانی‌های قدیمی که formset نمی‌فرستند:
+            # مقدار بیعانه تک‌فیلدی به یک پرداخت مرحله‌ای تبدیل می‌شود.
+            payment_rows = _legacy_rows_from_form(reservation)
+
+            # شبکه ایمنی: اگر رزرو بیعانه قدیمی دارد و فرم قدیمی هیچ ردیفی
+            # نمی‌سازد (مثلاً فیلد بیعانه صفر فرستاده شده)، اجازه نده داده
+            # مالی قبلی بی‌صدا پاک شود.
+            legacy_existed = (
+                original_deposit_amount > 0 or original_remaining_payment_amount > 0
+            )
+            if (
+                not payment_rows
+                and legacy_existed
+                and not ReservationPaymentService.has_payment_history(reservation)
+            ):
+                raise PaymentStageError(
+                    "اطلاعات پرداخت این رزرو قدیمی است. لطفاً صفحه را دوباره بارگذاری کنید."
+                )
+
+        if payment_rows or payments_submitted:
+            ReservationPaymentService.replace_staged_payments(
+                reservation,
+                payment_rows,
+                request.user,
+                expected_revision=request.POST.get('payment_revision'),
+            )
+            reservation.refresh_from_db()
 
         # Explicitly update financial fields and snapshots before saving
         ReservationFinancialService.update_financial_status(reservation)
         ReservationFinancialService.save_reservation_financials(reservation)
 
+    except PaymentStageError as e:
+        return JsonResponse(
+            {"success": False, "errors": {"payments": list(e.messages)}},
+            status=400,
+        )
     except ValidationError as e:
-        return JsonResponse({"success": False, "errors": e.message_dict})
+        if hasattr(e, 'message_dict'):
+            return JsonResponse({"success": False, "errors": e.message_dict})
+        return JsonResponse({"success": False, "errors": {"__all__": list(e.messages)}}, status=400)
     except Exception as e:
         import traceback, sys
         traceback.print_exc(file=sys.stderr)
         return JsonResponse({"success": False, "message": 'خطا در ویرایش رزرو: ' + str(e)})
 
+    # قرارداد پاسخ بدون تغییر می‌ماند؛ جزئیات مالی از طریق
+    # «جزئیات رزرو»، «بخش مالی» و «فاکتور» قابل مشاهده است.
     return JsonResponse({"success": True, "message": "رزرو با موفقیت به‌روز شد."})
+
+
+def _has_payment_payload(post_data, reservation_pk):
+    """آیا درخواست حاوی داده‌های پرداخت مرحله‌ای است؟"""
+    prefix = payment_formset_prefix(reservation_pk) + '-'
+    for key in post_data.keys():
+        if key.startswith(prefix) or key == prefix.rstrip('-'):
+            return True
+    return False
+
+
+def _payment_formset_errors(formset):
+    """تبدیل خطاهای formset به ساختاری قابل نمایش در JSON."""
+    errors = []
+    for non_field_error in formset.non_form_errors():
+        errors.append(str(non_field_error))
+    for index, form in enumerate(formset.forms):
+        for field, field_errors in form.errors.items():
+            for field_error in field_errors:
+                errors.append(f"ردیف {index + 1}: {field_error}")
+    return errors or ['اطلاعات پرداخت دارای خطا است.']
+
+
+def _legacy_rows_from_form(reservation):
+    """ساخت ردیف پرداخت از فیلدهای قدیمی (بیعانه/پرداخت باقی‌مانده)."""
+    import jdatetime
+
+    today = jdatetime.date.today().strftime('%Y/%m/%d')
+    rows = []
+
+    deposit = reservation.deposit_amount or 0
+    if deposit > 0:
+        rows.append({
+            'amount': deposit,
+            'payment_type': 'DEPOSIT',
+            'payment_date': today,
+            'due_date': '',
+            'payment_method': reservation.payment_method or '',
+            'payment_reference': reservation.payment_tracking_code or '',
+            'description': 'بیعانه اول',
+        })
+
+    balance = reservation.remaining_payment_amount or 0
+    if balance > 0:
+        rows.append({
+            'amount': balance,
+            'payment_type': 'FINAL_PAYMENT',
+            'payment_date': today,
+            'due_date': '',
+            'payment_method': reservation.remaining_payment_method or '',
+            'payment_reference': reservation.remaining_payment_tracking_code or '',
+            'description': 'پرداخت نهایی',
+        })
+
+    return rows
 
 
 @login_required

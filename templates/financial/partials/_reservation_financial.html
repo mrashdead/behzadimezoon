@@ -44,9 +44,73 @@
           </div>
         </div>
       </div>
+      <div class="col-6 col-xl-3">
+        <div class="card shadow-sm border rounded-3 h-100">
+          <div class="card-body text-center py-3">
+            <div class="small text-muted">مجموع بیعانه‌ها</div>
+            <div class="h5 mb-0">{{ totals.total_deposit|default:0|ir_currency }} تومان</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-xl-3">
+        <div class="card shadow-sm border rounded-3 h-100">
+          <div class="card-body text-center py-3">
+            <div class="small text-muted">مانده قابل پرداخت</div>
+            <div class="h5 mb-0">{{ totals.remaining|default:0|ir_currency }} تومان</div>
+          </div>
+        </div>
+      </div>
+      <div class="col-6 col-xl-3">
+        <div class="card shadow-sm border rounded-3 h-100">
+          <div class="card-body text-center py-3">
+            <div class="small text-muted">وضعیت تسویه</div>
+            <div class="h5 mb-0">{{ totals.settlement_label|default:'-' }}</div>
+          </div>
+        </div>
+      </div>
     </div>
 
     <div class="row gy-4">
+      <div class="col-12">
+        <div class="card shadow-sm border rounded-3">
+          <div class="card-header bg-body-tertiary border-bottom py-3 d-flex justify-content-between align-items-center">
+            <h6 class="mb-0">بیعانه‌ها و پرداخت‌های مرحله‌ای</h6>
+            <span class="badge bg-info-subtle text-info">مجموع: {{ totals.total_paid|default:0|ir_currency }} تومان</span>
+          </div>
+          <div class="card-body">
+            <div class="table-responsive mb-0">
+              <table class="table table-sm align-middle mb-0">
+                <thead class="table-light">
+                  <tr>
+                    <th>مرحله</th>
+                    <th class="text-end">مبلغ</th>
+                    <th>تاریخ پرداخت</th>
+                    <th>تاریخ سررسید</th>
+                    <th>روش پرداخت</th>
+                    <th>کد رهگیری</th>
+                    <th>ثبت‌کننده</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for payment in staged_payments %}
+                    <tr>
+                      <td class="fw-semibold">{{ payment.stage_label }}</td>
+                      <td class="text-end">{{ payment.amount|ir_currency }} تومان</td>
+                      <td>{{ payment.payment_date_jalali|default:'-' }}</td>
+                      <td>{{ payment.due_date_jalali|default:'-' }}</td>
+                      <td>{{ payment.payment_method_label|default:'-' }}</td>
+                      <td>{{ payment.payment_reference|default:'-' }}</td>
+                      <td>{{ payment.created_by.get_full_name|default:'-' }}</td>
+                    </tr>
+                  {% empty %}
+                    <tr><td colspan="7" class="text-center text-muted">پرداخت مرحله‌ای ثبت نشده است.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        </div>
+      </div>
       <div class="col-12">
         <div class="card shadow-sm border rounded-3">
           <div class="card-header bg-body-tertiary border-bottom py-3">
