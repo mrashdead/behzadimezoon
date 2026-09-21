@@ -20,7 +20,10 @@ class Command(BaseCommand):
             self.stdout.write('No discrepancies found.')
             return
 
-        headers = ['reservation_id', 'expected_cash', 'reservation_cash', 'cash_difference', 'open_receivable', 'has_discrepancy']
+        # کلیدهای خروجی باید دقیقاً با کلیدهای برگشتی
+        # ``ReconciliationService.get_open_problem_reservations`` یکی باشند،
+        # وگرنه همهٔ ستون‌ها ``None`` چاپ می‌شوند.
+        headers = ['reservation_id', 'customer_name', 'dress_code', 'issue', 'details']
 
         if csv_path:
             with open(csv_path, 'w', newline='', encoding='utf-8') as f:

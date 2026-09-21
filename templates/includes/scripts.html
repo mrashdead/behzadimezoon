@@ -1,11 +1,16 @@
 {% load static %}
 <script src="{% static 'assets/libs/global/global.min.js' %}?v=2"></script>
+{% comment %}
+این دو کتابخانه باید دقیقاً بعد از global.min.js بیایند.
+global.min.js نسخهٔ خودش از jQuery (v3.7.1) را روی window.$ می‌گذارد؛
+اگر persian-datepicker قبل از آن بارگذاری شود، پلاگینش روی نمونهٔ قدیمی
+jQuery ثبت می‌شود و از بین می‌رود و دیتاپیکر فارسی باز نمی‌شود.
+{% endcomment %}
+<script src="{% static 'assets/libs/persian-date/persian-date.min.js' %}?v=2"></script>
+<script src="{% static 'assets/libs/persian-datepicker/persian-datepicker.min.js' %}?v=3"></script>
 <script src="{% static 'assets/libs/sortable/Sortable.min.js' %}?v=2"></script>
 <script src="{% static 'assets/libs/chartjs/chart.js' %}?v=2"></script>
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
-<script src="https://unpkg.com/persian-date@1.1.0/dist/persian-date.min.js"></script>
-<script src="https://unpkg.com/persian-datepicker@1.2.0/dist/js/persian-datepicker.min.js"></script>
-<script src="{% static 'assets/libs/apexcharts/apexcharts.min.js' %}?v=2" onerror="this.onerror=null;this.src='https://cdn.jsdelivr.net/npm/apexcharts';"></script>
+<script src="{% static 'assets/libs/apexcharts/apexcharts.min.js' %}?v=3"></script>
 <script src="{% static 'assets/libs/datatables/datatables.min.js' %}?v=2"></script>
 <script src="{% static 'assets/js/appSettings.js' %}?v=2"></script>
 <script>
@@ -16,9 +21,7 @@
 </script>
 <script src="{% static 'assets/js/main.js' %}?v=2"></script>
 <script src="{% static 'assets/js/plugins/reservation-combobox.js' %}?v=3"></script>
-<script src="{% static 'assets/libs/persian-datepicker/persian-datepicker.js' %}?v=2"></script>
-<script src="{% static 'assets/libs/persian-datepicker/persian-datepicker.min.js' %}?v=2"></script>
-<script src="{% static 'js/ui-helpers.js' %}?v=3"></script>
+<script src="{% static 'js/ui-helpers.js' %}?v=4"></script>
 <script src="{% static 'js/search-helpers.js' %}?v=2"></script>
 <script src="{% static 'js/live-list-search.js' %}?v=3"></script>
 

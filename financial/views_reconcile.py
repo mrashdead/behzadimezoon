@@ -2,6 +2,7 @@
 
 from django.contrib.auth.decorators import login_required, user_passes_test
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
+from django.db.models import Sum
 from django.http import JsonResponse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.views.decorators.http import require_POST
@@ -31,22 +32,78 @@ class ReconciliationAdminPageView(LoginRequiredMixin, UserPassesTestMixin, Templ
         context = super().get_context_data(**kwargs)
         context['page_title'] = 'هماهنگی مالی و رفع اختلافات'
 
-        # Filters for reconciliation (e.g., date range, reservation ID)
-        filters = {
-            'date_from': self.request.GET.get('date_from'),
-            'date_to': self.request.GET.get('date_to'),
-            'reservation_id': self.request.GET.get('reservation_id'),
+        # ------------------------------------------------------------------
+        # فیلترها
+        # ------------------------------------------------------------------
+        # توجه: ``ReconciliationService.get_open_problem_reservations`` فقط
+        # ``date_from`` / ``date_to`` (و ``seller_id``) را می‌فهمد؛ کلید
+        # ``reservation_id`` در ``DashboardService._apply_reservation_filters``
+        # نادیده گرفته می‌شود. پس فیلتر شناسهٔ رزرو را بعد از ساخت فهرست،
+        # این‌جا اعمال می‌کنیم تا فیلترِ رابط کاربری واقعاً کار کند.
+        date_from = self.request.GET.get('date_from') or None
+        date_to = self.request.GET.get('date_to') or None
+        reservation_id = (self.request.GET.get('reservation_id') or '').strip()
+
+        service_filters = {
+            'date_from': date_from,
+            'date_to': date_to,
         }
 
         # Get open discrepancies
-        open_discrepancies = ReconciliationService.get_open_problem_reservations(filters)
+        open_discrepancies = ReconciliationService.get_open_problem_reservations(service_filters)
+
+        if reservation_id:
+            if reservation_id.isdigit():
+                target_id = int(reservation_id)
+                open_discrepancies = [
+                    item for item in open_discrepancies
+                    if item.get('reservation_id') == target_id
+                ]
+            else:
+                # ورودی غیرعددی → نتیجهٔ خالی، ولی با پیام روشن در قالب.
+                open_discrepancies = []
+
         context['problems'] = open_discrepancies
         context['open_issues_count'] = len(open_discrepancies)
 
+        # شمارش تفکیکی بر اساس نوع مشکل (برای کارت‌های خلاصه)
+        overdue_count = sum(1 for item in open_discrepancies if item.get('kind') == 'overdue')
+        discrepancy_count = sum(1 for item in open_discrepancies if item.get('kind') == 'discrepancy')
+        context['overdue_count'] = overdue_count
+        context['discrepancy_count'] = discrepancy_count
+        context['distinct_reservations_count'] = len({
+            item.get('reservation_id') for item in open_discrepancies
+        })
+
+        # جمع قدرمطلق اختلاف‌ها و مبلغ پیشنهادی بازپرداخت
+        differences = [
+            abs(item.get('cash_difference') or 0)
+            for item in open_discrepancies
+            if item.get('kind') == 'discrepancy'
+        ]
+        context['total_absolute_difference'] = sum(differences)
+        context['refund_suggested_total'] = sum(
+            (item.get('cash_difference') or 0)
+            for item in open_discrepancies
+            if item.get('suggested_action') == 'refund'
+        )
+        context['open_receivable_total'] = sum(
+            (item.get('open_receivable') or 0) for item in open_discrepancies
+        )
+
         # Get unreconciled transactions (for manual reconciliation)
         unreconciled_transactions = ReconciliationService.get_unreconciled_transactions()
-        context['unreconciled_transactions'] = unreconciled_transactions[:20] # Show a few
+        context['unreconciled_transactions'] = unreconciled_transactions[:20]  # Show a few
         context['unreconciled_count'] = unreconciled_transactions.count()
+        context['unreconciled_total'] = (
+            unreconciled_transactions.aggregate(total=Sum('amount'))['total'] or 0
+        )
+
+        # وضعیت فیلترها برای نمایش در سربرگ
+        context['filter_date_from'] = date_from or ''
+        context['filter_date_to'] = date_to or ''
+        context['filter_reservation_id'] = reservation_id
+        context['has_active_filters'] = bool(date_from or date_to or reservation_id)
 
         return context
 

@@ -1,33 +1,87 @@
-<!-- Form Field Component for Modals -->
-<!-- Usage: {% include 'partials/_form_field.html' with label='نام' field_name='name' field_type='text' placeholder='نام را وارد کنید' value=object.name %} -->
+{% comment %}
+Form Field — یک فیلد فرم با برچسب، راهنما و نمایش خطا
+--------------------------------------------------------------------------
+استفاده:
+  {% include 'partials/_form_field.html' with label='نام' field_name='name' field_type='text' placeholder='نام را وارد کنید' value=object.name %}
 
+پارامترها:
+  field_type : text | email | number | date | datetime | money | select | textarea
+  required   : اگر مقدار داشته باشد، فیلد الزامی می‌شود
+  help_text  : متن راهنما زیر فیلد
+  errors     : لیست خطاهای اعتبارسنجی
+  options    : برای select — لیستی از زوج‌های (value, label)
+  id_prefix  : پیشوند شناسه؛ برای جلوگیری از تکرار id وقتی چند مودال در یک صفحه‌اند
+  value      : مقدار فعلی فیلد (برای فرم‌های ویرایش از دیتابیس پر می‌شود)
+
+توجه: شناسهٔ فیلد از ``id_prefix`` + ``field_name`` ساخته می‌شود تا در صفحه‌هایی
+که چند مودال دارند، id تکراری تولید نشود.
+{% endcomment %}
+
+{% with field_id=id_prefix|default:''|add:field_name %}
 <div class="mb-3">
+  <label class="form-label" for="{{ field_id }}">
+    {{ label }}
+    {% if required %}<span class="text-danger">*</span>{% endif %}
+  </label>
+
   {% if field_type == 'select' %}
-    <label class="form-label" for="{{ field_name }}">{{ label }}</label>
-    <select class="form-select" name="{{ field_name }}" id="{{ field_name }}" {% if required %}required{% endif %}>
-      {% if options %}
-        {% for key, text in options %}
-          <option value="{{ key }}" {% if value == key %}selected{% endif %}>{{ text }}</option>
-        {% endfor %}
-      {% endif %}
+    <select class="form-select{% if errors %} is-invalid{% endif %}"
+            name="{{ field_name }}" id="{{ field_id }}"
+            {% if required %}required{% endif %}>
+      {% if placeholder %}<option value="">{{ placeholder }}</option>{% endif %}
+      {% for key, text in options %}
+        <option value="{{ key }}" {% if value|stringformat:'s' == key|stringformat:'s' %}selected{% endif %}>{{ text }}</option>
+      {% endfor %}
     </select>
+
   {% elif field_type == 'textarea' %}
-    <label class="form-label" for="{{ field_name }}">{{ label }}</label>
-    <textarea class="form-control" name="{{ field_name }}" id="{{ field_name }}" rows="3" placeholder="{{ placeholder }}" {% if required %}required{% endif %}>{{ value|default:'' }}</textarea>
+    <textarea class="form-control{% if errors %} is-invalid{% endif %}"
+              name="{{ field_name }}" id="{{ field_id }}" rows="3"
+              placeholder="{{ placeholder|default:'' }}"
+              {% if required %}required{% endif %}>{{ value|default:'' }}</textarea>
+
   {% elif field_type == 'date' %}
-    <label class="form-label" for="{{ field_name }}">{{ label }}</label>
-    <input type="text" class="form-control p-date-only" name="{{ field_name }}" id="{{ field_name }}" placeholder="{{ placeholder|default:'انتخاب تاریخ' }}" value="{{ value|default:'' }}" {% if required %}required{% endif %} />
+    <input type="text" class="form-control p-date-only{% if errors %} is-invalid{% endif %}"
+           name="{{ field_name }}" id="{{ field_id }}"
+           placeholder="{{ placeholder|default:'انتخاب تاریخ' }}"
+           value="{{ value|default:'' }}" autocomplete="off"
+           {% if required %}required{% endif %} />
+
   {% elif field_type == 'datetime' %}
-    <label class="form-label" for="{{ field_name }}">{{ label }}</label>
-    <input type="text" class="form-control p-date-time" name="{{ field_name }}" id="{{ field_name }}" placeholder="{{ placeholder|default:'انتخاب تاریخ و زمان' }}" value="{{ value|default:'' }}" {% if required %}required{% endif %} />
+    <input type="text" class="form-control p-date-time{% if errors %} is-invalid{% endif %}"
+           name="{{ field_name }}" id="{{ field_id }}"
+           placeholder="{{ placeholder|default:'انتخاب تاریخ و زمان' }}"
+           value="{{ value|default:'' }}" autocomplete="off"
+           {% if required %}required{% endif %} />
+
   {% elif field_type == 'money' %}
-    <label class="form-label" for="{{ field_name }}">{{ label }}</label>
     <div class="input-group">
-      <input type="number" class="form-control money-input" name="{{ field_name }}" id="{{ field_name }}" placeholder="{{ placeholder }}" value="{{ value|default:'' }}" {% if required %}required{% endif %} />
+      <input type="text" inputmode="numeric"
+             class="form-control money-input{% if errors %} is-invalid{% endif %}"
+             name="{{ field_name }}" id="{{ field_id }}"
+             placeholder="{{ placeholder|default:'0' }}"
+             value="{{ value|default:'' }}"
+             {% if required %}required{% endif %} />
       <span class="input-group-text">تومان</span>
     </div>
+
   {% else %}
-    <label class="form-label" for="{{ field_name }}">{{ label }}</label>
-    <input type="{% if field_type %}{{ field_type }}{% else %}text{% endif %}" class="form-control" name="{{ field_name }}" id="{{ field_name }}" placeholder="{{ placeholder }}" value="{{ value|default:'' }}" {% if required %}required{% endif %} />
+    <input type="{{ field_type|default:'text' }}"
+           class="form-control{% if errors %} is-invalid{% endif %}"
+           name="{{ field_name }}" id="{{ field_id }}"
+           placeholder="{{ placeholder|default:'' }}"
+           value="{{ value|default:'' }}"
+           {% if required %}required{% endif %} />
+  {% endif %}
+
+  {% if errors %}
+    <div class="invalid-feedback d-block">
+      {% for error in errors %}<div>{{ error }}</div>{% endfor %}
+    </div>
+  {% endif %}
+
+  {% if help_text %}
+    <small class="form-text text-muted">{{ help_text }}</small>
   {% endif %}
 </div>
+{% endwith %}

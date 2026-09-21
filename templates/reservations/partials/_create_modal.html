@@ -1,7 +1,7 @@
 {% load jalali_tags %}
 
 <div class="modal fade" id="createReservationModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
     <div class="modal-content border-0 shadow">
       <div class="modal-header">
         <h5 class="modal-title">رزرو جدید</h5>
@@ -142,7 +142,7 @@
 </div>
 
 <div class="modal fade" id="createReservationStep2Modal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
     <div class="modal-content border-0 shadow">
       <form id="reservationCreateForm" class="no-ajax" action="{% url 'reservations:create' %}" method="post">
         {% csrf_token %}
@@ -228,10 +228,11 @@
                       </div>
                     </div>
 
-                    <div class="col-md-6" id="guarantee1PayeeWrapper">
+                    <div class="col-md-6" id="createGuarantee1PayeeWrapper">
                       <div class="row align-items-center mb-3">
                         <label class="col-sm-3 text-sm-end col-form-label">
                           در وجه ضمانت اول
+                          <span class="text-danger" id="guarantee1PayeeRequired" style="display: none;">*</span>
                         </label>
                         <div class="col-sm-9">
                           <input type="text" name="guarantee1_payee" class="form-control" placeholder="نام گیرنده/سازمان" data-guarantee-payee>
@@ -277,7 +278,7 @@
                       </div>
                     </div>
 
-                    <div class="col-md-6" id="guarantee2PayeeWrapper">
+                    <div class="col-md-6" id="createGuarantee2PayeeWrapper">
                       <div class="row align-items-center mb-3">
                         <label class="col-sm-3 text-sm-end col-form-label">
                           در وجه ضمانت دوم
@@ -308,7 +309,7 @@
                       <div class="row align-items-center mb-3">
                         <label class="col-sm-3 text-sm-end col-form-label">بیعانه</label>
                         <div class="col-sm-9">
-                          <input type="text" name="deposit_amount" class="form-control money-input" placeholder="0" required>
+                          <input type="text" name="deposit_amount" class="form-control money-input" placeholder="0">
                         </div>
                       </div>
                     </div>

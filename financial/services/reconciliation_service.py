@@ -14,6 +14,39 @@ from reservations.constants import ReservationStatus
 
 class ReconciliationService:
     @staticmethod
+    def _jalali_today():
+        """امروز بر حسب تقویم جلالی (هم‌نوع با فیلدهای jDateField)."""
+        import jdatetime
+        return jdatetime.date.fromgregorian(date=timezone.localdate())
+
+    @staticmethod
+    def _payment_due_date(reservation):
+        """
+        تاریخ سررسید پرداخت مانده.
+
+        مدل ``Reservation`` فیلد ``due_date`` ندارد؛ نزدیک‌ترین مفهوم واقعی
+        «موعد تسویه» تاریخ تحویل (``delivery_date``) است. مقایسه باید در
+        فضای تقویم جلالی انجام شود، چون ``jDateField`` مقدار ``jdatetime.date``
+        برمی‌گرداند و مقایسهٔ مستقیم آن با ``datetime.date`` میلادی همیشه
+        نتیجهٔ غلط می‌دهد.
+        """
+        return getattr(reservation, 'delivery_date', None)
+
+    @staticmethod
+    def is_payment_overdue(reservation):
+        """آیا رزرو پرداخت جزئی دارد و از موعد تسویه گذشته است؟"""
+        due_date = ReconciliationService._payment_due_date(reservation)
+        if due_date is None:
+            return False
+        if reservation.payment_status != Reservation.PAYMENT_PARTIAL:
+            return False
+        try:
+            return due_date < ReconciliationService._jalali_today()
+        except TypeError:
+            # اگر روزی نوع فیلد تغییر کرد، مقایسه را امن رد می‌کنیم
+            return False
+
+    @staticmethod
     def _action_for_difference(cash_difference):
         """Determines suggested action based on cash difference."""
         if cash_difference > 0:
@@ -91,14 +124,24 @@ class ReconciliationService:
         discrepancies = []
         for reservation in reservations_qs:
             # Check for open issues like pending reconciliation or overdue payments
-            if reservation.payment_status == Reservation.PAYMENT_PARTIAL and reservation.due_date and reservation.due_date < timezone.localdate():
+            if ReconciliationService.is_payment_overdue(reservation):
                 # This reservation has a partial payment and is overdue
                 discrepancies.append({
                     'reservation_id': reservation.id,
                     'customer_name': str(reservation.customer),
                     'dress_code': str(reservation.dress.code) if reservation.dress else '-',
                     'issue': 'پرداخت معوق',
-                    'details': f'تاریخ سررسید: {reservation.due_date}'
+                    'kind': 'overdue',
+                    'details': f'تاریخ سررسید: {ReconciliationService._payment_due_date(reservation)}',
+                    # ردیف‌های معوق ماهیت «اختلاف عددی» ندارند؛ کلیدهای مالی
+                    # صریحاً ``None`` می‌شوند تا قالب بتواند با اطمینان آن‌ها را
+                    # از ردیف‌های «اختلاف مالی» تفکیک کند.
+                    'expected_cash': None,
+                    'recorded_cash': None,
+                    'cash_difference': None,
+                    'suggested_action': None,
+                    'action_label': None,
+                    'open_receivable': 0,
                 })
 
             # Check for financial discrepancies using the service
@@ -111,7 +154,19 @@ class ReconciliationService:
                     'customer_name': str(reservation.customer),
                     'dress_code': str(reservation.dress.code) if reservation.dress else '-',
                     'issue': 'اختلاف مالی',
+                    'kind': 'discrepancy',
                     'details': f'تفاوت: {diff} | پیشنهاد: {action}',
+                    # کلیدهای افزوده — مصرف‌کننده‌های قدیمی (دستور
+                    # ``reconcile_finance`` و ``DashboardService``) فقط
+                    # کلیدهای بالا را می‌خوانند، پس این افزودن سازگار است.
+                    # بدون این‌ها قالب صفحهٔ هماهنگی ستون‌های مالی را خالی
+                    # نشان می‌داد.
+                    'expected_cash': financial_data['expected_cash_from_tx'],
+                    'recorded_cash': financial_data['reservation_cash_recorded'],
+                    'cash_difference': diff,
+                    'suggested_action': financial_data['suggested_action'],
+                    'action_label': action,
+                    'open_receivable': financial_data.get('open_receivable', 0),
                 })
 
         return discrepancies

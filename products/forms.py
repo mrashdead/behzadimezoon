@@ -24,6 +24,18 @@ def parse_price_value(value):
 
 
 class DressForm(forms.ModelForm):
+    # فیلد قیمت عمداً ``CharField`` است، نه ``IntegerField`` (رفتار پیش‌فرض
+    # ModelForm). دلیل: ورودی‌های پول در رابط کاربری با جداکنندهٔ هزارگان و
+    # ارقام فارسی نمایش/ارسال می‌شوند (کلاس ``money-input``) و
+    # ``IntegerField`` چنین مقداری را رد می‌کند («به طور کامل یک عدد وارد
+    # کنید»). تبدیل و اعتبارسنجی واقعی در ``clean_daily_rent_price`` با
+    # ``parse_price_value`` انجام می‌شود.
+    daily_rent_price = forms.CharField(
+        required=True,
+        label='قیمت اجاره روزانه',
+        error_messages={'required': 'قیمت اجاره روزانه الزامی است.'},
+    )
+
     class Meta:
         model = Dress
         fields = ['code', 'daily_rent_price']
@@ -36,6 +48,8 @@ class DressForm(forms.ModelForm):
             'daily_rent_price': forms.TextInput(attrs={
                 'class': 'form-control money-input',
                 'placeholder': '0',
+                'inputmode': 'numeric',
+                'autocomplete': 'off',
             }),
         }
         labels = {

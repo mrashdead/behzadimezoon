@@ -641,6 +641,51 @@ class ReservationPaymentService:
         return reservation
 
     # ------------------------------------------------------------------
+    # تازه‌سازی هدفمند کش‌های مالی
+    # ------------------------------------------------------------------
+    CACHE_FIELDS = (
+        "deposit_amount",
+        "remaining_payment_amount",
+        "remaining_amount",
+        "refunded_amount",
+        "payment_status",
+        "remaining_payment_method",
+        "remaining_payment_tracking_code",
+        "remaining_paid_at",
+    )
+
+    @classmethod
+    def refresh_payment_caches(cls, reservation):
+        """
+        فقط «فیلدهای کش مالی» را از دیتابیس روی همان نمونه تازه می‌کند.
+
+        چرا این متد لازم است؟
+            پس از ``replace_staged_payments`` که خودش یک نسخهٔ قفل‌شده از
+            رزرو را می‌خواند و ذخیره می‌کند، نمونهٔ در دسترس ویو از نظر کش
+            مالی کهنه می‌شود. راه‌حل ساده اما **مخرب** این است که
+            ``refresh_from_db()`` صدا زده شود؛ اما آن تمام تغییرات ویرایش‌نشدهٔ
+            فرم (تاریخ، لباس، شماره قرارداد، تضامین و...) را هم از بین می‌برد.
+
+        این متد تنها همان فیلدهایی را به‌روزرسانی می‌کند که سرویس پرداخت
+        مسئول آن‌هاست، و بقیهٔ تغییرات فرم را دست‌نخورده نگه می‌دارد.
+        """
+        if reservation is None or reservation.pk is None:
+            return reservation
+
+        fresh = (
+            type(reservation)
+            .all_objects.filter(pk=reservation.pk)
+            .values(*cls.CACHE_FIELDS)
+            .first()
+        )
+        if not fresh:
+            return reservation
+
+        for field, value in fresh.items():
+            setattr(reservation, field, value)
+        return reservation
+
+    # ------------------------------------------------------------------
     # اعتبارسنجی ردیف‌های ورودی
     # ------------------------------------------------------------------
     @classmethod

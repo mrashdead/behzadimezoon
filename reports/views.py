@@ -608,8 +608,23 @@ class ReportsIndexView(TemplateView):
         is_current_month_to_date = (date_from == current_month_start and date_to == today)
         period_title = 'این ماه' if is_current_month_to_date else 'درآمد بازه انتخابی'
 
+        # ------------------------------------------------------------------
+        # درآمد کل بازه = درآمد رزروها + درآمدهای جانبی
+        #   - هزینه‌های جانبی رزروها (AdditionalFee — خارج از final_price است
+        #     و در month_revenue لحاظ نشده؛ پس دوبار‌حسابی رخ نمی‌دهد)
+        #   - خسارت دریافتی + جریمه (تراکنش‌های واقعی ثبت‌شده در بازه)
+        # ------------------------------------------------------------------
+        damage_income_total = damage_income + cancellation_fee_income
+        side_income_total = additional_fee_total + damage_income_total
+        total_income = month_revenue + side_income_total
+
         context['summary'] = {
             'month_revenue': month_revenue,
+            'reservation_income': month_revenue,
+            'additional_fee_total': additional_fee_total,
+            'damage_income_total': damage_income_total,
+            'side_income_total': side_income_total,
+            'total_income': total_income,
             'active_reservations': active_reservations,
             'cancelled_reservations': cancelled_reservations,
             'refund_cases': refund_cases,
@@ -619,8 +634,20 @@ class ReportsIndexView(TemplateView):
             'top_customer_label': top_customer_label,
             'period_title': period_title,
             'period_label': f"{self._format_jalali_date(date_from)} تا {self._format_jalali_date(date_to)}",
+            # تفکیک برای footer کارت «درآمد کل بازه»: هر جزء + بازه زمانی
+            'income_breakdown_label': (
+                f"رزرو: {_persian_digits(f'{month_revenue:,.0f}')}"
+                f" + جانبی: {_persian_digits(f'{additional_fee_total:,.0f}')}"
+                f" + خسارت/جریمه: {_persian_digits(f'{damage_income_total:,.0f}')}"
+                f" تومان ({self._format_jalali_date(date_from)} تا {self._format_jalali_date(date_to)})"
+            ),
+            'side_income_label': (
+                f"جانبی: {_persian_digits(f'{additional_fee_total:,.0f}')}"
+                f" + خسارت/جریمه: {_persian_digits(f'{damage_income_total:,.0f}')} تومان"
+            ),
         }
         context['financial_rows'] = [
+            {'label': 'درآمد کل بازه', 'value': total_income, 'hint': 'رزرو + هزینه‌های جانبی + خسارت/جریمه'},
             {'label': 'درآمد خالص از رزروها', 'value': month_revenue, 'hint': 'جمع مبلغ نهایی رزروها'},
             {'label': 'درآمد جریمه لغو', 'value': cancellation_fee_income, 'hint': 'تراکنش‌های ثبت‌شده جریمه لغو'},
             {'label': 'درآمد خسارت', 'value': damage_income, 'hint': 'دریافت خسارت از رزروها'},
@@ -638,15 +665,58 @@ class ReportsIndexView(TemplateView):
         context['trend_labels'] = labels
         context['trend_revenue'] = revenue_series
         context['trend_reservations'] = reservation_series
+        cancellation_rate = round(
+            (cancelled_reservations / reservation_qs.count() * 100) if reservation_qs.count() else 0, 1
+        )
+        avg_refund = round((refund_amount / refund_cases) if refund_cases else 0, 0)
         context['analysis'] = {
-            'cancellation_rate': round((cancelled_reservations / reservation_qs.count() * 100) if reservation_qs.count() else 0, 1),
+            'cancellation_rate': cancellation_rate,
             'cancellation_total': cancellation_total,
             'damage_total_amount': damage_total_amount,
             'cancellation_trend': cancellation_trend,
             'damage_trend': damage_trend,
-            'avg_refund': round((refund_amount / refund_cases) if refund_cases else 0, 0),
+            'avg_refund': avg_refund,
             'avg_penalty': round((sum(record.penalty_amount or 0 for record in cancellation_records) / cancellation_total) if cancellation_total else 0, 0),
+            # برچسب‌های آماده برای ``footer_text`` کارت‌های شاخص؛ قالب
+            # نمی‌تواند دو متغیر را به هم بچسباند.
+            'cancellation_rate_label': f"نرخ لغو: {_persian_digits(cancellation_rate)}٪",
+            'avg_refund_label': f"میانگین: {_persian_digits(f'{avg_refund:,.0f}')} تومان",
         }
+
+        # ------------------------------------------------------------------
+        # دادهٔ نمودارها
+        # ------------------------------------------------------------------
+        # قالب نمی‌تواند ``QuerySet`` را به ``json_script`` بدهد؛ این‌جا به
+        # لیست دیکشنری سادهٔ قابل‌سریال‌سازی تبدیل می‌کنیم تا سمت جاوااسکریپت
+        # فقط مصرف شود و منطق در ویو بماند.
+        context['chart_financial'] = [
+            {'label': row['label'], 'value': int(row['value'] or 0)}
+            for row in context['financial_rows']
+        ]
+        context['chart_top_dresses'] = [
+            {
+                'label': (row.get('dress__code') or '—'),
+                'value': int(row.get('total_revenue') or 0),
+                'count': int(row.get('reservation_count') or 0),
+            }
+            for row in top_dresses
+        ]
+        context['chart_sellers'] = [
+            {
+                'label': (row.get('created_by__username') or '—'),
+                'value': int(row.get('total_revenue') or 0),
+                'count': int(row.get('reservation_count') or 0),
+            }
+            for row in seller_rows
+        ]
+        context['chart_statuses'] = [
+            {
+                'label': dict(ReservationStatus.CHOICES).get(row['status'], row['status']),
+                'value': int(row['total'] or 0),
+            }
+            for row in reservation_qs.values('status').annotate(total=Count('id')).order_by('-total')
+            if row['total']
+        ]
         return context
 
 
@@ -786,7 +856,11 @@ def export_reports_excel(request):
         ws = wb.create_sheet(title='خلاصه مدیریتی')
         summary_rows = [
             ('بازه زمانی', f"{context['summary']['period_label']}"),
-            ('درآمد بازه انتخابی', context['summary']['month_revenue']),
+            ('درآمد کل بازه', context['summary']['total_income']),
+            ('درآمد رزروها', context['summary']['month_revenue']),
+            ('درآمد هزینه‌های جانبی', context['summary']['additional_fee_total']),
+            ('درآمد خسارت و جریمه', context['summary']['damage_income_total']),
+            ('جمع درآمدهای جانبی', context['summary']['side_income_total']),
             ('تعداد رزروها', context['summary']['active_reservations'] + context['summary']['cancelled_reservations']),
             ('رزروهای فعال', context['summary']['active_reservations']),
             ('رزروهای لغو شده', context['summary']['cancelled_reservations']),

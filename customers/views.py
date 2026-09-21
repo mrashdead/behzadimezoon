@@ -7,11 +7,12 @@ from django.core.exceptions import PermissionDenied
 from django.db.models import Case, CharField, Exists, F, OuterRef, Q, Subquery, Value, When
 from django.db.models.functions import Coalesce
 from django.db.models.deletion import ProtectedError
-from django.http import HttpResponse
+from django.http import HttpResponse, JsonResponse
 from django.shortcuts import redirect, get_object_or_404
 from django.views import View
 from django.views.generic import ListView, CreateView, UpdateView
 from openpyxl import Workbook
+from core.ajax_forms import AjaxFormMixin
 from .permissions import (
     user_can_create_customer,
     user_can_edit_customer,
@@ -282,10 +283,12 @@ def export_customers_excel(request):
     return response
 
 
-class CustomerCreateView(LoginRequiredMixin, CreateView):
+class CustomerCreateView(AjaxFormMixin, LoginRequiredMixin, CreateView):
     model = Customer
     form_class = CustomerForm
     template_name = "customers/list.html"
+
+    ajax_success_message = "مشتری جدید با موفقیت ثبت شد."
 
     def dispatch(self, request, *args, **kwargs):
         if not user_can_create_customer(request.user):
@@ -297,19 +300,27 @@ class CustomerCreateView(LoginRequiredMixin, CreateView):
         customer.created_by = self.request.user
         customer.save()
         messages.success(self.request, "مشتری جدید با موفقیت ثبت شد.")
+        if self.is_ajax_form_request():
+            return JsonResponse({"success": True, "message": self.ajax_success_message})
         return redirect("customers:list")
 
     def form_invalid(self, form):
-        print("CREATE ERRORS:", form.errors)
+        # پیش‌تر این متد فقط ریدایرکت می‌کرد و تمام خطاهای فیلد‌به‌فیلد
+        # دور ریخته می‌شد. حالا برای درخواست‌های AJAX خطاها به‌صورت JSON
+        # برگردانده می‌شوند تا مودال باز بماند و مقادیر کاربر حفظ شود.
+        if self.is_ajax_form_request():
+            return JsonResponse({"success": False, "errors": form.errors}, status=400)
         messages.error(self.request, "ثبت مشتری انجام نشد. لطفاً فرم را بررسی کنید.")
         return redirect("customers:list")
 
 
-class CustomerUpdateView(LoginRequiredMixin, UpdateView):
+class CustomerUpdateView(AjaxFormMixin, LoginRequiredMixin, UpdateView):
     model = Customer
     form_class = CustomerForm
     template_name = "customers/list.html"
     context_object_name = "customer"
+
+    ajax_success_message = "اطلاعات مشتری با موفقیت ویرایش شد."
 
     def dispatch(self, request, *args, **kwargs):
         if not user_can_edit_customer(request.user):
@@ -319,10 +330,14 @@ class CustomerUpdateView(LoginRequiredMixin, UpdateView):
     def form_valid(self, form):
         form.save()
         messages.success(self.request, "اطلاعات مشتری با موفقیت ویرایش شد.")
+        if self.is_ajax_form_request():
+            return JsonResponse({"success": True, "message": self.ajax_success_message})
         return redirect("customers:list")
 
     def form_invalid(self, form):
-        print("UPDATE ERRORS:", form.errors)
+        # مثل نمای ایجاد: خطاها باید به کاربر نمایش داده شوند، نه دور ریخته.
+        if self.is_ajax_form_request():
+            return JsonResponse({"success": False, "errors": form.errors}, status=400)
         messages.error(self.request, "ویرایش مشتری انجام نشد. لطفاً فرم را بررسی کنید.")
         return redirect("customers:list")
 

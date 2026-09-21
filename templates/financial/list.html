@@ -10,10 +10,25 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-2 mb-3">
-  <div>
-    <h1 class="h4 mb-1">داشبورد مالی</h1>
-    <p class="text-muted small mb-0">خلاصه مالی و گزارش درآمد</p>
+<div class="card border-0 shadow-sm mb-4 page-head-card">
+  <div class="card-body d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+    <div class="d-flex align-items-center gap-3 min-w-0">
+      <span class="avatar avatar-lg rounded-3 bg-success-subtle text-success flex-shrink-0">
+        <i class="fi fi-rr-chart-histogram"></i>
+      </span>
+      <div class="min-w-0">
+        <h1 class="h4 mb-1">داشبورد مالی</h1>
+        <p class="text-muted text-2xs mb-0">خلاصهٔ درآمد، بیعانه‌ها، مانده‌ها و گزارش رزروها</p>
+      </div>
+    </div>
+    <div class="d-flex flex-wrap gap-2 flex-shrink-0">
+      <a href="{% url 'financial:reports' %}" class="btn btn-outline-primary btn-sm">
+        <i class="fi fi-rr-chart-pie-alt me-1"></i>گزارشات مالی
+      </a>
+      <a href="{% url 'financial:transactions' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="fi fi-rr-swap me-1"></i>تراکنش‌ها
+      </a>
+    </div>
   </div>
 </div>
 
@@ -27,31 +42,20 @@
   {% include 'partials/_stat_card.html' with icon='fi-rr-badge-percent' label='تخفیف' value=totals.total_discounts badge_type='secondary' badge_text='تومان' %}
   {% include 'partials/_stat_card.html' with icon='fi-rr-paint-roller' label='جمع کل درآمدهای جانبی' value=totals.total_additional_fee_revenue badge_type='warning' badge_text='تومان' %}
   {% include 'partials/_stat_card.html' with icon='fi-rr-money-bills' label='بازپرداخت‌ها' value=totals.total_refunded badge_type='warning' badge_text='تومان' %}
-  <div class="col-xxl-3 col-sm-6">
-    <div class="card h-100 border-0 shadow-sm">
-      <div class="card-body d-flex flex-column justify-content-between">
-        <div>
-          <div class="d-flex align-items-center gap-2 mb-2">
-            <div class="avatar bg-info-subtle rounded-circle text-info" style="width: 44px; height: 44px; display:flex; align-items:center; justify-content:center; font-size:18px;">
-              <i class="fi fi-rr-assessment"></i>
-            </div>
-            <div>
-              <span class="fw-semibold text-muted d-block small">اختلاف‌های باز</span>
-              <h5 class="fw-bold mb-0">{{ open_reconciliation_issues }}</h5>
-            </div>
-          </div>
-        </div>
-        <div class="mt-2 d-grid gap-2">
-          <a href="{% url 'financial:transactions' %}" class="btn btn-sm btn-outline-primary">تراکنش‌ها</a>
-        </div>
-      </div>
-    </div>
-  </div>
+  {% include 'partials/_stat_card.html' with icon='fi-rr-assessment' label='اختلاف‌های باز' value=open_reconciliation_issues badge_type='info' badge_text='مورد' href='/financial/reconciliation/' footer_text='برای بررسی به صفحهٔ هماهنگی مالی بروید' %}
 </div>
 
 <div class="card border-0 shadow-sm mb-4">
-  <div class="card-header bg-body-tertiary border-bottom py-3 d-flex flex-wrap gap-2 align-items-center justify-content-between">
-    <h6 class="card-title mb-0 small">فیلترهای گزارش</h6>
+  <div class="card-header bg-transparent border-bottom py-3 d-flex flex-wrap gap-2 align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-2 min-w-0">
+      <span class="avatar avatar-xs rounded-3 bg-secondary-subtle text-secondary">
+        <i class="fi fi-rr-filter"></i>
+      </span>
+      <h6 class="card-title mb-0">فیلترهای گزارش</h6>
+    </div>
+    {% if request.GET.date_from or request.GET.date_to or request.GET.seller %}
+      <span class="badge badge-sm bg-warning-subtle text-warning">فیلتر فعال</span>
+    {% endif %}
   </div>
   <div class="card-body py-3">
     <form id="financialFilters" method="get" class="row g-3 align-items-end">
@@ -89,11 +93,21 @@
 
 <div class="card overflow-hidden shadow-sm border-0">
   <div class="card-header d-flex flex-wrap gap-2 align-items-center justify-content-between border-bottom py-3">
-    <div>
-      <h6 class="card-title mb-1"><i class="fi fi-rr-list me-2"></i>رزروها</h6>
-      <p class="text-muted small mb-0">خلاصه مالی رزروها و دسترسی سریع به جزئیات</p>
+    <div class="d-flex align-items-center gap-2 min-w-0">
+      <span class="avatar avatar-xs rounded-3 bg-primary-subtle text-primary">
+        <i class="fi fi-rr-list"></i>
+      </span>
+      <div class="min-w-0">
+        <h6 class="card-title mb-0">رزروها</h6>
+        <p class="text-muted text-2xs mb-0">خلاصه مالی رزروها و دسترسی سریع به جزئیات</p>
+      </div>
     </div>
-    <span class="badge bg-light text-muted">{{ recent_reservations|length }} رزرو</span>
+    <div class="d-flex align-items-center gap-2">
+      <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ recent_reservations|length }} رزرو</span>
+      <a href="{% url 'financial:transactions' %}" class="btn btn-sm btn-outline-primary">
+        <i class="fi fi-rr-swap me-1"></i>تراکنش‌ها
+      </a>
+    </div>
   </div>
   <div class="card-body p-3 p-lg-4">
     {% if recent_reservations %}
@@ -101,13 +115,13 @@
         <table class="table table-bordered align-middle mb-0" style="font-size:13px;">
           <thead class="table-light">
             <tr>
-              <th class="minw-90px">رزرو</th>
-              <th class="minw-220px">مشتری</th>
-              <th class="minw-180px">لباس</th>
-              <th class="minw-120px">شروع</th>
+              <th class="minw-100px">رزرو</th>
+              <th class="minw-225px">مشتری</th>
+              <th class="minw-175px">لباس</th>
+              <th class="minw-125px">شروع</th>
               <th class="minw-100px">روز</th>
-              <th class="text-end minw-220px">مبالغ</th>
-              <th class="minw-140px">وضعیت</th>
+              <th class="text-end minw-225px">مبالغ</th>
+              <th class="minw-150px">وضعیت</th>
               <th class="text-center minw-100px">اقدام</th>
             </tr>
           </thead>
@@ -168,25 +182,25 @@
                   {% endif %}
                 </td>
                 <td>
-                  <div class="d-flex flex-column gap-1">
+                  <div class="d-flex flex-column align-items-start gap-1">
                     {% if item.item_damaged %}
-                      <span class="badge bg-danger-subtle text-danger">خسارت دیده شده</span>
+                      <span class="badge badge-sm bg-danger-subtle text-danger">خسارت دیده</span>
                     {% endif %}
-                    <small class="text-muted">
-                      نهایی: {{ item.final_price|default:0|ir_currency }} تومان ·
-                      بیعانه: {{ item.deposit_amount|default:0|ir_currency }} تومان ·
-                      باقی: {{ item.remaining_amount|default:0|ir_currency }} تومان
-                    </small>
                     {% if item.cancellation_fee|default:0 > 0 %}
-                      <small class="text-muted">جریمه لغو: {{ item.cancellation_fee|default:0|ir_currency }} تومان</small>
+                      <small class="text-muted text-2xs">جریمهٔ لغو: {{ item.cancellation_fee|default:0|ir_currency }}</small>
                     {% endif %}
                     {% if item.damage_amount|default:0 > 0 %}
-                      <small class="text-muted">جریمه خسارت: {{ item.damage_amount|default:0|ir_currency }} تومان</small>
+                      <small class="text-muted text-2xs">جریمهٔ خسارت: {{ item.damage_amount|default:0|ir_currency }}</small>
                     {% endif %}
                   </div>
                 </td>
                 <td class="text-center">
-                  <button type="button" class="btn btn-sm btn-outline-secondary open-financial-modal" data-url="{% url 'financial:reservation_financial' item.pk %}">خلاصه</button>
+                  <button type="button"
+                          class="btn btn-sm btn-outline-primary open-financial-modal"
+                          data-url="{% url 'financial:reservation_financial' item.pk %}"
+                          title="مشاهدهٔ خلاصهٔ مالی">
+                    <i class="fi fi-rr-eye me-1"></i>خلاصه
+                  </button>
                 </td>
               </tr>
             {% endfor %}
@@ -204,25 +218,37 @@
 
 <!-- Modal container for financial partial -->
 <div class="modal fade" id="financialModal" tabindex="-1" aria-labelledby="financialModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-centered">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title" id="financialModalLabel">خلاصه مالی</h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+        <div class="d-flex align-items-center gap-2 min-w-0">
+          <span class="avatar avatar-xs rounded-3 bg-primary-subtle text-primary">
+            <i class="fi fi-rr-coins"></i>
+          </span>
+          <h5 class="modal-title mb-0" id="financialModalLabel">خلاصهٔ مالی رزرو</h5>
+        </div>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
       </div>
       <div class="modal-body" id="financialModalBody">
-        <div class="d-flex justify-content-center py-5"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>
+        <div class="d-flex justify-content-center py-5">
+          <div class="spinner-border text-primary" role="status">
+            <span class="visually-hidden">در حال بارگذاری…</span>
+          </div>
+        </div>
       </div>
-      <div class="modal-footer"><button type="button" class="btn btn-secondary" data-bs-dismiss="modal">بستن</button></div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-outline-secondary" data-bs-dismiss="modal">
+          <i class="fi fi-rr-cross-small me-1"></i>بستن
+        </button>
+      </div>
     </div>
   </div>
 </div>
 
-{% include 'includes/scripts/financial_list_js.html' %}
-
-{% block extra_js %}
-<script src="{% static 'js/finance_helpers.js' %}"></script>
 {% endblock %}
 
+{% block extra_js %}
+{% include 'includes/scripts/financial_list_js.html' %}
+<script src="{% static 'js/finance_helpers.js' %}"></script>
 {% endblock %}
 

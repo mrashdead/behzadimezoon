@@ -1,41 +1,326 @@
+{% comment %}
+نمودارهای صفحهٔ «گزارشات مالی»
+--------------------------------
+- نمودار روند درآمد/هزینه (سطحی یا ستونی) با امکان تغییر نوع نمایش
+- نمودار دونات وضعیت تسویهٔ رزروها
+- سازگار با تم روشن/تاریک: رنگ‌ها از متغیرهای Bootstrap خوانده می‌شوند و
+  با تغییر تم دوباره اعمال می‌شوند.
+- برچسب محور افقی از تاریخ میلادی به شمسی تبدیل می‌شود.
+
+توجه: این فایل داخل بلوک ``extra_js`` رندر می‌شود؛ یعنی بعد از
+``scripts.html`` و در نتیجه ``ApexCharts`` در دسترس است.
+{% endcomment %}
+{{ chart_labels|json_script:"reportChartLabels" }}
+{{ revenue_data|json_script:"reportRevenueData" }}
+{{ expense_data|json_script:"reportExpenseData" }}
+{{ payment_stats|json_script:"reportPaymentStats" }}
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  const labels = {{ chart_labels|safe }};
-  const revenueData = {{ revenue_data|safe }};
-  const expenseData = {{ expense_data|safe }};
+(function () {
+  'use strict';
 
-  const options = {
-    chart: {
-      type: 'line',
-      height: 350,
-      toolbar: { show: false },
-    },
-    series: [
-      { name: 'درآمد', data: revenueData },
-      { name: 'هزینه', data: expenseData },
-    ],
-    xaxis: {
-      categories: labels,
-    },
-    yaxis: {
-      labels: {
-        formatter: function (value) {
-          return value.toLocaleString('fa-IR');
-        }
-      }
-    },
-    tooltip: {
-      y: {
-        formatter: function (value) {
-          return value.toLocaleString('fa-IR') + ' تومان';
-        }
-      }
+  function readJson(id, fallback) {
+    var el = document.getElementById(id);
+    if (!el) return fallback;
+    try {
+      var parsed = JSON.parse(el.textContent);
+      return parsed === null || parsed === undefined ? fallback : parsed;
+    } catch (err) {
+      console.warn('خواندن دادهٔ نمودار ناموفق بود:', id, err);
+      return fallback;
     }
-  };
-
-  if (typeof ApexCharts !== 'undefined') {
-    const chart = new ApexCharts(document.querySelector('#financialTrendChart'), options);
-    chart.render();
   }
-});
+
+  var RAW_LABELS = readJson('reportChartLabels', []);
+  var REVENUE = readJson('reportRevenueData', []);
+  var EXPENSE = readJson('reportExpenseData', []);
+  var PAYMENT_STATS = readJson('reportPaymentStats', {});
+
+  var trendChart = null;
+  var statusChart = null;
+  var currentMode = 'area';
+
+  /* ---------------------------------------------------------------- helpers */
+
+  function themeVar(name, fallback) {
+    var value = getComputedStyle(document.documentElement).getPropertyValue(name);
+    return (value && value.trim()) || fallback;
+  }
+
+  function isDark() {
+    return document.documentElement.getAttribute('data-bs-theme') === 'dark';
+  }
+
+  function palette() {
+    var dark = isDark();
+    return {
+      dark: dark,
+      text: themeVar('--bs-body-color', dark ? '#dee2e6' : '#212529'),
+      muted: themeVar('--bs-secondary-color', dark ? '#adb5bd' : '#6c757d'),
+      grid: dark ? 'rgba(255,255,255,.08)' : 'rgba(0,0,0,.07)',
+      border: dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.1)',
+      surface: themeVar('--bs-body-bg', dark ? '#1b2430' : '#ffffff'),
+      success: themeVar('--bs-success', '#198754'),
+      danger: themeVar('--bs-danger', '#dc3545'),
+      warning: themeVar('--bs-warning', '#ffc107'),
+      info: themeVar('--bs-info', '#0dcaf0')
+    };
+  }
+
+  function faNumber(value) {
+    if (value === null || value === undefined || value === '') return '۰';
+    var n = Number(value);
+    if (isNaN(n)) return '۰';
+    return n.toLocaleString('fa-IR');
+  }
+
+  /* تاریخ‌های ورودی میلادی هستند (YYYY/MM/DD) و به شمسی کوتاه تبدیل می‌شوند. */
+  function toJalaliShort(gregorian) {
+    var parts = String(gregorian || '').split('/');
+    if (parts.length !== 3) return gregorian;
+    var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    if (isNaN(d.getTime())) return gregorian;
+    try {
+      return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+        month: '2-digit',
+        day: '2-digit'
+      }).format(d);
+    } catch (err) {
+      return gregorian;
+    }
+  }
+
+  /* ------------------------------------------------------------ trend chart */
+
+  function trendOptions(mode) {
+    var c = palette();
+    var type = mode === 'bar' ? 'bar' : 'area';
+
+    return {
+      chart: {
+        type: type,
+        height: 330,
+        fontFamily: 'inherit',
+        toolbar: { show: false },
+        animations: { enabled: true, speed: 500 },
+        background: 'transparent'
+      },
+      series: [
+        { name: 'درآمد', data: REVENUE },
+        { name: 'هزینه', data: EXPENSE }
+      ],
+      colors: [c.success, c.danger],
+      stroke: type === 'area'
+        ? { curve: 'smooth', width: 2.5 }
+        : { width: 0 },
+      fill: type === 'area'
+        ? {
+            type: 'gradient',
+            gradient: {
+              shadeIntensity: 0.6,
+              opacityFrom: 0.45,
+              opacityTo: 0.05,
+              stops: [0, 90, 100]
+            }
+          }
+        : { opacity: 0.9 },
+      plotOptions: {
+        bar: { borderRadius: 4, columnWidth: '55%' }
+      },
+      dataLabels: { enabled: false },
+      grid: {
+        borderColor: c.grid,
+        strokeDashArray: 4,
+        padding: { left: 6, right: 6 }
+      },
+      legend: {
+        position: 'top',
+        horizontalAlign: 'right',
+        labels: { colors: c.text },
+        markers: { radius: 4 }
+      },
+      markers: { size: 0, hover: { size: 5 } },
+      xaxis: {
+        categories: RAW_LABELS.map(toJalaliShort),
+        tickAmount: 6,
+        labels: {
+          rotate: 0,
+          hideOverlappingLabels: true,
+          style: { colors: c.muted, fontSize: '11px' }
+        },
+        axisBorder: { color: c.border },
+        axisTicks: { color: c.border },
+        tooltip: { enabled: false }
+      },
+      yaxis: {
+        labels: {
+          style: { colors: c.muted, fontSize: '11px' },
+          formatter: function (value) {
+            if (Math.abs(value) >= 1000000) {
+              return faNumber(Math.round(value / 1000000)) + 'م';
+            }
+            if (Math.abs(value) >= 1000) {
+              return faNumber(Math.round(value / 1000)) + 'ه';
+            }
+            return faNumber(value);
+          }
+        }
+      },
+      tooltip: {
+        theme: c.dark ? 'dark' : 'light',
+        shared: true,
+        intersect: false,
+        y: {
+          formatter: function (value) {
+            return faNumber(value) + ' تومان';
+          }
+        }
+      },
+      noData: {
+        text: 'داده‌ای برای نمایش وجود ندارد',
+        style: { color: c.muted, fontSize: '13px' }
+      }
+    };
+  }
+
+  function renderTrend(mode) {
+    var el = document.querySelector('#financialTrendChart');
+    if (!el || typeof ApexCharts === 'undefined') return;
+
+    currentMode = mode || currentMode;
+
+    if (trendChart) {
+      trendChart.destroy();
+      trendChart = null;
+    }
+    el.innerHTML = '';
+    trendChart = new ApexCharts(el, trendOptions(currentMode));
+    trendChart.render();
+  }
+
+  /* ----------------------------------------------------------- status chart */
+
+  function statusOptions() {
+    var c = palette();
+    var values = [
+      Number(PAYMENT_STATS.paid || 0),
+      Number(PAYMENT_STATS.partial || 0),
+      Number(PAYMENT_STATS.unpaid || 0)
+    ];
+    var total = values.reduce(function (a, b) { return a + b; }, 0);
+
+    return {
+      chart: {
+        type: 'donut',
+        height: 230,
+        fontFamily: 'inherit',
+        background: 'transparent'
+      },
+      series: total > 0 ? values : [1],
+      labels: total > 0
+        ? ['تسویه‌شده', 'پرداخت جزئی', 'پرداخت‌نشده']
+        : ['بدون داده'],
+      colors: total > 0 ? [c.success, c.warning, c.danger] : [c.grid],
+      stroke: { width: 2, colors: [c.surface] },
+      legend: { show: false },
+      dataLabels: {
+        enabled: total > 0,
+        formatter: function (val) {
+          return faNumber(Math.round(val)) + '٪';
+        },
+        style: { fontSize: '11px', fontWeight: 600 },
+        dropShadow: { enabled: false }
+      },
+      plotOptions: {
+        pie: {
+          donut: {
+            size: '68%',
+            labels: {
+              show: true,
+              name: { show: false },
+              value: {
+                show: true,
+                color: c.text,
+                fontSize: '20px',
+                fontWeight: 700,
+                formatter: function (val) { return faNumber(val); }
+              },
+              total: {
+                show: true,
+                showAlways: true,
+                label: 'کل رزرو',
+                color: c.muted,
+                fontSize: '11px',
+                formatter: function () { return faNumber(total); }
+              }
+            }
+          }
+        }
+      },
+      tooltip: {
+        theme: c.dark ? 'dark' : 'light',
+        y: { formatter: function (value) { return faNumber(value) + ' رزرو'; } }
+      }
+    };
+  }
+
+  function renderStatus() {
+    var el = document.querySelector('#paymentStatusChart');
+    if (!el || typeof ApexCharts === 'undefined') return;
+
+    if (statusChart) {
+      statusChart.destroy();
+      statusChart = null;
+    }
+    el.innerHTML = '';
+    statusChart = new ApexCharts(el, statusOptions());
+    statusChart.render();
+  }
+
+  /* ------------------------------------------------------------------- init */
+
+  function renderAll() {
+    renderTrend(currentMode);
+    renderStatus();
+  }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    if (typeof ApexCharts === 'undefined') {
+      console.warn('ApexCharts بارگذاری نشده است؛ نمودارهای گزارش رندر نمی‌شوند.');
+      return;
+    }
+
+    renderAll();
+
+    /* تغییر نوع نمایش نمودار روند */
+    document.querySelectorAll('.js-chart-mode').forEach(function (btn) {
+      btn.addEventListener('click', function () {
+        document.querySelectorAll('.js-chart-mode').forEach(function (b) {
+          b.classList.remove('active');
+        });
+        btn.classList.add('active');
+        renderTrend(btn.dataset.mode);
+      });
+    });
+
+    /* واکنش به تغییر تم روشن/تاریک (توسط appSettings یا هر جای دیگر) */
+    var observer = new MutationObserver(function (mutations) {
+      mutations.forEach(function (m) {
+        if (m.attributeName === 'data-bs-theme') {
+          renderAll();
+        }
+      });
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-bs-theme']
+    });
+  });
+
+  /* در صورت بازگشت به صفحه از حافظهٔ مرورگر، نمودارها دوباره ساخته شوند */
+  window.addEventListener('pageshow', function (event) {
+    if (event.persisted && typeof ApexCharts !== 'undefined') {
+      renderAll();
+    }
+  });
+})();
 </script>

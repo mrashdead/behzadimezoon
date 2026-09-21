@@ -14,7 +14,7 @@ from customers.models import Customer
 from products.models import Dress
 
 from .constants import ReservationStatus, GuaranteeType, PaymentMethod
-from .services.state_machin import ReservationStateMachine
+from .services.state_machine import ReservationStateMachine
 
 
 User = settings.AUTH_USER_MODEL
@@ -514,6 +514,11 @@ class Reservation(models.Model):
 
         paid_balance = self.remaining_payment_amount or 0
         self.remaining_amount = self.final_price - (self.deposit_amount or 0) - paid_balance
+        # نکته: ``remaining_amount`` یک PositiveIntegerField است و امکان ذخیرهٔ
+        # مقدار منفی را ندارد؛ بنابراین کلمپ صفر در اینجا «الزامی» است و باگ
+        # نیست. برای نمایش «اضافه‌پرداخت» از
+        # ``ReservationPaymentService.overpaid_amount()`` استفاده کنید که
+        # مقدار منفی واقعی را گزارش می‌کند.
         if self.remaining_amount < 0:
             self.remaining_amount = 0
 
@@ -642,19 +647,40 @@ class Reservation(models.Model):
         # Update snapshot of collected cash
         self.total_cash_collected_snapshot = self.total_received_amount()
 
-        # The create-step form now treats the first guarantee as optional.
-        # Because the model fields themselves are still non-null/non-blank,
-        # normalize empty values before full_clean() to keep persistence
-        # compatible without any migration/schema change.
+        self.normalize_optional_fields()
+
+        self.full_clean()
+
+        super().save(*args, **kwargs)
+
+    def normalize_optional_fields(self):
+        """نرمال‌سازی فیلدهای اختیاری پیش از ``full_clean()``.
+
+        فرم‌های «ایجاد/ویرایش رزرو» فیلدهای زیر را اختیاری می‌دانند، اما
+        ستون‌های دیتابیس ``guarantee1_type`` و ``discount_type``
+        ``blank=False`` هستند. بنابراین مقدار خالی باید *پیش از*
+        اعتبارسنجی به مقدار معتبر تبدیل شود.
+
+        این متد عمداً از ``save()`` جدا شده است: مسیر ویرایش رزرو از
+        ``ReservationFinancialService.save_reservation_financials()``
+        می‌گذرد که خودش ``full_clean()`` را صدا می‌زند و در نتیجه اگر
+        نرمال‌سازی فقط داخل ``save()`` باشد، پیش از آن منفجر می‌شود.
+        """
         if not self.guarantee1_type or not str(self.guarantee1_type).strip():
             self.guarantee1_type = GuaranteeType.CASH
 
         if not self.guarantee1_tracking_code or not str(self.guarantee1_tracking_code).strip():
             self.guarantee1_tracking_code = ''
 
-        self.full_clean()
+        if not self.discount_type or not str(self.discount_type).strip():
+            self.discount_type = self.DISCOUNT_NONE
 
-        super().save(*args, **kwargs)
+        # ضمانت دوم کاملاً اختیاری است؛ رشتهٔ خالی باید ``None`` شود تا
+        # اعتبارسنجی choices خطا ندهد.
+        if self.guarantee2_type is not None and not str(self.guarantee2_type).strip():
+            self.guarantee2_type = None
+
+        return self
 
     # -----------------------
     # Financial Query Methods
@@ -706,11 +732,12 @@ class Reservation(models.Model):
         """
         آیا بیعانه معتبری برای این رزرو پرداخت شده است؟
 
-        ``deposit_amount`` یک کش مشتق‌شده از مجموع تراکنش‌های معتبر بیعانه
-        است و توسط ``ReservationPaymentService`` همگام‌سازی می‌شود؛ بنابراین
-        این بررسی بر پایه پرداخت‌های واقعی و بدون کوئری اضافه انجام می‌شود.
+        منبع حقیقت واحد ``ReservationPaymentService`` است (نه فقط فیلد کش).
+        این property صرفاً یک پوستهٔ نازک روی همان سرویس است تا منطق در دو
+        جای مختلف واگرا نشود (رفع ایراد M-3).
         """
-        return (self.deposit_amount or 0) > 0
+        from reservations.services.payment_guards import PaymentGuardService
+        return PaymentGuardService.has_paid_deposit(self)
 
     @property
     def total_paid_amount(self):

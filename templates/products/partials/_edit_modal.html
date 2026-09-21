@@ -1,23 +1,44 @@
-{% load humanize %}
-
 <div class="modal fade" id="editDressModal{{ dress.id }}" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content border-0 shadow">
-      <form method="post" action="{% url 'products:edit' dress.pk %}" class="no-ajax">
+      <form method="post" action="{% url 'products:edit' dress.pk %}" data-ajax-form novalidate>
         {% csrf_token %}
 
-        {% include 'partials/_modal_header.html' with title='ویرایش محصول' %}
+        {% include 'partials/_modal_header.html' with title='ویرایش محصول' subtitle='مقادیر از دیتابیس بارگذاری شده‌اند' icon='fi-rr-edit' %}
 
         <div class="modal-body">
+          <div class="alert alert-danger d-none js-form-error-summary" role="alert" aria-live="assertive"></div>
+
           <div class="row g-3">
             <div class="col-md-6">
-              <label for="edit_code_{{ dress.id }}" class="form-label">کد لباس</label>
-              <input type="text" name="code" id="edit_code_{{ dress.id }}" class="form-control" value="{{ dress.code }}" required />
+              <label for="edit_code_{{ dress.id }}" class="form-label">
+                کد لباس <span class="text-danger">*</span>
+              </label>
+              <input type="text" name="code" id="edit_code_{{ dress.id }}" class="form-control"
+                     value="{{ dress.code }}" autocomplete="off" required />
+              <div class="invalid-feedback">کد لباس الزامی است و باید یکتا باشد.</div>
             </div>
 
             <div class="col-md-6">
-              <label for="edit_price_{{ dress.id }}" class="form-label">قیمت اجاره روزانه (تومان)</label>
-              <input type="text" name="daily_rent_price" id="edit_price_{{ dress.id }}" class="form-control money-input" value="{{ dress.daily_rent_price|ir_currency }}" required />
+              <label for="edit_price_{{ dress.id }}" class="form-label">
+                قیمت اجارهٔ روزانه <span class="text-danger">*</span>
+              </label>
+              <div class="input-group">
+                <input type="text" name="daily_rent_price" id="edit_price_{{ dress.id }}"
+                       class="form-control money-input" inputmode="numeric"
+                       value="{{ dress.daily_rent_price|ir_currency }}" autocomplete="off" required />
+                <span class="input-group-text">تومان</span>
+              </div>
+              <div class="invalid-feedback">قیمت اجارهٔ روزانه باید عددی بزرگ‌تر از صفر باشد.</div>
+            </div>
+
+            <div class="col-12">
+              <div class="alert alert-info d-flex align-items-center gap-2 mb-0 py-2" role="note">
+                <i class="fi fi-rr-info"></i>
+                <span class="text-2xs">
+                  تغییر قیمت فقط بر رزروهای جدید اثر می‌گذارد؛ قیمت رزروهای ثبت‌شده دست‌نخورده می‌ماند.
+                </span>
+              </div>
             </div>
           </div>
         </div>
@@ -27,5 +48,3 @@
     </div>
   </div>
 </div>
-
-

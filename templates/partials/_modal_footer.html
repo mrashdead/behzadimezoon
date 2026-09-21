@@ -1,13 +1,28 @@
-{# Modal Footer Component #}
-{# Usage: {% include 'partials/_modal_footer.html' with cancel_text='انصراف' submit_text='ذخیره' %} #}
+{% comment %}
+Modal Footer
+--------------------------------------------------------------------------
+استفاده:
+  {% include 'partials/_modal_footer.html' with cancel_text='انصراف' submit_text='ذخیره' %}
+
+پارامترهای اختیاری:
+  submit_icon  : نام آیکون دکمهٔ تأیید (پیش‌فرض 'fi-rr-check')
+                 مقدار 'none' آیکون را حذف می‌کند
+  submit_class : کلاس اضافی دکمهٔ تأیید (مثلاً 'btn-success')
+  submit_id    : شناسهٔ دکمه (برای غیرفعال‌کردن با JS)
+  cancel_icon  : نام آیکون دکمهٔ انصراف (اختیاری)
+{% endcomment %}
 
 <div class="modal-footer border-top">
   <button type="button" class="btn btn-light waves-effect" data-bs-dismiss="modal">
+    {% if cancel_icon %}<i class="fi {{ cancel_icon }} me-1"></i>{% endif %}
     {{ cancel_text|default:'انصراف' }}
   </button>
-  <button type="submit" class="btn btn-primary waves-effect waves-light">
-    <i class="fi fi-rr-check me-1"></i>
+  <button type="submit"
+          class="btn btn-primary waves-effect waves-light{% if submit_class %} {{ submit_class }}{% endif %}"
+          {% if submit_id %}id="{{ submit_id }}"{% endif %}>
+    {% if submit_icon != 'none' %}
+      <i class="fi {{ submit_icon|default:'fi-rr-check' }} me-1"></i>
+    {% endif %}
     {{ submit_text|default:'ذخیره' }}
   </button>
 </div>
-

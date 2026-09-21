@@ -11,63 +11,434 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-3 mb-4">
-  <div>
-    <h1 class="h4 mb-2">جزئیات تراکنش</h1>
-    <p class="text-muted mb-0">مشاهده اطلاعات کامل تراکنش و پیوند به رزرو مرتبط.</p>
-  </div>
-  <div class="d-flex gap-2">
-    <a href="{% url 'financial:transactions' %}" class="btn btn-outline-secondary">بازگشت به لیست</a>
-    <a href="{% url 'financial:list' %}" class="btn btn-outline-primary">داشبورد مالی</a>
+{% comment %}
+صفحهٔ جزئیات تراکنش — بازنویسی‌شده با سیستم طراحی جدید:
+  • کارت سربرگ صفحه (page-head-card) با آیکون، نشان‌ها و دکمه‌های اقدام
+  • کارت قهرمان (hero) برای نمایش پررنگ مبلغ و وضعیت
+  • کارت‌های «برچسب/مقدار» از طریق partials/_detail_card.html
+  • هشدار ابطال، پیوست، توضیحات و تراکنش‌های مرتبط
+{% endcomment %}
+
+{% with is_out=transaction.is_outflow %}
+
+{# ---------- سربرگ صفحه ---------- #}
+<div class="card border-0 shadow-sm mb-4 page-head-card">
+  <div class="card-body d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+    <div class="d-flex align-items-center gap-3 min-w-0">
+      <span class="avatar avatar-lg rounded-3 flex-shrink-0 {% if is_out %}bg-danger-subtle text-danger{% else %}bg-success-subtle text-success{% endif %}">
+        <i class="fi {% if is_out %}fi-rr-arrow-small-up{% else %}fi-rr-arrow-small-down{% endif %}"></i>
+      </span>
+      <div class="min-w-0">
+        <h1 class="h4 mb-1">جزئیات تراکنش</h1>
+        <div class="d-flex flex-wrap align-items-center gap-2">
+          <span class="text-muted text-2xs" dir="ltr">{{ transaction.transaction_number|default:'—' }}</span>
+          <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ transaction.get_transaction_type_display }}</span>
+
+          {% if transaction.transaction_status == 'POSTED' %}
+            <span class="badge badge-sm bg-success-subtle text-success">ثبت شده</span>
+          {% elif transaction.transaction_status == 'VOIDED' or transaction.is_voided %}
+            <span class="badge badge-sm bg-danger-subtle text-danger">ابطال شده</span>
+          {% elif transaction.transaction_status == 'APPROVED' %}
+            <span class="badge badge-sm bg-info-subtle text-info">تأیید شده</span>
+          {% elif transaction.transaction_status == 'PENDING' %}
+            <span class="badge badge-sm bg-warning-subtle text-warning">در انتظار تأیید</span>
+          {% else %}
+            <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ transaction.get_transaction_status_display }}</span>
+          {% endif %}
+
+          {% if transaction.is_reconciled %}
+            <span class="badge badge-sm bg-success-subtle text-success">
+              <i class="fi fi-rr-check-circle me-1"></i>هماهنگ‌شده
+            </span>
+          {% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="d-flex flex-wrap gap-2 flex-shrink-0">
+      <a href="{% url 'financial:transactions' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="fi fi-rr-arrow-right me-1"></i>بازگشت به لیست
+      </a>
+      <a href="{% url 'financial:list' %}" class="btn btn-outline-primary btn-sm">
+        <i class="fi fi-rr-chart-histogram me-1"></i>داشبورد مالی
+      </a>
+      {% if transaction.reservation %}
+        <a href="{% url 'financial:reservation_financial' transaction.reservation.pk %}" class="btn btn-primary btn-sm">
+          <i class="fi fi-rr-file-invoice me-1"></i>امور مالی رزرو
+        </a>
+      {% endif %}
+    </div>
   </div>
 </div>
 
-<div class="card border-0 shadow-sm">
-  <div class="card-body">
-    <div class="row gy-3">
-      <div class="col-12 col-md-6">
-        <div class="mb-3">
-          <strong>شماره تراکنش:</strong> {{ transaction.transaction_number }}
+{# ---------- هشدار ابطال ---------- #}
+{% if transaction.is_voided or transaction.transaction_status == 'VOIDED' %}
+  <div class="alert alert-danger d-flex align-items-start gap-3 mb-4" role="alert">
+    <span class="avatar avatar-xs rounded-3 bg-danger text-white flex-shrink-0">
+      <i class="fi fi-rr-ban"></i>
+    </span>
+    <div class="min-w-0">
+      <h6 class="alert-heading mb-1">این تراکنش ابطال شده است</h6>
+      <p class="mb-1 text-2xs">
+        مبلغ ابطال‌شده در محاسبات مالی (جریان نقدی، درآمد، ماندهٔ رزرو) لحاظ نمی‌شود.
+      </p>
+      <ul class="list-unstyled mb-0 text-2xs d-flex flex-wrap gap-3">
+        {% if transaction.voided_at %}
+          <li><strong>تاریخ ابطال:</strong> {{ transaction.voided_at|jformat:"%Y/%m/%d %H:%M" }}</li>
+        {% endif %}
+        {% if transaction.voided_by %}
+          <li><strong>ابطال‌کننده:</strong> {{ transaction.voided_by.get_full_name|default:transaction.voided_by.username }}</li>
+        {% endif %}
+      </ul>
+      {% if transaction.void_reason %}
+        <p class="mb-0 mt-2 text-2xs"><strong>دلیل ابطال:</strong> {{ transaction.void_reason }}</p>
+      {% endif %}
+    </div>
+  </div>
+{% endif %}
+
+{# ---------- کارت قهرمان: مبلغ ---------- #}
+<div class="row g-3 mb-4">
+  <div class="col-12 col-xl-7">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-body d-flex flex-column flex-sm-row align-items-sm-center justify-content-between gap-3">
+        <div class="min-w-0">
+          <p class="text-muted text-2xs mb-1">مبلغ تراکنش</p>
+          <h2 class="fw-bold mb-2 {% if is_out %}text-danger{% else %}text-success{% endif %} number-display"
+              data-value="{{ transaction.amount|default:0 }}">
+            {{ transaction.amount|ir_currency }}
+            <span class="fs-6 fw-normal text-muted">تومان</span>
+          </h2>
+          <div class="d-flex flex-wrap align-items-center gap-2">
+            <span class="badge badge-sm {% if is_out %}bg-danger-subtle text-danger{% else %}bg-success-subtle text-success{% endif %}">
+              {% if is_out %}خروجی نقدی{% else %}ورودی نقدی{% endif %}
+            </span>
+            <span class="badge badge-sm bg-secondary-subtle text-secondary">
+              {% if transaction.category_value == 'CASH' %}نقدی{% else %}تعهدی{% endif %}
+            </span>
+            <span class="text-muted text-2xs">واحد پول: {{ transaction.currency|default:'IRR' }}</span>
+          </div>
         </div>
-        <div class="mb-3">
-          <strong>نوع تراکنش:</strong> {{ transaction.get_transaction_type_display }}
-        </div>
-        <div class="mb-3">
-          <strong>وضعیت:</strong> {{ transaction.get_transaction_status_display }}
-        </div>
-        <div class="mb-3">
-          <strong>تاریخ:</strong> {{ transaction.transaction_date|jformat:"%Y/%m/%d %H:%M" }}
+        <span class="avatar avatar-xl rounded-3 flex-shrink-0 {% if is_out %}bg-danger-subtle text-danger{% else %}bg-success-subtle text-success{% endif %}">
+          <i class="fi fi-rr-coins"></i>
+        </span>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-12 col-xl-5">
+    <div class="row g-3 h-100">
+      <div class="col-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <p class="text-muted text-2xs mb-1">تاریخ تراکنش</p>
+            <p class="fw-semibold mb-0 text-1xs">{{ transaction.transaction_date|jformat:"%Y/%m/%d" }}</p>
+            <p class="text-muted text-2xs mb-0" dir="ltr">{{ transaction.transaction_date|jformat:"%H:%M" }}</p>
+          </div>
         </div>
       </div>
-      <div class="col-12 col-md-6">
-        <div class="mb-3">
-          <strong>مبلغ:</strong> {{ transaction.amount|ir_currency }} تومان
-        </div>
-        <div class="mb-3">
-          <strong>روش پرداخت:</strong> {{ transaction.get_payment_method_display|default:transaction.payment_method }}</n>
-        </div>
-        <div class="mb-3">
-          <strong>کد پیگیری:</strong> {{ transaction.payment_reference|default:'-' }}
-        </div>
-        <div class="mb-3">
-          <strong>حساب:</strong> {{ transaction.account|default:'-' }}
-        </div>
-      </div>
-      <div class="col-12">
-        <div class="mb-3">
-          <strong>رزرو مرتبط:</strong>
-          {% if transaction.reservation %}
-            <a href="{% url 'financial:reservation_financial' transaction.reservation.pk %}">رزرو #{{ transaction.reservation.pk }}{% if transaction.reservation.contract_number %} / {{ transaction.reservation.contract_number }}{% endif %}</a>
-          {% else %}
-            -
-          {% endif %}
-        </div>
-        <div class="mb-3">
-          <strong>شرح:</strong>
-          <p class="mb-0">{{ transaction.description|default:transaction.notes|default:'بدون شرح' }}</p>
+      <div class="col-6">
+        <div class="card border-0 shadow-sm h-100">
+          <div class="card-body">
+            <p class="text-muted text-2xs mb-1">روش پرداخت</p>
+            <p class="fw-semibold mb-0 text-1xs">
+              {{ transaction.get_payment_method_display|default:transaction.payment_method|default:'—' }}
+            </p>
+            <p class="text-muted text-2xs mb-0">
+              {% if transaction.payment_reference %}کد رهگیری ثبت شده{% else %}بدون کد رهگیری{% endif %}
+            </p>
+          </div>
         </div>
       </div>
     </div>
   </div>
 </div>
+
+{# ---------- اطلاعات تراکنش ---------- #}
+<div class="card border-0 shadow-sm section-card mb-4">
+  <div class="card-header bg-transparent border-bottom py-3">
+    <div class="d-flex align-items-center gap-2 min-w-0">
+      <span class="avatar avatar-xs rounded-3 bg-primary-subtle text-primary section-card__icon">
+        <i class="fi fi-rr-receipt"></i>
+      </span>
+      <div class="min-w-0">
+        <h6 class="mb-0">اطلاعات تراکنش</h6>
+        <p class="mb-0 text-muted text-2xs mt-1">مشخصات پایه و وضعیت ثبت سند مالی</p>
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      {% include 'partials/_detail_card.html' with label='شماره تراکنش' value=transaction.transaction_number|default:'—' icon='fi-rr-hashtag-lock' %}
+      {% include 'partials/_detail_card.html' with label='نوع تراکنش' value=transaction.get_transaction_type_display icon='fi-rr-tags' %}
+      {% include 'partials/_detail_card.html' with label='وضعیت' value=transaction.get_transaction_status_display icon='fi-rr-list-check' %}
+      {% include 'partials/_detail_card.html' with label='تاریخ تراکنش' value=transaction.transaction_date|jformat:"%Y/%m/%d %H:%M" icon='fi-rr-calendar' %}
+      {% include 'partials/_detail_card.html' with label='شماره ترتیب' value=transaction.sequence_number|default:'—' icon='fi-rr-order-history' %}
+
+      {% if transaction.value_date %}
+        {% include 'partials/_detail_card.html' with label='تاریخ ارزش‌آفرینی' value=transaction.value_date|jformat:"%Y/%m/%d" icon='fi-rr-calendar' %}
+      {% endif %}
+      {% if transaction.due_date %}
+        {% include 'partials/_detail_card.html' with label='تاریخ سررسید' value=transaction.due_date|jformat:"%Y/%m/%d" icon='fi-rr-clock' %}
+      {% endif %}
+
+      {% include 'partials/_detail_card.html' with label='دستهٔ حسابداری' value=transaction.category.name|default:'—' icon='fi-rr-folder' %}
+      {% include 'partials/_detail_card.html' with label='حساب مالی' value=transaction.account|default:'—' icon='fi-rr-bank' %}
+
+      {% include 'partials/_detail_card.html' with label='هماهنگی مالی' value=transaction.is_reconciled|yesno:'هماهنگ‌شده,هماهنگ‌نشده' icon='fi-rr-scale' tone=transaction.is_reconciled|yesno:'success,warning' %}
+
+      {% if transaction.reconciled_at %}
+        {% include 'partials/_detail_card.html' with label='تاریخ هماهنگی' value=transaction.reconciled_at|jformat:"%Y/%m/%d %H:%M" icon='fi-rr-check-circle' %}
+      {% endif %}
+    </div>
+  </div>
+</div>
+
+{# ---------- اطلاعات پرداخت ---------- #}
+<div class="card border-0 shadow-sm section-card mb-4">
+  <div class="card-header bg-transparent border-bottom py-3">
+    <div class="d-flex align-items-center gap-2 min-w-0">
+      <span class="avatar avatar-xs rounded-3 bg-info-subtle text-info section-card__icon">
+        <i class="fi fi-rr-credit-card"></i>
+      </span>
+      <div class="min-w-0">
+        <h6 class="mb-0">اطلاعات پرداخت</h6>
+        <p class="mb-0 text-muted text-2xs mt-1">روش پرداخت، کدهای پیگیری و ارجاع‌های بانکی</p>
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      {% include 'partials/_detail_card.html' with label='روش پرداخت' value=transaction.get_payment_method_display|default:transaction.payment_method|default:'—' icon='fi-rr-credit-card' %}
+      {% include 'partials/_detail_card.html' with label='کد رهگیری / پیگیری' value=transaction.payment_reference|default:'—' icon='fi-rr-link' %}
+      {% include 'partials/_detail_card.html' with label='شماره رسید' value=transaction.receipt_number|default:'—' icon='fi-rr-receipt' %}
+      {% include 'partials/_detail_card.html' with label='ارجاع خارجی' value=transaction.external_reference|default:'—' icon='fi-rr-link' %}
+      {% include 'partials/_detail_card.html' with label='واحد پول' value=transaction.currency|default:'IRR' icon='fi-rr-dollar' %}
+      {% include 'partials/_detail_card.html' with label='پیوست' value=transaction.attachment.name|default:'بدون پیوست' icon='fi-rr-clip' %}
+    </div>
+  </div>
+</div>
+
+{# ---------- روابط ---------- #}
+<div class="card border-0 shadow-sm section-card mb-4">
+  <div class="card-header bg-transparent border-bottom py-3">
+    <div class="d-flex align-items-center gap-2 min-w-0">
+      <span class="avatar avatar-xs rounded-3 bg-success-subtle text-success section-card__icon">
+        <i class="fi fi-rr-link"></i>
+      </span>
+      <div class="min-w-0">
+        <h6 class="mb-0">روابط</h6>
+        <p class="mb-0 text-muted text-2xs mt-1">رزرو، مشتری و تراکنش‌های مرتبط</p>
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-12 col-sm-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-none detail-card detail-card--primary">
+          <div class="card-body py-3 px-3">
+            <div class="detail-card__label"><i class="fi fi-rr-file-invoice me-1"></i>رزرو مرتبط</div>
+            <div class="detail-card__value">
+              {% if transaction.reservation %}
+                <a href="{% url 'financial:reservation_financial' transaction.reservation.pk %}">
+                  رزرو #{{ transaction.reservation.pk }}{% if transaction.reservation.contract_number %} / {{ transaction.reservation.contract_number }}{% endif %}
+                </a>
+              {% else %}
+                —
+              {% endif %}
+            </div>
+            {% if transaction.reservation %}
+              <a href="{% url 'reservations:detail' transaction.reservation.pk %}" class="text-2xs">
+                مشاهدهٔ جزئیات رزرو
+                <i class="fi fi-rr-arrow-left ms-1"></i>
+              </a>
+            {% endif %}
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-none detail-card detail-card--primary">
+          <div class="card-body py-3 px-3">
+            <div class="detail-card__label"><i class="fi fi-rr-user me-1"></i>مشتری</div>
+            <div class="detail-card__value">
+              {% if transaction.customer %}
+                {{ transaction.customer }}
+              {% elif transaction.reservation and transaction.reservation.customer %}
+                {{ transaction.reservation.customer }}
+                <span class="text-muted text-2xs d-block">(از طریق رزرو)</span>
+              {% else %}
+                —
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="col-12 col-sm-6 col-lg-4">
+        <div class="card h-100 border-0 shadow-none detail-card detail-card--primary">
+          <div class="card-body py-3 px-3">
+            <div class="detail-card__label"><i class="fi fi-rr-swap me-1"></i>تراکنش مرتبط</div>
+            <div class="detail-card__value">
+              {% if transaction.related_transaction %}
+                <a href="{% url 'financial:transaction_detail' transaction.related_transaction.pk %}">
+                  {{ transaction.related_transaction.transaction_number|default:transaction.related_transaction.pk }}
+                </a>
+                <span class="text-muted text-2xs d-block">
+                  {{ transaction.related_transaction.get_transaction_type_display }}
+                </span>
+              {% else %}
+                —
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ---------- توضیحات ---------- #}
+<div class="card border-0 shadow-sm section-card mb-4">
+  <div class="card-header bg-transparent border-bottom py-3">
+    <div class="d-flex align-items-center gap-2 min-w-0">
+      <span class="avatar avatar-xs rounded-3 bg-secondary-subtle text-secondary section-card__icon">
+        <i class="fi fi-rr-comment-dots"></i>
+      </span>
+      <div class="min-w-0">
+        <h6 class="mb-0">توضیحات و یادداشت</h6>
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      <div class="col-12 col-lg-6">
+        <div class="detail-card">
+          <div class="card-body py-3 px-3">
+            <div class="detail-card__label">شرح تراکنش</div>
+            <div class="detail-card__value fw-normal">
+              {% if transaction.description %}
+                {{ transaction.description|linebreaksbr }}
+              {% else %}
+                <span class="text-muted">بدون شرح</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="col-12 col-lg-6">
+        <div class="detail-card">
+          <div class="card-body py-3 px-3">
+            <div class="detail-card__label">یادداشت داخلی</div>
+            <div class="detail-card__value fw-normal">
+              {% if transaction.notes %}
+                {{ transaction.notes|linebreaksbr }}
+              {% else %}
+                <span class="text-muted">بدون یادداشت</span>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ---------- حسابرسی ---------- #}
+<div class="card border-0 shadow-sm section-card mb-4">
+  <div class="card-header bg-transparent border-bottom py-3">
+    <div class="d-flex align-items-center gap-2 min-w-0">
+      <span class="avatar avatar-xs rounded-3 bg-warning-subtle text-warning section-card__icon">
+        <i class="fi fi-rr-clock"></i>
+      </span>
+      <div class="min-w-0">
+        <h6 class="mb-0">ردپای حسابرسی</h6>
+        <p class="mb-0 text-muted text-2xs mt-1">چه کسی، چه زمانی و در چه وضعیتی این سند را ثبت کرده است</p>
+      </div>
+    </div>
+  </div>
+  <div class="card-body">
+    <div class="row g-3">
+      {% include 'partials/_detail_card.html' with label='ایجادکننده' value=transaction.created_by.get_full_name|default:transaction.created_by.username|default:'—' icon='fi-rr-user' %}
+      {% include 'partials/_detail_card.html' with label='تاریخ ایجاد' value=transaction.created_at|jformat:"%Y/%m/%d %H:%M" icon='fi-rr-calendar' %}
+      {% include 'partials/_detail_card.html' with label='آخرین بروزرسانی' value=transaction.updated_at|jformat:"%Y/%m/%d %H:%M" icon='fi-rr-refresh' %}
+
+      {% if transaction.approved_by %}
+        {% include 'partials/_detail_card.html' with label='تأییدکننده' value=transaction.approved_by.get_full_name|default:transaction.approved_by.username icon='fi-rr-check-circle' tone='success' %}
+      {% endif %}
+      {% if transaction.approved_at %}
+        {% include 'partials/_detail_card.html' with label='تاریخ تأیید' value=transaction.approved_at|jformat:"%Y/%m/%d %H:%M" icon='fi-rr-calendar' tone='success' %}
+      {% endif %}
+      {% if transaction.posted_at %}
+        {% include 'partials/_detail_card.html' with label='تاریخ ثبت' value=transaction.posted_at|jformat:"%Y/%m/%d %H:%M" icon='fi-rr-list-check' tone='success' %}
+      {% endif %}
+
+      {% include 'partials/_detail_card.html' with label='تغییرناپذیر (Immutable)' value=transaction.is_immutable|yesno:'بله,خیر' icon='fi-rr-hashtag-lock' tone=transaction.is_immutable|yesno:'danger,default' %}
+    </div>
+  </div>
+</div>
+
+{# ---------- تراکنش‌های مرتبط ---------- #}
+{% with related=transaction.related_transactions.all %}
+  {% if related %}
+    <div class="card border-0 shadow-sm section-card mb-4">
+      <div class="card-header bg-transparent border-bottom py-3">
+        <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+          <div class="d-flex align-items-center gap-2 min-w-0">
+            <span class="avatar avatar-xs rounded-3 bg-primary-subtle text-primary section-card__icon">
+              <i class="fi fi-rr-order-history"></i>
+            </span>
+            <div class="min-w-0">
+              <h6 class="mb-0 d-flex align-items-center gap-2">
+                تراکنش‌های مرتبط
+                <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ related|length }}</span>
+              </h6>
+              <p class="mb-0 text-muted text-2xs mt-1">اسنادی که به این تراکنش ارجاع داده‌اند (مثلاً ابطال یا برگشت)</p>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="table-responsive">
+          <table class="table table-row-rounded align-middle mb-0">
+            <thead>
+              <tr>
+                <th class="minw-140px">شماره</th>
+                <th class="minw-140px">نوع</th>
+                <th class="text-end minw-140px">مبلغ</th>
+                <th class="minw-130px">وضعیت</th>
+                <th class="minw-140px">تاریخ</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for item in related %}
+                <tr>
+                  <td>
+                    <a href="{% url 'financial:transaction_detail' item.pk %}" dir="ltr">
+                      {{ item.transaction_number|default:item.pk }}
+                    </a>
+                  </td>
+                  <td>{{ item.get_transaction_type_display }}</td>
+                  <td class="text-end">{{ item.amount|ir_currency }} تومان</td>
+                  <td>
+                    {% if item.is_voided or item.transaction_status == 'VOIDED' %}
+                      <span class="badge badge-sm bg-danger-subtle text-danger">ابطال شده</span>
+                    {% elif item.transaction_status == 'POSTED' %}
+                      <span class="badge badge-sm bg-success-subtle text-success">ثبت شده</span>
+                    {% else %}
+                      <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ item.get_transaction_status_display }}</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-2xs">{{ item.transaction_date|jformat:"%Y/%m/%d %H:%M" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  {% endif %}
+{% endwith %}
+
+{% endwith %}
 {% endblock %}

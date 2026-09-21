@@ -303,5 +303,239 @@
       if (form) updateGuaranteeRequirement(form);
     }
   });
+
+  // -------------------- بررسی در‌لحظه‌ای موجودی (تاریخ / مدت اجاره / لباس) --------------------
+  // وقتی کاربر در «ویرایش رزرو» تاریخ شروع، مدت اجاره یا لباس را عوض می‌کند،
+  // بدون ذخیره‌کردن به سرور می‌زنیم و می‌گوییم لباس در آن بازه آزاد است یا نه.
+  // رزرو جاری با ``exclude_reservation_id`` از بررسی تداخل کنار گذاشته می‌شود.
+  var AVAILABILITY_URL = '/reservations/check-availability/';
+  var availabilityTimers = {};
+
+  function normalizeDateInput(value) {
+    var text = String(value || '').trim();
+    if (!text) return '';
+    if (window.UIHelpers && typeof window.UIHelpers.normalizeDigits === 'function') {
+      text = window.UIHelpers.normalizeDigits(text);
+    }
+    return text.replace(/-/g, '/');
+  }
+
+  function readNumber(value) {
+    var text = String(value === null || value === undefined ? '' : value);
+    if (window.UIHelpers && typeof window.UIHelpers.normalizeDigits === 'function') {
+      text = window.UIHelpers.normalizeDigits(text);
+    }
+    var num = parseInt(text.replace(/[^\d-]/g, ''), 10);
+    return isNaN(num) ? 0 : num;
+  }
+
+  // ارقام فارسی/عربی → ASCII
+  function toAsciiDigits(text) {
+    if (window.UIHelpers && typeof window.UIHelpers.normalizeDigits === 'function') {
+      return window.UIHelpers.normalizeDigits(text);
+    }
+    return String(text)
+      .replace(/[۰-۹]/g, function (d) { return String('۰۱۲۳۴۵۶۷۸۹'.indexOf(d)); })
+      .replace(/[٠-٩]/g, function (d) { return String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)); });
+  }
+
+  function hasPersianDigits(text) {
+    return /[۰-۹٠-٩]/.test(String(text === null || text === undefined ? '' : text));
+  }
+
+  // ⚠️ نکتهٔ مهم: خروجی ``check_availability`` تاریخ ``end_date`` را به‌صورت
+  // میلادی (ISO) برمی‌گرداند، ولی فیلد «تاریخ پایان» در فرم شمسی نمایش داده
+  // می‌شود. پس باید تبدیل شود، وگرنه کاربر تاریخ میلادی می‌بیند.
+  //
+  // نکتهٔ دوم: ``jformat`` در قالب، ارقام را ASCII می‌نویسد (1405/03/24) ولی
+  // persian-datepicker ارقام را فارسی می‌نویسد (۱۴۰۵/۰۳/۲۴). برای اینکه
+  // «تاریخ پایان» با فیلدی که کاربر در آن تاریخ را وارد کرده یکدست بماند،
+  // سبک ارقام را از همان فیلد شروع قرض می‌گیریم.
+  function formatJalaliDate(value, referenceText) {
+    if (!value) return '';
+
+    var parsed = new Date(value);
+    var result;
+
+    if (isNaN(parsed.getTime())) {
+      // اگر از قبل شمسی بود، فقط جداکننده را یکدست کن
+      result = String(value).replace(/-/g, '/');
+    } else {
+      // Intl ارقام را فارسی تولید می‌کند
+      result = new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+      }).format(parsed);
+    }
+
+    return hasPersianDigits(referenceText) ? result : toAsciiDigits(result);
+  }
+
+  function setAvailabilityState(form, state, message) {
+    var box = form.querySelector('.js-availability-status');
+    if (!box) return;
+
+    box.classList.remove('d-none', 'alert-info', 'alert-success', 'alert-danger', 'alert-warning');
+
+    if (!state) {
+      box.classList.add('d-none');
+      box.textContent = '';
+      return;
+    }
+
+    var classMap = {
+      checking: 'alert-info',
+      available: 'alert-success',
+      unavailable: 'alert-danger',
+      warning: 'alert-warning',
+    };
+    box.classList.add(classMap[state] || 'alert-info');
+    box.textContent = message || '';
+  }
+
+  function setSubmitDisabled(form, disabled) {
+    form.querySelectorAll('button[type="submit"], input[type="submit"]').forEach(function (btn) {
+      btn.disabled = !!disabled;
+      btn.classList.toggle('disabled', !!disabled);
+    });
+  }
+
+  function checkEditAvailability(form) {
+    if (!form || !form.dataset.reservationId) return;
+
+    var dressSelect = form.querySelector('select[name="dress"]');
+    var startInput = form.querySelector('input[name="start_date"]');
+    var daysInput = form.querySelector('input[name="rental_days"]');
+    if (!dressSelect || !startInput || !daysInput) return;
+
+    var dressId = dressSelect.value;
+    var startDate = normalizeDateInput(startInput.value);
+    var rentalDays = readNumber(daysInput.value);
+
+    if (!dressId || !startDate || rentalDays < 1) {
+      setAvailabilityState(
+        form,
+        'warning',
+        'برای بررسی تداخل، لباس، تاریخ شروع و مدت اجاره باید کامل باشند.'
+      );
+      // ورودی ناقص تأییدنشده است؛ ذخیره قفل می‌ماند (اعتبارسنجی سرور هم محافظ است)
+      setSubmitDisabled(form, true);
+      return;
+    }
+
+    var statusBox = form.querySelector('.js-availability-status');
+    var customerId = statusBox ? statusBox.dataset.customerId : '';
+
+    var body = new URLSearchParams({
+      dress_id: dressId,
+      start_date: startDate,
+      rental_days: String(rentalDays),
+      exclude_reservation_id: form.dataset.reservationId,
+    });
+    if (customerId) body.append('customer_id', customerId);
+
+    setAvailabilityState(form, 'checking', 'در حال بررسی موجودی…');
+    setSubmitDisabled(form, true);
+
+    fetch(AVAILABILITY_URL, {
+      method: 'POST',
+      credentials: 'same-origin',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+        'X-CSRFToken': (window.UIHelpers && window.UIHelpers.getCookie)
+          ? window.UIHelpers.getCookie('csrftoken')
+          : (document.cookie.match(/csrftoken=([^;]+)/) || [])[1],
+        'X-Requested-With': 'XMLHttpRequest',
+        'Accept': 'application/json',
+      },
+      body: body,
+    })
+      .then(function (response) { return response.json(); })
+      .then(function (data) {
+        if (!data || !data.success) {
+          setAvailabilityState(form, 'warning', (data && data.message) || 'بررسی موجودی ممکن نشد.');
+          setSubmitDisabled(form, false);
+          return;
+        }
+
+        // به‌روزرسانی تاریخ پایان و تاریخ تحویل نمایشی (میلادی ISO → شمسی)
+        var endDateInput = form.querySelector('input[id^="id_end_date_"]');
+        if (endDateInput && data.end_date) {
+          endDateInput.value = formatJalaliDate(data.end_date, startInput.value);
+        }
+        var deliveryDateInput = form.querySelector('input[id^="id_delivery_date_"]');
+        if (deliveryDateInput && data.delivery_date) {
+          deliveryDateInput.value = formatJalaliDate(data.delivery_date, startInput.value);
+        }
+
+        if (data.available) {
+          setAvailabilityState(form, 'available', 'این لباس در بازهٔ انتخاب‌شده آزاد است.');
+          setSubmitDisabled(form, false);
+        } else {
+          setAvailabilityState(
+            form,
+            'unavailable',
+            'این لباس در این بازه قبلاً رزرو شده است. لطفاً تاریخ یا لباس دیگری انتخاب کنید.'
+          );
+          setSubmitDisabled(form, true);
+        }
+      })
+      .catch(function () {
+        setAvailabilityState(form, 'warning', 'ارتباط با سرور برقرار نشد؛ بررسی موجودی انجام نشد.');
+        setSubmitDisabled(form, false);
+      });
+  }
+
+  function scheduleAvailabilityCheck(form) {
+    if (!form) return;
+    var key = form.dataset.reservationId || 'default';
+    if (availabilityTimers[key]) {
+      clearTimeout(availabilityTimers[key]);
+    }
+    // کمی تأخیر تا تایپ/انتخاب کاربر تمام شود
+    availabilityTimers[key] = setTimeout(function () {
+      checkEditAvailability(form);
+    }, 400);
+  }
+
+  function isAvailabilityTrigger(target) {
+    if (!target || !target.name) return false;
+    return ['start_date', 'rental_days', 'dress'].indexOf(target.name) !== -1;
+  }
+
+  ['change', 'input'].forEach(function (evtName) {
+    document.addEventListener(evtName, function (event) {
+      if (!isAvailabilityTrigger(event.target)) return;
+      var form = event.target.closest('form[id^="reservationEditForm"]');
+      if (!form) return;
+      // تا وقتی بازهٔ جدید بررسی و تأیید نشده، ذخیرهٔ تغییرات قفل می‌ماند
+      setSubmitDisabled(form, true);
+      scheduleAvailabilityCheck(form);
+    });
+  });
+
+  // دکمهٔ دستی «بررسی تداخل»: بررسی فوری بدون انتظار برای debounce
+  document.addEventListener('click', function (event) {
+    var btn = event.target.closest('.js-check-availability-btn');
+    if (!btn) return;
+    var form = btn.closest('form[id^="reservationEditForm"]');
+    if (!form) return;
+    var key = form.dataset.reservationId || 'default';
+    if (availabilityTimers[key]) {
+      clearTimeout(availabilityTimers[key]);
+    }
+    checkEditAvailability(form);
+  });
+
+  // هنگام باز شدن مودال، وضعیت اولیه پاک شود (نه هشدار کاذب)
+  document.addEventListener('shown.bs.modal', function (event) {
+    if (!event.target || !event.target.id || event.target.id.indexOf('editReservationModal') !== 0) return;
+    var form = event.target.querySelector('form[id^="reservationEditForm"]');
+    if (form) {
+      setAvailabilityState(form, null, '');
+      setSubmitDisabled(form, false);
+    }
+  });
 })();
 </script>

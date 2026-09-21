@@ -213,14 +213,31 @@ class CustomerForm(forms.ModelForm):
 
     def clean_bride_phone(self):
         value = normalize_digits(self.cleaned_data.get('bride_phone') or '')
-        if value and len(value) != 11:
-            raise forms.ValidationError('شماره تماس عروس باید دقیقاً 11 رقم باشد.')
+        value = value.replace('-', '').replace(' ', '').strip()
+        if not value:
+            raise forms.ValidationError('شماره تماس عروس الزامی است.')
+        # پیش‌تر فقط طول بررسی می‌شد؛ بنابراین مقداری مثل «not-a-phone» که
+        # دقیقاً ۱۱ کاراکتر است از اعتبارسنجی رد می‌شد. حالا باید همهٔ
+        # کاراکترها رقم باشند.
+        if not value.isdigit():
+            raise forms.ValidationError('شماره تماس عروس باید فقط شامل رقم باشد.')
+        if len(value) != 11:
+            raise forms.ValidationError('شماره تماس عروس باید دقیقاً ۱۱ رقم باشد.')
+        if not value.startswith('0'):
+            raise forms.ValidationError('شماره تماس عروس باید با صفر شروع شود (مثال: 09121234567).')
         return value
 
     def clean_groom_phone(self):
         value = normalize_digits(self.cleaned_data.get('groom_phone') or '')
-        if value and len(value) != 11:
-            raise forms.ValidationError('شماره تماس داماد باید دقیقاً 11 رقم باشد.')
+        value = value.replace('-', '').replace(' ', '').strip()
+        if not value:
+            return ''
+        if not value.isdigit():
+            raise forms.ValidationError('شماره تماس داماد باید فقط شامل رقم باشد.')
+        if len(value) != 11:
+            raise forms.ValidationError('شماره تماس داماد باید دقیقاً ۱۱ رقم باشد.')
+        if not value.startswith('0'):
+            raise forms.ValidationError('شماره تماس داماد باید با صفر شروع شود (مثال: 09121234567).')
         return value
 
     def clean_requested_services(self):

@@ -4,7 +4,7 @@ from io import BytesIO
 from django.contrib import messages
 from django.contrib.auth.mixins import LoginRequiredMixin, UserPassesTestMixin
 from django.db.models.deletion import ProtectedError
-from django.http import Http404, HttpResponse
+from django.http import Http404, HttpResponse, JsonResponse
 from django.shortcuts import get_object_or_404, redirect
 from django.utils.translation import gettext_lazy as _
 from django.urls import reverse_lazy
@@ -12,6 +12,7 @@ from django.views import View
 from django.views.generic import CreateView, DetailView, ListView, UpdateView
 from openpyxl import Workbook
 
+from core.ajax_forms import AjaxFormMixin
 from .forms import DressForm
 from .models import Dress
 from core.pagination import build_pagination_items, build_pagination_url
@@ -202,18 +203,25 @@ def export_products_excel(request):
     return response
 
 
-class DressCreateView(ProductCreatePermissionMixin, CreateView):
+class DressCreateView(AjaxFormMixin, ProductCreatePermissionMixin, CreateView):
     model = Dress
     form_class = DressForm
     template_name = 'products/form.html'
     success_url = reverse_lazy('products:list')
 
+    ajax_success_message = 'محصول با موفقیت ایجاد شد.'
+
     def form_valid(self, form):
         messages.success(self.request, 'محصول با موفقیت ایجاد شد.')
+        # مهم: باید ``super()`` صدا زده شود تا ذخیره‌سازی انجام گیرد؛
+        # ``AjaxFormMixin`` پس از آن پاسخ JSON برمی‌گرداند.
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        print('CREATE ERRORS:', form.errors)
+        # برای درخواست‌های AJAX خطاها JSON برمی‌گردند تا مودال بسته نشود و
+        # کاربر به صفحهٔ کامل فرم هدایت نشود (رفتار قبلی).
+        if self.is_ajax_form_request():
+            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
         messages.error(self.request, 'لطفاً خطاهای فرم را بررسی کنید.')
         return self.render_to_response(self.get_context_data(form=form, form_mode='create'))
 
@@ -224,19 +232,24 @@ class DressCreateView(ProductCreatePermissionMixin, CreateView):
         return context
 
 
-class DressUpdateView(ProductManagerPermissionMixin, UpdateView):
+class DressUpdateView(AjaxFormMixin, ProductManagerPermissionMixin, UpdateView):
     model = Dress
     form_class = DressForm
     template_name = 'products/form.html'
     context_object_name = 'dress'
     success_url = reverse_lazy('products:list')
 
+    ajax_success_message = 'محصول با موفقیت ویرایش شد.'
+
     def form_valid(self, form):
         messages.success(self.request, 'محصول با موفقیت ویرایش شد.')
+        # مثل نمای ایجاد: ذخیره‌سازی در ``super()`` انجام می‌شود و mixin
+        # سپس پاسخ JSON برمی‌گرداند.
         return super().form_valid(form)
 
     def form_invalid(self, form):
-        print('UPDATE ERRORS:', form.errors)
+        if self.is_ajax_form_request():
+            return JsonResponse({'success': False, 'errors': form.errors}, status=400)
         messages.error(self.request, 'لطفاً خطاهای فرم را بررسی کنید.')
         return self.render_to_response(self.get_context_data(form=form, form_mode='update'))
 

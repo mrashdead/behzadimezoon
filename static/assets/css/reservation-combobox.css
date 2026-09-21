@@ -7,8 +7,17 @@
 .combobox-input {
   width: 100%;
   cursor: text;
+  /*
+   * padding-inline-start فضای دکمهٔ «×» را باز می‌کند (سمت start = راست در RTL)
+   * و padding-inline-end باید فضای آیکون را باز کند (سمت end = چپ در RTL).
+   *
+   * ⚠️ پیش‌تر padding-inline-end برابر 1.1rem (≈17.6px) بود، در حالی که
+   * آیکون از 0.75rem شروع می‌شود و حدود 1rem عرض دارد (یعنی تا ≈28px).
+   * در نتیجه هر مقدار طولانی (مثلاً برچسب کامل یک رزرو) زیر آیکون می‌رفت.
+   * اکنون 2.4rem (≈38.4px) است تا آیکون + فاصلهٔ امن را رد کند.
+   */
   padding-inline-start: 3rem;
-  padding-inline-end: 1.1rem;
+  padding-inline-end: 2.4rem;
   transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out, background-color 0.15s ease-in-out;
   border-radius: 0.75rem;
   border: 1px solid var(--bs-border-color);

@@ -252,17 +252,61 @@
   word-break: break-word;
 }
 
-/* Financial dashboard compact tweaks */
-.financial-stat-card .card {
-  border-radius: 12px;
+/* ==========================================================================
+   KPI / Stat Cards
+   ========================================================================== */
+.kpi-card {
+  border-radius: 14px;
+  transition: transform 0.18s ease, box-shadow 0.18s ease, border-color 0.18s ease;
 }
-.financial-stat-card .card-body {
-  padding: 0.7rem 0.9rem;
+.kpi-card:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 0.5rem 1.25rem rgba(15, 23, 42, 0.08) !important;
 }
-.financial-stat-card .avatar {
-  width: 40px !important;
-  height: 40px !important;
-  font-size: 16px !important;
+[data-bs-theme="dark"] .kpi-card:hover {
+  box-shadow: 0 0.5rem 1.25rem rgba(0, 0, 0, 0.45) !important;
+}
+.kpi-card--link:hover {
+  border-color: var(--bs-primary) !important;
+}
+.kpi-card .card-body {
+  padding: 1rem 1.1rem;
+}
+.kpi-card__content {
+  min-width: 0;
+}
+.kpi-card__label {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  line-height: 1.5;
+  letter-spacing: 0.01em;
+}
+.kpi-card__value {
+  font-size: 1.5rem;
+  line-height: 1.2;
+  letter-spacing: -0.01em;
+  word-break: break-word;
+}
+/* آیکون: اندازه از کلاس .avatar می‌آید (۵۰px با گلیف ۲۰px) */
+.kpi-card__icon {
+  box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04);
+}
+[data-bs-theme="dark"] .kpi-card__icon {
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, 0.07);
+}
+.kpi-card__icon .fi {
+  line-height: 1;
+}
+
+/* صفحهٔ مالی کارت‌های بیشتری دارد؛ کمی جمع‌وجمع‌تر */
+.financial-stat-card .kpi-card .card-body {
+  padding: 0.8rem 0.95rem;
+}
+.financial-stat-card .kpi-card__value {
+  font-size: 1.25rem;
+}
+.financial-stat-card .kpi-card__label {
+  font-size: 0.75rem;
 }
 .financial-stats-row .col-lg-3 {
   padding-left: 0.35rem;
@@ -399,11 +443,22 @@
   overflow: hidden;
 }
 
+/*
+ * پوشش جدول‌های عریض:
+ * ``max-width: 100%`` مانع بزرگ شدن wrapper به اندازهٔ min-width ستون‌ها
+ * می‌شود و اسکرول افقی را **داخل همان کارت** نگه می‌دارد.
+ */
 .customer-table-wrap {
+  display: block;
+  width: 100%;
+  max-width: 100%;
   overflow-x: auto;
+  overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
 }
 
 .customer-mobile-table {
+  width: 100%;
   margin-bottom: 0;
 }
 
@@ -420,7 +475,12 @@
   flex-wrap: wrap;
 }
 
-@media (max-width: 767.98px) {
+/*
+ * این جدول با جمع حداقل عرض ستون‌ها حدود ۱۳۸۰px عرض دارد. با وجود سایدبار،
+ * حتی تبلت افقی هم برای آن کافی نیست؛ بنابراین حالت کارت را تا قبل از
+ * breakpoint بزرگ Bootstrap فعال نگه می‌داریم، نه فقط روی موبایل باریک.
+ */
+@media (max-width: 991.98px) {
   .customer-list-card .card-body {
     padding: 0.85rem;
   }
@@ -429,12 +489,22 @@
     display: none;
   }
 
+  /* در حالت کارت دیگر نباید wrapper اسکرول افقی بسازد. */
+  .customer-table-wrap {
+    overflow: visible;
+  }
+
   .customer-mobile-table,
   .customer-mobile-table tbody,
   .customer-mobile-table tr,
   .customer-mobile-table td {
     display: block;
     width: 100%;
+    max-width: 100%;
+  }
+
+  .customer-mobile-table tbody {
+    padding: 0.75rem;
   }
 
   .customer-mobile-table tbody tr {
@@ -449,17 +519,30 @@
   .customer-mobile-table tbody td {
     border: 0 !important;
     padding: 0.55rem 0;
+    min-width: 0 !important;
     white-space: normal;
-    text-align: right;
+    text-align: right !important;
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 0.75rem;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  /* همهٔ مقدارها flex-item هستند؛ بدون min-width:0 رشته‌های بلند (شماره
+     قرارداد، نام مشتری و...) عرض ردیف را از عرض کارت بزرگ‌تر می‌کنند. */
+  .customer-mobile-table tbody td > * {
+    min-width: 0;
+    max-width: calc(100% - 6.5rem);
+    overflow-wrap: anywhere;
+    word-break: break-word;
   }
 
   .customer-mobile-table tbody td::before {
     content: attr(data-label);
-    min-width: 88px;
+    min-width: 5.5rem;
+    max-width: 5.5rem;
     font-weight: 700;
     color: var(--bs-secondary-color);
     flex-shrink: 0;
@@ -473,9 +556,11 @@
     margin-bottom: 0;
   }
 
-  .customer-mobile-table tbody td .table-actions {
-    justify-content: flex-start;
-    width: 100%;
+  .customer-mobile-table tbody td .table-actions,
+  .customer-mobile-table tbody td[data-label="عملیات"] > .dropdown {
+    justify-content: flex-end;
+    width: auto;
+    max-width: calc(100% - 6.5rem);
   }
 }
 
@@ -489,13 +574,30 @@
   background: rgba(255, 255, 255, 0.02);
 }
 
-/* اصلاح تداخل Dropdown در جداول ریسپانسیو */
+/*
+ * ⚠️ قبلاً این‌جا ``overflow: visible !important`` روی تمام
+ * ``.table-responsive``ها اعمال می‌شد. این قانون قابلیت اصلی Bootstrap را
+ * خنثی می‌کرد و جدول عریض رزروها از کارت بیرون می‌زد. حالا رفتار استاندارد
+ * برگردانده شده است؛ فقط جدول‌هایی که واقعاً عریض‌اند در wrapper خودشان
+ * اسکرول می‌شوند و ``customer-mobile-table`` در اندازه‌های کوچک به کارت
+ * تبدیل می‌شود.
+ */
 .table-responsive {
-    overflow: visible !important; /* برای اینکه منوی سه نقطه زیر جدول نرود */
+  display: block;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
 }
 
-@media (max-width: 767.98px) {
-    /* تنظیم جایگاه منوی سه نقطه در حالت کارت موبایل */
+@media (max-width: 991.98px) {
+    /* در حالت کارت اسکرول افقی لازم نیست و منوی سه‌نقطه هم نباید بریده شود.
+       این selector عمداً از قانون عمومی .table-responsive اختصاصی‌تر است. */
+    .table-responsive.customer-table-wrap {
+        overflow: visible;
+    }
+
+    /* تنظیم جایگاه منوی سه نقطه در حالت کارت موبایل/تبلت */
     .customer-mobile-table tbody td[data-label="عملیات"] {
         justify-content: space-between;
         align-items: center;
@@ -528,4 +630,260 @@
 .wizard-step.active-step {
     opacity: 1;
     transform: translateX(0);
+}
+
+/* ==========================================================================
+   Detail Cards — خانه‌های «برچسب / مقدار» در مودال‌های جزئیات
+   ========================================================================== */
+.detail-card {
+  background-color: var(--bs-tertiary-bg);
+  border-radius: 12px;
+  transition: background-color 0.18s ease;
+}
+.detail-card .card-body {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.detail-card__label {
+  font-size: 0.75rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  line-height: 1.5;
+}
+.detail-card__value {
+  font-size: 0.9375rem;
+  font-weight: 600;
+  line-height: 1.6;
+  word-break: break-word;
+}
+.detail-card__value--amount {
+  font-size: 1.0625rem;
+  font-variant-numeric: tabular-nums;
+  padding-top: 0.4rem;
+  border-top: 1px dashed var(--bs-border-color);
+}
+.detail-card--primary .detail-card__value { color: var(--bs-primary); }
+.detail-card--success .detail-card__value { color: var(--bs-success); }
+.detail-card--danger  .detail-card__value { color: var(--bs-danger); }
+.detail-card--warning .detail-card__value { color: var(--bs-warning); }
+.detail-card--info    .detail-card__value { color: var(--bs-info); }
+
+/* ==========================================================================
+   کمکی‌ها (کلاس‌هایی که در قالب‌ها استفاده شده ولی تعریف نداشتند)
+   ========================================================================== */
+.bg-body-tertiary-subtle {
+  background-color: var(--bs-tertiary-bg);
+}
+
+/* Bootstrap این کلاس را به‌صورت پیش‌فرض ندارد ولی در قالب‌ها لازم است
+   (برای اینکه متن بلند داخل flex باعث سرریز نشود) */
+.min-w-0 {
+  min-width: 0 !important;
+}
+
+/* ==========================================================================
+   جمع‌وجمع‌تر کردن جدول‌های داخل کارت در داشبورد
+   ========================================================================== */
+.card .table.table-row-rounded > :not(caption) > * > * {
+  background-color: transparent;
+}
+
+
+/* ==========================================================================
+   سربرگ صفحه (page-head-card)
+   یک کارت سبک که عنوان صفحه، توضیح و دکمه‌های اقدام را کنار هم می‌گذارد.
+   ========================================================================== */
+.page-head-card {
+  border-radius: 16px;
+  background-image: linear-gradient(
+    120deg,
+    rgba(var(--bs-primary-rgb), 0.06) 0%,
+    rgba(var(--bs-primary-rgb), 0) 55%
+  );
+}
+.page-head-card .avatar {
+  box-shadow: inset 0 0 0 1px rgba(var(--bs-primary-rgb), 0.18);
+}
+
+/* ==========================================================================
+   کارت بخش‌بندی‌شده (section-card)
+   ========================================================================== */
+.section-card {
+  border-radius: 16px;
+}
+.section-card > .card-header {
+  border-top-left-radius: 16px;
+  border-top-right-radius: 16px;
+}
+.section-card__icon {
+  box-shadow: inset 0 0 0 1px rgba(var(--bs-primary-rgb), 0.16);
+}
+.section-card__action {
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
+   جعبهٔ نمودار (chart-box)
+   ارتفاع حداقلی می‌دهد تا ApexCharts پیش از رندر فضای کافی داشته باشد و
+   هنگام تغییر تم/نوع نمودار صفحه نلرزد.
+   ========================================================================== */
+.chart-box {
+  min-height: 330px;
+  width: 100%;
+}
+.chart-box--sm {
+  min-height: 230px;
+}
+.chart-card .card-body {
+  padding-bottom: 0.75rem;
+}
+
+/* ==========================================================================
+   حالت خالی (empty-state)
+   ========================================================================== */
+.empty-state {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  color: var(--bs-secondary-color);
+  text-align: center;
+}
+.empty-state__icon {
+  font-size: 1.75rem;
+  line-height: 1;
+  opacity: 0.7;
+}
+.empty-state p {
+  font-size: 0.8125rem;
+}
+
+/* ==========================================================================
+   بخش‌های خلاصهٔ مالی (partial مالی که داخل مودال بارگذاری می‌شود)
+   ==========================================================================
+   این partial داخل یک کارت ریشه رندر می‌شود. اگر هر بخش را هم داخل کارت
+   دیگری بگذاریم، به «کارت داخل کارت داخل کارت» می‌رسیم و مرزها محو می‌شوند.
+   به‌جای آن، بخش‌ها را با یک جداکنندهٔ بالایی از هم تفکیک می‌کنیم.
+   ========================================================================== */
+.fin-section + .fin-section {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--bs-border-color-translucent);
+}
+.fin-section__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-bottom: 0.85rem;
+}
+.fin-section__title {
+  font-size: 0.9375rem;
+  font-weight: 700;
+  margin-bottom: 0;
+}
+.fin-tile {
+  border: 1px solid var(--bs-border-color-translucent);
+  border-radius: var(--bs-border-radius-lg);
+  height: 100%;
+}
+.fin-tile > .fin-tile__head {
+  padding: 0.55rem 0.85rem;
+  border-bottom: 1px solid var(--bs-border-color-translucent);
+  font-size: 0.8125rem;
+  font-weight: 700;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.fin-tile > .fin-tile__body {
+  padding: 0.85rem;
+}
+
+/* دکمه‌هایی که فعلاً غیرفعالند. پیش‌تر با style درون‌خطی اعمال می‌شد
+   (``style="opacity: 0.65; cursor: not-allowed;"``) که هم تکرار می‌شد و هم
+   قابل نگهداری نبود. رفتار کلیک دست‌نخورده است: خود دکمه ``disabled``
+   نیست، بنابراین جاوااسکریپت کلیک را می‌گیرد و پیام «موقتا غیر فعال» را
+   نشان می‌دهد. */
+.temporarily-disabled-action {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+/* ==========================================================================
+   صفحهٔ گزارش‌های عملیاتی
+   ==========================================================================
+   پیش‌تر این استایل‌ها به‌صورت درون‌خطی داخل ``templates/reports/index.html``
+   بودند و رنگ ثابت روشن داشتند (``#ffffff``، ``#f8fafc``، ``#64748b``). در
+   حالت تاریک نتیجه، کارت‌های سفید روی پس‌زمینهٔ تیره بود. اکنون همه بر پایهٔ
+   متغیرهای تم نوشته شده‌اند.
+   ========================================================================== */
+.report-kpi {
+  border: 1px solid var(--bs-border-color-translucent);
+  background-image: linear-gradient(
+    135deg,
+    rgba(var(--bs-primary-rgb, 13, 110, 253), 0.06) 0%,
+    rgba(var(--bs-primary-rgb, 13, 110, 253), 0) 60%
+  );
+}
+.report-table thead th {
+  font-size: 0.78rem;
+  letter-spacing: 0.01em;
+  color: var(--bs-secondary-color);
+  font-weight: 700;
+  background-color: var(--bs-tertiary-bg);
+}
+
+/* ناوبری درون‌صفحه‌ای گزارش‌ها (لنگرهای عملیاتی/مالی/مشتری/ریسک) */
+.report-nav .nav-link {
+  font-size: 0.8125rem;
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  border-radius: var(--bs-border-radius);
+}
+.report-nav .nav-link:hover {
+  color: var(--bs-primary);
+  background-color: var(--bs-tertiary-bg);
+}
+/* فاصلهٔ لنگر تا لبه تا سربرگ چسبان روی عنوان نیفتد */
+.report-anchor {
+  scroll-margin-top: 5.5rem;
+}
+
+/* ==========================================================================
+   اصلاح کلاس‌های minw-* بی‌اثر
+   تم فقط مضرب‌های ۲۵ پیکسل را دارد (minw-50px، minw-75px، …). برای اینکه
+   قالب‌ها بتوانند از مضرب‌های دیگر هم استفاده کنند، این‌ها را تعریف می‌کنیم.
+   با ``python manage.py check_theme_classes`` قابل بازبینی است.
+   ========================================================================== */
+.minw-20px  { min-width: 20px  !important; }
+.minw-60px  { min-width: 60px  !important; }
+.minw-90px  { min-width: 90px  !important; }
+.minw-120px { min-width: 120px !important; }
+.minw-130px { min-width: 130px !important; }
+.minw-140px { min-width: 140px !important; }
+.minw-160px { min-width: 160px !important; }
+.minw-170px { min-width: 170px !important; }
+.minw-180px { min-width: 180px !important; }
+.minw-190px { min-width: 190px !important; }
+.minw-220px { min-width: 220px !important; }
+
+/* ==========================================================================
+   حالت تاریک — تنظیمات تکمیلی کارت‌های شاخص
+   ========================================================================== */
+[data-bs-theme="dark"] .page-head-card {
+  background-image: linear-gradient(
+    120deg,
+    rgba(var(--bs-primary-rgb), 0.14) 0%,
+    rgba(var(--bs-primary-rgb), 0) 55%
+  );
+}
+[data-bs-theme="dark"] .kpi-card {
+  border: 1px solid rgba(255, 255, 255, 0.06);
+}
+[data-bs-theme="dark"] .detail-card {
+  border: 1px solid rgba(255, 255, 255, 0.06);
 }

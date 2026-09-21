@@ -1,6 +1,22 @@
 {% extends 'base.html' %}
-{% load humanize %}
 {% load static %}
+{% comment %}
+صفحهٔ گزارش‌های عملیاتی
+--------------------------------------------------------------------------
+بازنویسی‌شده با سیستم طراحی پروژه:
+  • استایل‌های درون‌خطی حذف و به ``static/assets/css/custom.css`` منتقل شدند.
+    نسخهٔ قبلی رنگ ثابت روشن داشت (``#ffffff`` / ``#f8fafc`` / ``#64748b``)
+    و در حالت تاریک کارت‌های سفید روی پس‌زمینهٔ تیره می‌داد.
+  • ``{% load humanize %}`` حذف شد چون هیچ فیلتر humanize استفاده نمی‌شد.
+  • لنگرهای ناوبری (``#operational``/``#financial``/``#customers``/``#risk``)
+    اکنون هر چهار تا واقعاً در صفحه وجود دارند. پیش‌تر ``id="financial"``
+    هیچ‌جا نبود و تب «مالی» به هیچ‌کجا نمی‌رفت؛ ``report_tabs`` هم در ویو
+    ساخته می‌شد ولی هرگز رندر نمی‌شد.
+  • نمودارها: روند (دو محور مستقل)، توزیع وضعیت، ترکیب مالی، لباس‌های
+    پرفروش و درآمد فروشندگان. پیش‌تر فقط یک نمودار خطی وجود داشت که
+    «درآمد» (میلیونی) و «تعداد رزرو» (تک‌رقمی) را روی یک محور می‌کشید و خط
+    رزروها عملاً روی صفر می‌چسبید و دیده نمی‌شد.
+{% endcomment %}
 
 {% block title %}{{ page_title }}{% endblock %}
 
@@ -10,247 +26,42 @@
 {% endblock %}
 
 {% block content %}
-<style>
-  .report-panel { border: 0; border-radius: 1rem; box-shadow: 0 0.15rem 0.9rem rgba(15, 23, 42, 0.06); }
-  .report-kpi { border-radius: 1rem; border: 1px solid rgba(148, 163, 184, 0.18); background: linear-gradient(135deg, #ffffff 0%, #f8fafc 100%); }
 
-  .report-table thead th { font-size: 0.78rem; letter-spacing: 0.01em; color: #64748b; font-weight: 700; }
-  .report-empty { padding: 1rem; border-radius: 0.8rem; background: #f8fafc; color: #64748b; text-align: center; }
-</style>
-
-<div class="d-flex flex-column flex-lg-row justify-content-between gap-3 mb-4">
-  <div>
-    <h1 class="h4 mb-2">خلاصه عملکرد و گزارش‌های مدیریتی</h1>
-    <p class="text-muted mb-0">نمایی سریع از وضعیت رزروها، درآمد، مانده‌ها و تحلیل‌های مالی در یک بازه زمانی مشخص.</p>
-  </div>
-  <div class="d-flex flex-wrap gap-2 align-items-center">
-    <a class="btn btn-primary btn-sm" href="{% url 'reports:export_excel' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">خروجی اکسل</a>
-    <a class="btn btn-outline-primary btn-sm" href="{% url 'reports:export_excel' %}?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}report_type=details">جزئیات رزروها</a>
-    <a class="btn btn-outline-primary btn-sm" href="{% url 'reports:export_excel' %}?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}report_type=top_customers">مشتریان پرتکرار</a>
-    <a class="btn btn-outline-primary btn-sm" href="{% url 'reports:export_excel' %}?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}report_type=top_products">لباس‌های پرفروش</a>
-    <a class="btn btn-outline-primary btn-sm" href="{% url 'reports:export_excel' %}?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}report_type=issues">لغو/بازپرداخت/خسارت</a>
-  </div>
-</div>
-
-<div class="card border-0 shadow-sm rounded-4 mb-4 report-panel">
-  <div class="card-body">
-    <div class="d-flex flex-column flex-lg-row justify-content-between gap-3">
-      <div>
-        <h5 class="mb-1">فیلتر گزارش</h5>
-        <p class="text-muted small mb-0">بازه زمانی، فروشنده، مشتری، لباس و وضعیت رزرو را برای دیدن داده‌های دقیق انتخاب کنید.</p>
+{# ================= سربرگ صفحه ================= #}
+<div class="card border-0 shadow-sm mb-4 page-head-card">
+  <div class="card-body d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+    <div class="d-flex align-items-center gap-3 min-w-0">
+      <span class="avatar avatar-lg rounded-3 bg-primary-subtle text-primary flex-shrink-0">
+        <i class="fi fi-rr-file-chart-line"></i>
+      </span>
+      <div class="min-w-0">
+        <h1 class="h4 mb-1">خلاصه عملکرد و گزارش‌های مدیریتی</h1>
+        <p class="text-muted text-2xs mb-0">
+          نمایی سریع از وضعیت رزروها، درآمد، مانده‌ها و تحلیل‌های مالی در یک بازهٔ زمانی مشخص.
+        </p>
       </div>
     </div>
-
-    <form method="get" class="row g-3 mt-2 align-items-end" id="reportFilterForm">
-      <div class="col-md-3">
-        <label class="form-label small text-muted">از تاریخ</label>
-        <input type="text" class="form-control form-control-sm p-date-only" id="dateFromInput" name="date_from" value="{{ date_from_value }}" placeholder="انتخاب تاریخ شروع" autocomplete="off">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small text-muted">تا تاریخ</label>
-        <input type="text" class="form-control form-control-sm p-date-only" id="dateToInput" name="date_to" value="{{ date_to_value }}" placeholder="انتخاب تاریخ پایان" autocomplete="off">
-      </div>
-      <div class="col-md-3">
-        <label class="form-label small text-muted">فروشنده</label>
-        <select class="form-select form-select-sm" name="seller_id">
-          <option value="">همه</option>
-          {% for seller in sellers %}
-          <option value="{{ seller.id }}" {% if filters.seller_id == seller.id|stringformat:'s' %}selected{% endif %}>{{ seller.get_full_name|default:seller.username }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-2">
-        <label class="form-label small text-muted">مشتری</label>
-        <select class="form-select form-select-sm" name="customer_id">
-          <option value="">همه</option>
-          {% for customer in customers %}
-          <option value="{{ customer.id }}" {% if filters.customer_id == customer.id|stringformat:'s' %}selected{% endif %}>{{ customer }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-2">
-        <label class="form-label small text-muted">لباس</label>
-        <select class="form-select form-select-sm" name="dress_id">
-          <option value="">همه</option>
-          {% for dress in dresses %}
-          <option value="{{ dress.id }}" {% if filters.dress_id == dress.id|stringformat:'s' %}selected{% endif %}>{{ dress.code }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-2">
-        <label class="form-label small text-muted">وضعیت رزرو</label>
-        <select class="form-select form-select-sm" name="status">
-          <option value="">همه</option>
-          {% for key, label in statuses %}
-          <option value="{{ key }}" {% if filters.status == key %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-2">
-        <label class="form-label small text-muted">روش پرداخت</label>
-        <select class="form-select form-select-sm" name="payment_method">
-          <option value="">همه</option>
-          {% for key, label in payment_methods %}
-          <option value="{{ key }}" {% if filters.payment_method == key %}selected{% endif %}>{{ label }}</option>
-          {% endfor %}
-        </select>
-      </div>
-      <div class="col-md-4">
-        <div class="d-flex flex-wrap gap-2">
-          <button class="btn btn-primary btn-sm" type="submit">اعمال فیلتر</button>
-          <a class="btn btn-outline-secondary btn-sm" href="{{ reset_url }}">بازنشانی فیلتر</a>
-        </div>
-      </div>
-    </form>
-
-    <div class="d-flex flex-wrap gap-2 mt-3">
-      {% for preset in date_presets %}
-      <a class="btn btn-sm btn-light" href="{{ preset.url }}">{{ preset.label }}</a>
-      {% endfor %}
-    </div>
-
-    {% if active_filter_labels %}
-    <div class="d-flex flex-wrap gap-2 mt-3">
-      {% for label in active_filter_labels %}
-      <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">{{ label }}</span>
-      {% endfor %}
-    </div>
-    {% endif %}
-  </div>
-</div>
-
-<div class="row g-3 mb-4" id="operational">
-  <div class="col-xl-2 col-md-4 col-sm-6">
-    <div class="card border-0 h-100 rounded-4 report-kpi">
-      <div class="card-body bg-body">
-        <div class="d-flex justify-content-between align-items-start mb-3">
-          <div class="avatar avatar-sm bg-primary-subtle text-primary-emphasis rounded-circle">
-            <i class="fi fi-rr-file-chart-line"></i>
-          </div>
-          <span class="small text-muted">این ماه</span>
-        </div>
-        <div class="text-muted small">{{ summary.period_title }}</div>
-        <div class="h5 fw-bold mt-2">{{ summary.month_revenue|ir_currency }} تومان</div>
-        <div class="small text-success mt-1">{{ summary.period_label }}</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-xl-2 col-md-4 col-sm-6">
-    <div class="card border-0 h-100 rounded-4 report-kpi">
-      <div class="card-body bg-body">
-        <div class="d-flex justify-content-between align-items-start mb-3">
-          <div class="avatar avatar-sm bg-success-subtle text-success-emphasis rounded-circle">
-            <i class="fi fi-rr-shopping-bag"></i>
-          </div>
-          <span class="small text-muted">در جریان</span>
-        </div>
-        <div class="text-muted small">رزروهای فعال</div>
-        <div class="h5 fw-bold mt-2">{{ summary.active_reservations }}</div>
-        <div class="small text-muted mt-1">رزروهای قطعی، تحویل‌داده‌شده و آماده</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-xl-2 col-md-4 col-sm-6">
-    <div class="card border-0 h-100 rounded-4 report-kpi">
-      <div class="card-body bg-body">
-        <div class="d-flex justify-content-between align-items-start mb-3">
-          <div class="avatar avatar-sm bg-warning-subtle text-warning-emphasis rounded-circle">
-            <i class="fi fi-rr-exclamation"></i>
-          </div>
-          <span class="small text-muted">نرخ لغو</span>
-        </div>
-        <div class="text-muted small">لغوها</div>
-        <div class="h5 fw-bold mt-2">{{ summary.cancelled_reservations }}</div>
-        <div class="small text-muted mt-1">نرخ لغو: {{ analysis.cancellation_rate|floatformat:1 }}٪</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-xl-2 col-md-4 col-sm-6">
-    <div class="card border-0 h-100 rounded-4 report-kpi">
-      <div class="card-body bg-body">
-        <div class="d-flex justify-content-between align-items-start mb-3">
-          <div class="avatar avatar-sm bg-danger-subtle text-danger-emphasis rounded-circle">
-            <i class="fi fi-rr-undo"></i>
-          </div>
-          <span class="small text-muted">بازپرداخت</span>
-        </div>
-        <div class="text-muted small">بازپرداخت‌های ثبت‌شده</div>
-        <div class="h5 fw-bold mt-2">{{ summary.refund_cases }}</div>
-        <div class="small text-muted mt-1">{{ summary.refund_amount|ir_currency }} تومان</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-xl-2 col-md-4 col-sm-6">
-    <div class="card border-0 h-100 rounded-4 report-kpi">
-      <div class="card-body bg-body">
-        <div class="d-flex justify-content-between align-items-start mb-3">
-          <div class="avatar avatar-sm bg-purple-subtle text-purple-emphasis rounded-circle">
-            <i class="fi fi-ss-siren-on"></i>
-          </div>
-          <span class="small text-muted">خسارت و جریمه</span>
-        </div>
-        <div class="text-muted small">خسارت و جریمه</div>
-        <div class="h5 fw-bold mt-2">{{ summary.damage_penalty_total|ir_currency }} تومان</div>
-        <div class="small text-muted mt-1">جمع خسارت و جریمه‌های ثبت‌شده</div>
-      </div>
-    </div>
-  </div>
-  <div class="col-xl-2 col-md-4 col-sm-6">
-    <div class="card border-0 h-100 rounded-4 report-kpi">
-      <div class="card-body bg-body">
-        <div class="d-flex justify-content-between align-items-start mb-3">
-          <div class="avatar avatar-sm bg-info-subtle text-info-emphasis rounded-circle">
-            <i class="fi fi-rr-star"></i>
-          </div>
-          <span class="small text-muted">پرفروش</span>
-        </div>
-        <div class="text-muted small">پرفروش‌ترین لباس و مشتری</div>
-        <div class="h6 fw-bold mt-2">{{ summary.top_dress_label }}</div>
-        <div class="small text-muted mt-1">{{ summary.top_customer_label }}</div>
-      </div>
-    </div>
-  </div>
-</div>
-
-<div class="row g-3 mb-4" id="customers">
-  <div class="col-lg-6">
-    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
-      <div class="card-header bg-body border-bottom py-3">
-        <div class="d-flex justify-content-between align-items-center">
-          <div>
-            <h6 class="mb-0">روند درآمد و رزرو</h6>
-            <div class="small text-muted">نمودار روزانه‌ی درآمد و تعداد رزروهای ثبت‌شده در بازه انتخابی.</div>
-          </div>
-        </div>
-      </div>
-      <div class="card-body bg-body">
-        <div id="reportsTrendChart" style="min-height:320px"></div>
-      </div>
-    </div>
-  </div>
-  <div class="col-lg-4">
-    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
-      <div class="card-header bg-body border-bottom py-3">
-        <h6 class="mb-0">وضعیت رزروها در بازه انتخابی</h6>
-        <div class="small text-muted">جمع‌بندی کوتاه از روند لغو، خسارت و میانگین‌های مرتبط.</div>
-      </div>
-      <div class="card-body bg-body">
-        <ul class="list-group list-group-flush">
-          <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
-            <span>لغوها</span>
-            <span class="fw-bold">{{ analysis.cancellation_trend }}</span>
+    <div class="d-flex flex-wrap gap-2 flex-shrink-0">
+      <a class="btn btn-primary btn-sm" href="{% url 'reports:export_excel' %}{% if request.GET.urlencode %}?{{ request.GET.urlencode }}{% endif %}">
+        <i class="fi fi-rr-file-excel me-1"></i>خروجی اکسل
+      </a>
+      <div class="dropdown">
+        <button class="btn btn-outline-primary btn-sm dropdown-toggle" type="button"
+                data-bs-toggle="dropdown" aria-expanded="false">
+          <i class="fi fi-rr-download me-1"></i>گزارش‌های تفصیلی
+        </button>
+        <ul class="dropdown-menu dropdown-menu-end rounded-3">
+          <li>
+            <a class="dropdown-item" href="{% url 'reports:export_excel' %}?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}report_type=details">جزئیات رزروها</a>
           </li>
-          <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
-            <span>خسارت‌ها</span>
-            <span class="fw-bold">{{ analysis.damage_trend }}</span>
+          <li>
+            <a class="dropdown-item" href="{% url 'reports:export_excel' %}?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}report_type=top_customers">مشتریان پرتکرار</a>
           </li>
-          <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
-            <span>میانگین بازپرداخت</span>
-            <span class="fw-bold">{{ analysis.avg_refund|ir_currency }} تومان</span>
+          <li>
+            <a class="dropdown-item" href="{% url 'reports:export_excel' %}?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}report_type=top_products">لباس‌های پرفروش</a>
           </li>
-          <li class="list-group-item px-0 d-flex justify-content-between align-items-center">
-            <span>میانگین جریمه</span>
-            <span class="fw-bold">{{ analysis.avg_penalty|ir_currency }} تومان</span>
+          <li>
+            <a class="dropdown-item" href="{% url 'reports:export_excel' %}?{% if request.GET.urlencode %}{{ request.GET.urlencode }}&{% endif %}report_type=issues">لغو / بازپرداخت / خسارت</a>
           </li>
         </ul>
       </div>
@@ -258,19 +69,254 @@
   </div>
 </div>
 
-<div class="row g-3 mb-4">
-  <div class="col-lg-6">
-    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
-      <div class="card-header bg-body border-bottom py-3 d-flex justify-content-between align-items-center">
-        <div>
-          <h6 class="mb-0">ترکیب درآمد، وصولی و مانده</h6>
-          <div class="small text-muted">مروری بر جریان نقدی، بازپرداخت‌ها و مانده‌ی قابل دریافت.</div>
+{# ================= فیلترها ================= #}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-transparent border-bottom py-3">
+    <div class="d-flex align-items-center gap-2 min-w-0">
+      <span class="avatar avatar-xs rounded-3 bg-info-subtle text-info flex-shrink-0">
+        <i class="fi fi-rr-filter"></i>
+      </span>
+      <div class="min-w-0">
+        <h6 class="mb-0">فیلتر گزارش</h6>
+        <p class="text-muted text-2xs mb-0">
+          بازهٔ زمانی، فروشنده، مشتری، لباس و وضعیت رزرو را برای دیدن داده‌های دقیق انتخاب کنید.
+        </p>
+      </div>
+    </div>
+  </div>
+
+  <div class="card-body">
+    <form method="get" class="row g-3 align-items-end" id="reportFilterForm">
+      <div class="col-md-3">
+        <label class="form-label" for="dateFromInput">از تاریخ</label>
+        <input type="text" class="form-control form-control-sm p-date-only" id="dateFromInput"
+               name="date_from" value="{{ date_from_value }}" placeholder="انتخاب تاریخ شروع" autocomplete="off">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="dateToInput">تا تاریخ</label>
+        <input type="text" class="form-control form-control-sm p-date-only" id="dateToInput"
+               name="date_to" value="{{ date_to_value }}" placeholder="انتخاب تاریخ پایان" autocomplete="off">
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="reportSeller">فروشنده</label>
+        <select class="form-select form-select-sm" name="seller_id" id="reportSeller">
+          <option value="">همه</option>
+          {% for seller in sellers %}
+            <option value="{{ seller.id }}" {% if filters.seller_id == seller.id|stringformat:'s' %}selected{% endif %}>{{ seller.get_full_name|default:seller.username }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="reportCustomer">مشتری</label>
+        <select class="form-select form-select-sm" name="customer_id" id="reportCustomer">
+          <option value="">همه</option>
+          {% for customer in customers %}
+            <option value="{{ customer.id }}" {% if filters.customer_id == customer.id|stringformat:'s' %}selected{% endif %}>{{ customer }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="reportDress">لباس</label>
+        <select class="form-select form-select-sm" name="dress_id" id="reportDress">
+          <option value="">همه</option>
+          {% for dress in dresses %}
+            <option value="{{ dress.id }}" {% if filters.dress_id == dress.id|stringformat:'s' %}selected{% endif %}>{{ dress.code }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="reportStatus">وضعیت رزرو</label>
+        <select class="form-select form-select-sm" name="status" id="reportStatus">
+          <option value="">همه</option>
+          {% for key, label in statuses %}
+            <option value="{{ key }}" {% if filters.status == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <label class="form-label" for="reportPaymentMethod">روش پرداخت</label>
+        <select class="form-select form-select-sm" name="payment_method" id="reportPaymentMethod">
+          <option value="">همه</option>
+          {% for key, label in payment_methods %}
+            <option value="{{ key }}" {% if filters.payment_method == key %}selected{% endif %}>{{ label }}</option>
+          {% endfor %}
+        </select>
+      </div>
+      <div class="col-md-3">
+        <div class="d-flex flex-wrap gap-2">
+          <button class="btn btn-primary btn-sm" type="submit">
+            <i class="fi fi-rr-search me-1"></i>اعمال فیلتر
+          </button>
+          <a class="btn btn-outline-secondary btn-sm" href="{{ reset_url }}">
+            <i class="fi fi-rr-refresh me-1"></i>بازنشانی
+          </a>
         </div>
       </div>
-      <div class="card-body bg-body p-0">
+    </form>
+
+    <div class="d-flex flex-wrap gap-2 mt-3">
+      <span class="text-muted text-2xs align-self-center me-1">بازه‌های آماده:</span>
+      {% for preset in date_presets %}
+        <a class="btn btn-sm btn-light" href="{{ preset.url }}">{{ preset.label }}</a>
+      {% endfor %}
+    </div>
+
+    {% if active_filter_labels %}
+      <div class="alert alert-info d-flex flex-wrap align-items-center gap-2 mt-3 mb-0" role="alert">
+        <i class="fi fi-rr-filter"></i>
+        <span class="text-2xs">فیلترهای فعال:</span>
+        {% for label in active_filter_labels %}
+          <span class="badge rounded-pill bg-primary-subtle text-primary">{{ label }}</span>
+        {% endfor %}
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ================= ناوبری درون‌صفحه‌ای ================= #}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-body py-2">
+    <ul class="nav nav-pills report-nav gap-1 flex-nowrap overflow-auto">
+      {% for tab in report_tabs %}
+        <li class="nav-item">
+          <a class="nav-link py-2 px-3" href="{{ tab.href }}">
+            <i class="fi fi-rr-{% if forloop.counter == 1 %}chart-histogram{% elif forloop.counter == 2 %}coins{% elif forloop.counter == 3 %}users-alt{% else %}triangle-warning{% endif %} me-1"></i>{{ tab.label }}
+          </a>
+        </li>
+      {% endfor %}
+    </ul>
+  </div>
+</div>
+
+{# ================= شاخص‌های عملیاتی ================= #}
+<div class="row g-2 mb-4 report-anchor" id="operational">
+  {% include 'partials/_stat_card.html' with icon='fi-rr-file-chart-line' label='درآمد کل بازهٔ انتخابی' value=summary.total_income badge_type='primary' icon_size='sm' footer_text=summary.income_breakdown_label col_class='col-xl-2 col-md-4 col-sm-6' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-plus' label='درآمدهای جانبی' value=summary.side_income_total badge_type='info' icon_size='sm' footer_text=summary.side_income_label col_class='col-xl-2 col-md-4 col-sm-6' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-shopping-bag' label='رزروهای فعال' value=summary.active_reservations badge_type='success' icon_size='sm' footer_text='قطعی، تحویل‌شده و آماده' col_class='col-xl-2 col-md-4 col-sm-6' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-exclamation' label='لغوها' value=summary.cancelled_reservations badge_type='warning' icon_size='sm' footer_text=analysis.cancellation_rate_label col_class='col-xl-2 col-md-4 col-sm-6' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-undo' label='بازپرداخت‌های ثبت‌شده' value=summary.refund_cases badge_type='danger' icon_size='sm' footer_text=analysis.avg_refund_label col_class='col-xl-2 col-md-4 col-sm-6' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-siren-on' label='خسارت و جریمه' value=summary.damage_penalty_total badge_type='warning' icon_size='sm' footer_text='جمع خسارت و جریمه‌های ثبت‌شده' col_class='col-xl-2 col-md-4 col-sm-6' %}
+
+  {# کارت متنی «پرفروش»: مقدارش عدد نیست، پس با ``number-display`` رندر نمی‌شود #}
+  <div class="col-xl-2 col-md-4 col-sm-6 financial-stat-card">
+    <div class="card h-100 border-0 shadow-sm kpi-card">
+      <div class="card-body d-flex align-items-start justify-content-between gap-3">
+        <div class="kpi-card__content flex-grow-1">
+          <p class="kpi-card__label text-muted mb-2">پرفروش‌ترین لباس</p>
+          <h6 class="fw-bold mb-1 text-truncate" title="{{ summary.top_dress_label }}">{{ summary.top_dress_label }}</h6>
+          <p class="text-muted text-3xs mb-0 text-truncate" title="{{ summary.top_customer_label }}">
+            {{ summary.top_customer_label }}
+          </p>
+        </div>
+        <span class="avatar avatar-sm rounded-3 flex-shrink-0 kpi-card__icon bg-info-subtle text-info">
+          <i class="fi fi-rr-star"></i>
+        </span>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ================= مالی: روند + وضعیت ================= #}
+<div class="row g-3 mb-4 report-anchor" id="financial">
+  <div class="col-xl-8">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent border-bottom py-3">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div class="d-flex align-items-center gap-2 min-w-0">
+            <span class="avatar avatar-xs rounded-3 bg-primary-subtle text-primary flex-shrink-0">
+              <i class="fi fi-rr-chart-line-up"></i>
+            </span>
+            <div class="min-w-0">
+              <h6 class="mb-0">روند درآمد و تعداد رزرو</h6>
+              <p class="text-muted text-2xs mb-0">درآمد روی محور راست و تعداد رزرو روی محور چپ خوانده می‌شود.</p>
+            </div>
+          </div>
+          <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ summary.period_label }}</span>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="reportsTrendChart" class="chart-box"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-4">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent border-bottom py-3">
+        <div class="d-flex align-items-center gap-2 min-w-0">
+          <span class="avatar avatar-xs rounded-3 bg-info-subtle text-info flex-shrink-0">
+            <i class="fi fi-rr-chart-pie-alt"></i>
+          </span>
+          <div class="min-w-0">
+            <h6 class="mb-0">توزیع وضعیت رزروها</h6>
+            <p class="text-muted text-2xs mb-0">سهم هر وضعیت در بازهٔ انتخابی.</p>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="reportsStatusChart" class="chart-box chart-box--sm"></div>
+
+        <ul class="list-group list-group-flush border-top pt-2 mt-2">
+          <li class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+            <span class="text-2xs">روند لغوها</span>
+            <span class="fw-semibold text-2xs">{{ analysis.cancellation_trend }}</span>
+          </li>
+          <li class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+            <span class="text-2xs">روند خسارت‌ها</span>
+            <span class="fw-semibold text-2xs">{{ analysis.damage_trend }}</span>
+          </li>
+          <li class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+            <span class="text-2xs">میانگین بازپرداخت</span>
+            <span class="fw-semibold text-2xs">{{ analysis.avg_refund|ir_currency }} تومان</span>
+          </li>
+          <li class="list-group-item px-0 py-2 d-flex justify-content-between align-items-center">
+            <span class="text-2xs">میانگین جریمه</span>
+            <span class="fw-semibold text-2xs">{{ analysis.avg_penalty|ir_currency }} تومان</span>
+          </li>
+        </ul>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ================= مالی: ترکیب + جدول تفصیلی ================= #}
+<div class="row g-3 mb-4">
+  <div class="col-xl-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent border-bottom py-3">
+        <div class="d-flex align-items-center gap-2 min-w-0">
+          <span class="avatar avatar-xs rounded-3 bg-success-subtle text-success flex-shrink-0">
+            <i class="fi fi-rr-chart-histogram"></i>
+          </span>
+          <div class="min-w-0">
+            <h6 class="mb-0">ترکیب درآمد، وصولی و مانده</h6>
+            <p class="text-muted text-2xs mb-0">مقایسهٔ شاخص‌های مالی بازهٔ انتخابی (تومان).</p>
+          </div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div id="reportsFinancialChart" class="chart-box"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="col-xl-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent border-bottom py-3">
+        <div class="d-flex align-items-center gap-2 min-w-0">
+          <span class="avatar avatar-xs rounded-3 bg-primary-subtle text-primary flex-shrink-0">
+            <i class="fi fi-rr-receipt"></i>
+          </span>
+          <div class="min-w-0">
+            <h6 class="mb-0">جزئیات شاخص‌های مالی</h6>
+            <p class="text-muted text-2xs mb-0">همان مقادیر نمودار، همراه با توضیح هر شاخص.</p>
+          </div>
+        </div>
+      </div>
+      <div class="card-body p-0">
         <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0">
-            <thead class="table-light">
+          <table class="table table-sm table-row-rounded align-middle mb-0 report-table">
+            <thead>
               <tr>
                 <th>شاخص</th>
                 <th class="text-end">مقدار</th>
@@ -278,15 +324,24 @@
             </thead>
             <tbody>
               {% for row in financial_rows %}
-              <tr>
-                <td>
-                  <div class="fw-semibold">{{ row.label }}</div>
-                  <div class="small text-muted">{{ row.hint }}</div>
-                </td>
-                <td class="text-end fw-semibold">{{ row.value|ir_currency }} تومان</td>
-              </tr>
+                <tr>
+                  <td>
+                    <div class="fw-semibold">{{ row.label }}</div>
+                    <div class="text-muted text-2xs">{{ row.hint }}</div>
+                  </td>
+                  <td class="text-end fw-semibold">
+                    {{ row.value|ir_currency }} <span class="text-muted text-2xs">تومان</span>
+                  </td>
+                </tr>
               {% empty %}
-              <tr><td colspan="2" class="text-center text-muted py-4">داده‌ای برای نمایش وجود ندارد.</td></tr>
+                <tr>
+                  <td colspan="2">
+                    <div class="empty-state py-4">
+                      <span class="empty-state__icon"><i class="fi fi-rr-receipt"></i></span>
+                      <p class="mb-0">داده‌ای برای نمایش وجود ندارد.</p>
+                    </div>
+                  </td>
+                </tr>
               {% endfor %}
             </tbody>
           </table>
@@ -294,47 +349,75 @@
       </div>
     </div>
   </div>
-  <div class="col-lg-6">
-    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
-      <div class="card-header bg-body border-bottom py-3 d-flex justify-content-between align-items-center">
-        <div>
-          <h6 class="mb-0">مشتریان پرتکرار</h6>
-          <div class="small text-muted">مشتری‌هایی که بیشترین تعداد رزرو را در این بازه داشته‌اند.</div>
+</div>
+
+{# ================= مشتریان ================= #}
+<div class="row g-3 mb-4 report-anchor" id="customers">
+  <div class="col-xl-5">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent border-bottom py-3">
+        <div class="d-flex align-items-center gap-2 min-w-0">
+          <span class="avatar avatar-xs rounded-3 bg-primary-subtle text-primary flex-shrink-0">
+            <i class="fi fi-rr-users-alt"></i>
+          </span>
+          <div class="min-w-0">
+            <h6 class="mb-0">مشتریان پرتکرار</h6>
+            <p class="text-muted text-2xs mb-0">مشتری‌هایی که بیشترین تعداد رزرو را در این بازه داشته‌اند.</p>
+          </div>
         </div>
       </div>
-      <div class="card-body bg-body p-0">
+      <div class="card-body p-0">
         <div class="list-group list-group-flush">
           {% for customer in repeat_customers %}
-          <div class="list-group-item d-flex justify-content-between align-items-start">
-            <div>
-              <div class="fw-semibold">{{ customer.customer__bride_first_name }} {{ customer.customer__bride_last_name }}</div>
-              <div class="small text-muted">{{ customer.reservation_count }} رزرو · {{ customer.total_revenue|ir_currency }} تومان</div>
+            <div class="list-group-item d-flex justify-content-between align-items-start gap-2">
+              <div class="min-w-0">
+                <div class="fw-semibold text-truncate">
+                  {{ customer.customer__bride_first_name }} {{ customer.customer__bride_last_name }}
+                </div>
+                <div class="text-muted text-2xs">
+                  {{ customer.reservation_count }} رزرو · {{ customer.total_revenue|ir_currency }} تومان
+                </div>
+              </div>
+              <span class="badge badge-sm bg-primary-subtle text-primary flex-shrink-0">
+                {{ customer.reservation_count }} بار
+              </span>
             </div>
-            <span class="badge rounded-pill bg-primary-subtle text-primary-emphasis">{{ customer.reservation_count }} بار</span>
-          </div>
           {% empty %}
-          <div class="list-group-item"><div class="report-empty">مشتری پرتکراری در این بازه ثبت نشده است.</div></div>
+            <div class="list-group-item">
+              <div class="empty-state py-4">
+                <span class="empty-state__icon"><i class="fi fi-rr-users-alt"></i></span>
+                <p class="mb-0">مشتری پرتکراری در این بازه ثبت نشده است.</p>
+              </div>
+            </div>
           {% endfor %}
         </div>
       </div>
     </div>
   </div>
-</div>
 
-<div class="row g-3 mb-4">
-  <div class="col-lg-6">
-    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
-      <div class="card-header bg-body border-bottom py-3 d-flex justify-content-between align-items-start">
-        <div>
-          <h6 class="mb-0">لباس‌های پرفروش</h6>
-          <div class="small text-muted">بر اساس تعداد رزرو و درآمد ایجادشده در بازه انتخابی.</div>
+  <div class="col-xl-7">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent border-bottom py-3">
+        <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+          <div class="d-flex align-items-center gap-2 min-w-0">
+            <span class="avatar avatar-xs rounded-3 bg-success-subtle text-success flex-shrink-0">
+              <i class="fi fi-rr-clothes-hanger"></i>
+            </span>
+            <div class="min-w-0">
+              <h6 class="mb-0">لباس‌های پرفروش</h6>
+              <p class="text-muted text-2xs mb-0">بر اساس درآمد ایجادشده در بازهٔ انتخابی.</p>
+            </div>
+          </div>
+          <span class="badge badge-sm bg-secondary-subtle text-secondary">۸ مورد برتر</span>
         </div>
-        <span class="badge rounded-pill bg-light text-muted">Top 8</span>
       </div>
-      <div class="card-body bg-body p-0">
+      <div class="card-body">
+        <div id="reportsDressesChart" class="chart-box chart-box--sm"></div>
+      </div>
+      <div class="card-body p-0 border-top">
         <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0 table-hover report-table">
-            <thead class="table-light">
+          <table class="table table-sm table-row-rounded align-middle mb-0 report-table">
+            <thead>
               <tr>
                 <th>نام لباس</th>
                 <th class="text-end">تعداد رزرو</th>
@@ -343,50 +426,20 @@
             </thead>
             <tbody>
               {% for dress in top_dresses %}
-              <tr>
-                <td>
-                  <div class="fw-semibold">{{ dress.dress__code }}</div>
-                  <div class="small text-muted">{{ dress.reservation_count }} رزرو در این بازه</div>
-                </td>
-                <td class="text-end">{{ dress.reservation_count }}</td>
-                <td class="text-end">{{ dress.total_revenue|ir_currency }} تومان</td>
-              </tr>
+                <tr>
+                  <td class="fw-semibold">{{ dress.dress__code }}</td>
+                  <td class="text-end">{{ dress.reservation_count }}</td>
+                  <td class="text-end">{{ dress.total_revenue|ir_currency }} <span class="text-muted text-2xs">تومان</span></td>
+                </tr>
               {% empty %}
-              <tr><td colspan="3" class="text-center text-muted py-4"><div class="report-empty">در این بازه لباسی پرفروش ثبت نشده است.</div></td></tr>
-              {% endfor %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  </div>
-  <div class="col-lg-6">
-    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
-      <div class="card-header bg-body border-bottom py-3">
-        <h6 class="mb-0">عملکرد فروشندگان</h6>
-        <div class="small text-muted">مقایسه‌ی رزرو، درآمد و لغوهای هر فروشنده در بازه انتخابی.</div>
-      </div>
-      <div class="card-body bg-body p-0">
-        <div class="table-responsive">
-          <table class="table table-sm align-middle mb-0 report-table">
-            <thead class="table-light">
-              <tr>
-                <th>نام فروشنده</th>
-                <th class="text-end">تعداد رزرو</th>
-                <th class="text-end">درآمد</th>
-                <th class="text-end">لغو</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for row in employee_rows %}
-              <tr>
-                <td>{{ row.created_by__username }}</td>
-                <td class="text-end">{{ row.reservation_count }}</td>
-                <td class="text-end">{{ row.total_revenue|ir_currency }} تومان</td>
-                <td class="text-end">{{ row.cancelled_count }}</td>
-              </tr>
-              {% empty %}
-              <tr><td colspan="4" class="text-center text-muted py-4"><div class="report-empty">برای مقایسه‌ی فروشندگان داده‌ای موجود نیست.</div></td></tr>
+                <tr>
+                  <td colspan="3">
+                    <div class="empty-state py-4">
+                      <span class="empty-state__icon"><i class="fi fi-rr-clothes-hanger"></i></span>
+                      <p class="mb-0">در این بازه لباسی پرفروش ثبت نشده است.</p>
+                    </div>
+                  </td>
+                </tr>
               {% endfor %}
             </tbody>
           </table>
@@ -396,54 +449,159 @@
   </div>
 </div>
 
-<div class="row g-3" id="risk">
-  <div class="col-lg-6">
-    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
-      <div class="card-header bg-body border-bottom py-3">
-        <h6 class="mb-0">تحلیل خسارت</h6>
-        <div class="small text-muted">جزئیات مبلغ و وضعیت وصول خسارت‌های ثبت‌شده.</div>
+{# ================= فروشندگان ================= #}
+<div class="row g-3 mb-4">
+  <div class="col-12">
+    <div class="card border-0 shadow-sm">
+      <div class="card-header bg-transparent border-bottom py-3">
+        <div class="d-flex align-items-center gap-2 min-w-0">
+          <span class="avatar avatar-xs rounded-3 bg-warning-subtle text-warning flex-shrink-0">
+            <i class="fi fi-rr-user-headset"></i>
+          </span>
+          <div class="min-w-0">
+            <h6 class="mb-0">عملکرد فروشندگان</h6>
+            <p class="text-muted text-2xs mb-0">مقایسهٔ رزرو، درآمد و لغوهای هر فروشنده در بازهٔ انتخابی.</p>
+          </div>
+        </div>
       </div>
-      <div class="card-body bg-body p-0">
-        <div class="list-group list-group-flush">
-          {% for damage in damage_records %}
-          <div class="list-group-item d-flex justify-content-between align-items-start">
-            <div>
-              <div class="fw-semibold">{{ damage.customer }} · {{ damage.dress.code|default:'—' }}</div>
-              <div class="small text-muted">{{ damage.damage_type }}</div>
-            </div>
-            <div class="text-end">
-              <div class="fw-semibold">{{ damage.amount|ir_currency }} تومان</div>
-              <span class="badge rounded-pill {% if damage.collected %}bg-success-subtle text-success-emphasis{% else %}bg-warning-subtle text-warning-emphasis{% endif %}">{% if damage.collected %}وصول شده{% else %}در انتظار{% endif %}</span>
+      <div class="card-body">
+        <div id="reportsSellersChart" class="chart-box chart-box--sm"></div>
+      </div>
+      <div class="card-body p-0 border-top">
+        <div class="table-responsive">
+          <table class="table table-sm table-row-rounded align-middle mb-0 report-table">
+            <thead>
+              <tr>
+                <th>نام فروشنده</th>
+                <th class="text-end">تعداد رزرو</th>
+                <th class="text-end">درآمد</th>
+                <th class="text-end">لغو</th>
+                <th class="text-end">خسارت</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for row in employee_rows %}
+                <tr>
+                  <td class="fw-semibold">{{ row.created_by__username }}</td>
+                  <td class="text-end">{{ row.reservation_count }}</td>
+                  <td class="text-end">{{ row.total_revenue|ir_currency }} <span class="text-muted text-2xs">تومان</span></td>
+                  <td class="text-end">
+                    {% if row.cancelled_count %}
+                      <span class="badge badge-sm bg-danger-subtle text-danger">{{ row.cancelled_count }}</span>
+                    {% else %}
+                      <span class="text-muted">۰</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end">
+                    {{ row.damage_total|default:0|ir_currency }} <span class="text-muted text-2xs">تومان</span>
+                  </td>
+                </tr>
+              {% empty %}
+                <tr>
+                  <td colspan="5">
+                    <div class="empty-state py-4">
+                      <span class="empty-state__icon"><i class="fi fi-rr-user-headset"></i></span>
+                      <p class="mb-0">برای مقایسهٔ فروشندگان داده‌ای موجود نیست.</p>
+                    </div>
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+{# ================= ریسک: خسارت و لغو ================= #}
+<div class="row g-3 report-anchor" id="risk">
+  <div class="col-xl-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent border-bottom py-3">
+        <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+          <div class="d-flex align-items-center gap-2 min-w-0">
+            <span class="avatar avatar-xs rounded-3 bg-danger-subtle text-danger flex-shrink-0">
+              <i class="fi fi-rr-triangle-warning"></i>
+            </span>
+            <div class="min-w-0">
+              <h6 class="mb-0">تحلیل خسارت</h6>
+              <p class="text-muted text-2xs mb-0">جزئیات مبلغ و وضعیت وصول خسارت‌های ثبت‌شده.</p>
             </div>
           </div>
+          <span class="badge badge-sm bg-danger-subtle text-danger">
+            جمع: {{ analysis.damage_total_amount|ir_currency }} تومان
+          </span>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="list-group list-group-flush">
+          {% for damage in damage_records %}
+            <div class="list-group-item d-flex justify-content-between align-items-start gap-2">
+              <div class="min-w-0">
+                <div class="fw-semibold text-truncate">{{ damage.customer }} · {{ damage.dress.code|default:'—' }}</div>
+                <div class="text-muted text-2xs">{{ damage.damage_type }}</div>
+              </div>
+              <div class="text-end flex-shrink-0">
+                <div class="fw-semibold">{{ damage.amount|default:0|ir_currency }} <span class="text-muted text-2xs">تومان</span></div>
+                {% if damage.collected %}
+                  <span class="badge badge-sm bg-success-subtle text-success">وصول شده</span>
+                {% else %}
+                  <span class="badge badge-sm bg-warning-subtle text-warning">در انتظار</span>
+                {% endif %}
+              </div>
+            </div>
           {% empty %}
-          <div class="list-group-item"><div class="report-empty">در این بازه خسارتی ثبت نشده است.</div></div>
+            <div class="list-group-item">
+              <div class="empty-state py-4">
+                <span class="empty-state__icon"><i class="fi fi-rr-shield-check"></i></span>
+                <p class="mb-0">در این بازه خسارتی ثبت نشده است.</p>
+              </div>
+            </div>
           {% endfor %}
         </div>
       </div>
     </div>
   </div>
-  <div class="col-lg-6">
-    <div class="card border-0 shadow-sm h-100 rounded-4 report-panel">
-      <div class="card-header bg-body border-bottom py-3">
-        <h6 class="mb-0">تحلیل لغو و بازپرداخت</h6>
-        <div class="small text-muted">جزییات مربوط به لغو رزرو، مبلغ بازپرداخت و جریمه‌های اعمال‌شده.</div>
-      </div>
-      <div class="card-body bg-body p-0">
-        <div class="list-group list-group-flush">
-          {% for item in cancellation_records %}
-          <div class="list-group-item d-flex justify-content-between align-items-start">
-            <div>
-              <div class="fw-semibold">رزرو #{{ item.reservation_id }}</div>
-              <div class="small text-muted">{{ item.reason|default:'بدون توضیح' }}</div>
-            </div>
-            <div class="text-end">
-              <div class="fw-semibold">{{ item.refund_amount|default:0|ir_currency }} تومان</div>
-              <div class="small text-muted">جریمه: {{ item.penalty_amount|default:0|ir_currency }}</div>
+
+  <div class="col-xl-6">
+    <div class="card border-0 shadow-sm h-100">
+      <div class="card-header bg-transparent border-bottom py-3">
+        <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+          <div class="d-flex align-items-center gap-2 min-w-0">
+            <span class="avatar avatar-xs rounded-3 bg-warning-subtle text-warning flex-shrink-0">
+              <i class="fi fi-rr-ban"></i>
+            </span>
+            <div class="min-w-0">
+              <h6 class="mb-0">تحلیل لغو و بازپرداخت</h6>
+              <p class="text-muted text-2xs mb-0">جزئیات لغو رزرو، مبلغ بازپرداخت و جریمه‌های اعمال‌شده.</p>
             </div>
           </div>
+          <span class="badge badge-sm bg-secondary-subtle text-secondary">
+            {{ analysis.cancellation_total }} رکورد
+          </span>
+        </div>
+      </div>
+      <div class="card-body p-0">
+        <div class="list-group list-group-flush">
+          {% for item in cancellation_records %}
+            <div class="list-group-item d-flex justify-content-between align-items-start gap-2">
+              <div class="min-w-0">
+                <div class="fw-semibold">رزرو #{{ item.reservation_id }}</div>
+                <div class="text-muted text-2xs text-truncate">{{ item.reason|default:'بدون توضیح' }}</div>
+              </div>
+              <div class="text-end flex-shrink-0">
+                <div class="fw-semibold">{{ item.refund_amount|default:0|ir_currency }} <span class="text-muted text-2xs">تومان</span></div>
+                <div class="text-muted text-2xs">جریمه: {{ item.penalty_amount|default:0|ir_currency }}</div>
+              </div>
+            </div>
           {% empty %}
-          <div class="list-group-item"><div class="report-empty">رکورد لغوی در این بازه ثبت نشده است.</div></div>
+            <div class="list-group-item">
+              <div class="empty-state py-4">
+                <span class="empty-state__icon"><i class="fi fi-rr-ban"></i></span>
+                <p class="mb-0">رکورد لغوی در این بازه ثبت نشده است.</p>
+              </div>
+            </div>
           {% endfor %}
         </div>
       </div>
@@ -456,5 +614,9 @@
   {{ trend_labels|json_script:"trend-labels" }}
   {{ trend_revenue|json_script:"trend-revenue" }}
   {{ trend_reservations|json_script:"trend-reservations" }}
+  {{ chart_financial|json_script:"chart-financial" }}
+  {{ chart_statuses|json_script:"chart-statuses" }}
+  {{ chart_top_dresses|json_script:"chart-top-dresses" }}
+  {{ chart_sellers|json_script:"chart-sellers" }}
   {% include 'includes/scripts/reports_index_js.html' %}
 {% endblock %}

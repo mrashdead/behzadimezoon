@@ -88,3 +88,8 @@
 {% endif %}
 
 {% endblock %}
+
+{% block extra_js %}
+  {# اعتبارسنجی و ارسال AJAX برای مودال‌های افزودن/ویرایش محصول #}
+  {% include 'includes/scripts/modal_ajax_form_js.html' %}
+{% endblock %}

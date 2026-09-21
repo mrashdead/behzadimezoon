@@ -2,7 +2,7 @@
 {% load jformat %}
 
 <div class="modal fade" id="detailCustomerModal{{ customer.id }}" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
       {% include 'partials/_modal_header.html' with title='جزئیات مشتری' %}
 
@@ -153,7 +153,7 @@
             <div class="card shadow-none border">
               <div class="card-header bg-body-tertiary border-bottom py-3">
                 <h6 class="mb-0 fw-semibold">
-                  <i class="fi fi-rr-history me-2"></i>
+                  <i class="fi fi-rr-order-history me-2"></i>
                   خلاصه سابقه رزروها
                 </h6>
               </div>

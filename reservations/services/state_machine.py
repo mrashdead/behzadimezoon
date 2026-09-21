@@ -1,4 +1,4 @@
-# reservations/services/state_machin.py
+# reservations/services/state_machine.py
 
 from reservations.constants import ReservationStatus
 

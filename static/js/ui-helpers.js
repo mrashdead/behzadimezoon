@@ -46,88 +46,123 @@ function formatNumberDisplays() {
 }
 
 // Initialize Persian date pickers
+//
+// ⚠️ نکتهٔ مهم:
+// در این پروژه کتابخانهٔ تاریخ‌گزین «persian-datepicker» (نسخهٔ babakhani)
+// بارگذاری می‌شود و API آن `$(el).pDatepicker(...)` است.
+// پیش‌تر این تابع فقط از «flatpickr» استفاده می‌کرد؛ چون flatpickr در این
+// پروژه اصلاً بارگذاری نمی‌شود، تابع در همان خط اول `return` می‌کرد و هیچ
+// تاریخ‌گزینی ساخته نمی‌شد. نتیجه: هر فیلد تاریخی که «بعداً» به DOM اضافه
+// می‌شد (ردیف‌های بیعانهٔ مرحله‌ای، محتوای مودال‌ها) تاریخ‌گزین نمی‌گرفت.
+//
+// اکنون اولویت با pDatepicker است و flatpickr تنها در صورت وجود، به‌عنوان
+// جایگزین استفاده می‌شود.
 function initPersianDatepickers() {
-  if (typeof flatpickr === 'undefined') return;
+  var jq = window.jQuery;
+  var hasPwt = !!(jq && typeof jq.fn.pDatepicker === 'function');
+  var hasFlatpickr = typeof flatpickr !== 'undefined';
 
-  // Date only picker
+  if (!hasPwt && !hasFlatpickr) return;
+
+  function alreadyBound(el) {
+    if (el.dataset && el.dataset.pwtBound === '1') return true;
+    try {
+      if (jq && jq(el).data('datepicker')) return true;
+    } catch (e) {
+      /* ignore */
+    }
+    return false;
+  }
+
+  function attach(el, pwtOptions, flatpickrOptions) {
+    if (alreadyBound(el)) return;
+    try {
+      if (hasPwt) {
+        jq(el).pDatepicker(pwtOptions);
+      } else {
+        flatpickr(el, flatpickrOptions);
+      }
+      el.dataset.pwtBound = '1';
+    } catch (e) {
+      // یک فیلد خراب نباید بقیهٔ فیلدها را از کار بیندازد
+      if (window.console && console.warn) {
+        console.warn('datepicker init failed:', el, e);
+      }
+    }
+  }
+
+  // ۱. فقط تاریخ
   document.querySelectorAll('.p-date-only').forEach(el => {
-    if (!el.flatpickr) {
-      flatpickr(el, {
-        mode: 'single',
-        dateFormat: 'Y/m/d',
-        locale: 'fa',
-      });
-    }
+    attach(el, {
+      timePicker: { enabled: false },
+      format: 'YYYY/MM/DD',
+      autoClose: true,
+      initialValue: false,
+      initialValueType: 'persian',
+      calendar: { persian: { locale: 'fa' } },
+    }, { mode: 'single', dateFormat: 'Y/m/d', locale: 'fa' });
   });
 
-  // Date + Time picker
+  // ۲. تاریخ و زمان
   document.querySelectorAll('.p-date-time').forEach(el => {
-    if (!el.flatpickr) {
-      flatpickr(el, {
-        mode: 'single',
-        dateFormat: 'Y/m/d H:i',
-        enableTime: true,
-        locale: 'fa',
-      });
-    }
+    attach(el, {
+      timePicker: { enabled: true, second: { enabled: false } },
+      format: 'YYYY/MM/DD HH:mm',
+      autoClose: true,
+      calendar: { persian: { locale: 'fa' } },
+    }, { mode: 'single', dateFormat: 'Y/m/d H:i', enableTime: true, locale: 'fa' });
   });
 
-  // Time only picker
+  // ۳. فقط زمان
   document.querySelectorAll('.p-time-only').forEach(el => {
-    if (!el.flatpickr) {
-      flatpickr(el, {
-        mode: 'single',
-        dateFormat: 'H:i',
-        enableTime: true,
-        noCalendar: true,
-        locale: 'fa',
-      });
-    }
+    attach(el, {
+      onlyTimePicker: true,
+      timePicker: { enabled: true, second: { enabled: false } },
+      format: 'HH:mm',
+      autoClose: true,
+    }, { mode: 'single', dateFormat: 'H:i', enableTime: true, noCalendar: true, locale: 'fa' });
   });
 
-  // Week only picker
-  document.querySelectorAll('.p-week-only').forEach(el => {
-    if (!el.flatpickr) {
-      flatpickr(el, {
-        mode: 'single',
-        dateFormat: 'Y/W',
-        locale: 'fa',
-        weekNumbers: true,
-      });
-    }
-  });
-
-  // Month only picker
+  // ۴. فقط ماه و سال
   document.querySelectorAll('.p-month-only').forEach(el => {
-    if (!el.flatpickr) {
-      flatpickr(el, {
-        mode: 'single',
-        dateFormat: 'Y/m',
-        locale: 'fa',
-      });
-    }
+    attach(el, {
+      timePicker: { enabled: false },
+      format: 'MMMM YYYY',
+      autoClose: true,
+      viewMode: 'month',
+      minViewMode: 'month',
+      onlySelectOnDate: false,
+    }, { mode: 'single', dateFormat: 'Y/m', locale: 'fa' });
   });
 
-  // Date range picker
+  // ۵. بازهٔ تاریخ
   document.querySelectorAll('.p-date-range').forEach(el => {
-    if (!el.flatpickr) {
-      flatpickr(el, {
-        mode: 'range',
-        dateFormat: 'Y/m/d',
-        locale: 'fa',
-      });
-    }
+    attach(el, {
+      format: 'YYYY/MM/DD',
+      autoClose: true,
+      initialValue: false,
+      calendar: { persian: { locale: 'fa' } },
+    }, { mode: 'range', dateFormat: 'Y/m/d', locale: 'fa' });
   });
 
-  // Multiple dates picker
+  // ۶. چند تاریخ
   document.querySelectorAll('.p-multiple-date').forEach(el => {
-    if (!el.flatpickr) {
-      flatpickr(el, {
-        mode: 'multiple',
-        dateFormat: 'Y/m/d',
-        locale: 'fa',
-      });
-    }
+    attach(el, {
+      format: 'YYYY/MM/DD',
+      autoClose: true,
+      initialValue: false,
+      calendar: { persian: { locale: 'fa' } },
+    }, { mode: 'multiple', dateFormat: 'Y/m/d', locale: 'fa' });
+  });
+
+  // ۷. فقط هفته
+  document.querySelectorAll('.p-week-only').forEach(el => {
+    attach(el, {
+      format: 'YYYY/MM/DD',
+      autoClose: true,
+      initialValue: false,
+      calendar: { persian: { locale: 'fa' } },
+    }, { mode: 'single', dateFormat: 'Y/W', locale: 'fa', weekNumbers: true });
   });
 }
 
@@ -226,6 +261,14 @@ function setupModalForms() {
 
     const modal = form.closest('.modal');
     if (!modal || form.classList.contains('no-ajax')) {
+      return;
+    }
+
+    // فرم‌هایی که ``data-ajax-form`` دارند توسط
+    // ``templates/includes/scripts/modal_ajax_form_js.html`` مدیریت می‌شوند
+    // (نمایش خطای فیلد‌به‌فیلد + خلاصهٔ خطا). برای جلوگیری از دو بار ارسال،
+    // اینجا از آن‌ها صرف‌نظر می‌کنیم.
+    if (form.hasAttribute('data-ajax-form')) {
       return;
     }
 
@@ -398,24 +441,80 @@ function showFormErrors(form, errors) {
 }
 
 // Show notification messages
-function showNotification(message, type = 'info') {
-  const alertClass = `alert-${type === 'error' ? 'danger' : type === 'success' ? 'success' : 'info'}`;
-  const alertHtml = `
-    <div class="alert ${alertClass} alert-dismissible fade show" role="alert">
-      ${message}
-      <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
-    </div>
-  `;
+// ---------------------------------------------------------------------------
+// اعلان‌ها (app-toast)
+// ---------------------------------------------------------------------------
+// پیش‌تر این تابع یک alert بوت‌استرپ بالای <main> درج می‌کرد و بعد از ۵ ثانیه
+// با ``container.querySelector('.alert')`` حذف می‌کرد — که «اولین» alert صفحه
+// را پاک می‌کرد، نه لزوماً همان اعلانی که خودش ساخته بود. همچنین متن پیام با
+// درج مستقیم در innerHTML نوشته می‌شد که در صورت ورودی کاربر، XSS بود.
+//
+// اکنون از سیستم app-toast (استایل‌های custom.css) استفاده می‌شود و متن با
+// textContent درج می‌گردد.
 
-  const container = document.querySelector('main') || document.body;
-  const alertDiv = document.createElement('div');
-  alertDiv.innerHTML = alertHtml;
-  container.insertBefore(alertDiv.firstElementChild, container.firstChild);
+var TOAST_PRESETS = {
+  success: { tone: 'success', icon: 'fi-rr-check-circle' },
+  error: { tone: 'danger', icon: 'fi-rr-exclamation' },
+  danger: { tone: 'danger', icon: 'fi-rr-exclamation' },
+  warning: { tone: 'warning', icon: 'fi-rr-triangle-warning' },
+  info: { tone: 'info', icon: 'fi-rr-info' },
+};
 
-  // Auto-dismiss after 5 seconds
-  setTimeout(() => {
-    container.querySelector('.alert').remove();
-  }, 5000);
+function ensureToastStack() {
+  var stack = document.getElementById('appToastStack');
+  if (!stack) {
+    stack = document.createElement('div');
+    stack.id = 'appToastStack';
+    stack.className = 'app-toast-stack';
+    stack.setAttribute('role', 'region');
+    stack.setAttribute('aria-label', 'اعلان‌ها');
+    document.body.appendChild(stack);
+  }
+  return stack;
+}
+
+function showNotification(message, type) {
+  var preset = TOAST_PRESETS[type] || TOAST_PRESETS.info;
+  var stack = ensureToastStack();
+
+  var el = document.createElement('div');
+  el.className = 'app-toast bg-body border';
+  el.dataset.toastDelay = '6000';
+  el.innerHTML =
+    '<span class="app-toast__accent bg-' + preset.tone + '"></span>' +
+    '<div class="app-toast__content">' +
+    '<span class="app-toast__icon bg-' + preset.tone + '-subtle text-' + preset.tone + '">' +
+    '<i class="fi ' + preset.icon + '"></i>' +
+    '</span>' +
+    '<div class="app-toast__body">' +
+    '<div class="app-toast__message text-body"></div>' +
+    '</div>' +
+    '<button type="button" class="app-toast__close" aria-label="بستن">' +
+    '<i class="fi fi-rr-cross"></i>' +
+    '</button>' +
+    '</div>';
+
+  // متن پیام به‌صورت متن خام درج می‌شود (نه HTML) تا XSS نشود
+  el.querySelector('.app-toast__message').textContent = message;
+
+  stack.appendChild(el);
+  window.requestAnimationFrame(function () { el.classList.add('is-visible'); });
+
+  var dismiss = function () {
+    if (el.dataset.dismissing === '1') return;
+    el.dataset.dismissing = '1';
+    el.classList.remove('is-visible');
+    el.classList.add('is-hiding');
+    window.setTimeout(function () { el.remove(); }, 340);
+  };
+
+  window.setTimeout(dismiss, 6000);
+  var closeBtn = el.querySelector('.app-toast__close');
+  if (closeBtn) {
+    closeBtn.addEventListener('click', dismiss);
+  }
+
+  return el;
 }
 
 // Initialize all UI helpers
@@ -552,6 +651,7 @@ window.UIHelpers = {
   parseFormattedNumber,
   normalizeDigits,
   normalizeFormDataForSubmission,
+  getCookie,
   initMoneyInputs,
   formatNumberDisplays,
   initPersianDatepickers,

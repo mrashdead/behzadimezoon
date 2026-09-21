@@ -1,198 +1,284 @@
-{% load humanize %}
 {% load jformat %}
+{% comment %}
+خلاصهٔ مالی رزرو
+--------------------------------------------------------------------------
+این partial هم در صفحهٔ مالی (داخل ``#financialModalBody``) و هم داخل مودال
+جزئیات رزرو (``#reservationFinancialContainer<id>``) با fetch بارگذاری می‌شود.
 
-<div class="card mb-3" data-financial-url="{% url 'financial:reservation_financial' reservation.pk %}">
-  <div class="card-body">
-    <div class="row gy-3 mb-4">
-      <div class="col-6 col-xl-3">
-        <div class="card shadow-sm border rounded-3 h-100">
-          <div class="card-body text-center py-3">
-            <div class="small text-muted">بهای پایه</div>
-            <div class="h5 mb-0">{{ reservation.rent_price|ir_currency }} تومان</div>
-          </div>
+⚠️ قیدهای ساختاری که نباید بشکنند:
+  • ریشهٔ قالب **باید** هم کلاس ``card`` داشته باشد و هم ``data-financial-url``.
+    دلیل: ``refreshFinancialPartial`` در financial_reservation_partial_js.html
+    با ``temp.querySelector('.card')`` اولین کارت را برمی‌دارد و آن را جای گرهٔ
+    ``[data-financial-url]`` می‌گذارد. اگر ریشه کارت نباشد، یک کارت *داخلی*
+    جای کل قالب را می‌گیرد و صفحه از هم می‌پاشد.
+  • مودال‌ها باید **داخل** کارت ریشه بمانند؛ چون ``fetchHtmlInto`` در
+    finance_helpers.js فقط ``.card`` را برمی‌دارد و بقیهٔ fragment را دور
+    می‌ریزد. مودال بیرون از کارت = دکمه‌هایی که هیچ کاری نمی‌کنند.
+  • شناسه‌ها: damageModal/damageForm، refundModal/refundForm،
+    penaltyPaymentModal/penaltyPaymentForm
+  • کلاس‌های دکمه: .open-damage-form / .open-refund-form / .open-penalty-form
+    به‌همراه صفت‌های data-reservation-id، data-penalty-type،
+    data-remaining-amount، data-action-disabled
+  • #penaltyType و #penaltyAmount (با کلاس money-input)
+  • ``name`` تمام فیلدها دست‌نخورده است، چون ویوها خطاها را با همین کلیدها
+    برمی‌گردانند و ``renderFormErrors`` با ``[name="..."]`` آن‌ها را پیدا می‌کند.
+
+چیدمان: بخش‌ها به‌جای «کارت داخل کارت داخل کارت» با کلاس ``fin-section`` و یک
+جداکنندهٔ بالایی از هم تفکیک شده‌اند (تعریف در static/assets/css/custom.css).
+{% endcomment %}
+
+<div class="card border-0 shadow-sm" data-financial-url="{% url 'financial:reservation_financial' reservation.pk %}">
+
+  {# ================= سربرگ ================= #}
+  <div class="card-header bg-body-tertiary border-bottom py-3">
+    <div class="d-flex flex-wrap align-items-center justify-content-between gap-2">
+      <div class="d-flex align-items-center gap-3 min-w-0">
+        <span class="avatar avatar-sm rounded-3 bg-primary-subtle text-primary flex-shrink-0">
+          <i class="fi fi-rr-coins"></i>
+        </span>
+        <div class="min-w-0">
+          <h6 class="mb-1">خلاصهٔ مالی رزرو #{{ reservation.pk }}</h6>
+          <p class="mb-0 text-muted text-2xs">
+            <span>{{ reservation.customer|default:'-' }}</span>
+            {% if reservation.dress %}
+              <span class="mx-1">·</span><span>لباس: {{ reservation.dress.code }}</span>
+            {% endif %}
+            {% if reservation.contract_number %}
+              <span class="mx-1">·</span><span>قرارداد: {{ reservation.contract_number }}</span>
+            {% endif %}
+          </p>
         </div>
       </div>
-      <div class="col-6 col-xl-3">
-        <div class="card shadow-sm border rounded-3 h-100">
-          <div class="card-body text-center py-3">
-            <div class="small text-muted">تخفیف</div>
-            <div class="h5 mb-0">{{ reservation.discount_amount|default:0|ir_currency }} تومان</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-xl-3">
-        <div class="card shadow-sm border rounded-3 h-100">
-          <div class="card-body text-center py-3">
-            <div class="small text-muted">قیمت نهایی</div>
-            <div class="h5 mb-0">{{ totals.final_price|ir_currency }} تومان</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-xl-3">
-        <div class="card shadow-sm border rounded-3 h-100">
-          <div class="card-body text-center py-3">
-            <div class="small text-muted">دریافتی تا کنون</div>
-            <div class="h5 mb-0">{{ totals.total_received|ir_currency }} تومان</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-xl-3">
-        <div class="card shadow-sm border rounded-3 h-100">
-          <div class="card-body text-center py-3">
-            <div class="small text-muted">درآمدهای جانبی</div>
-            <div class="h5 mb-0">{{ totals.additional_fees|default:0|ir_currency }} تومان</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-xl-3">
-        <div class="card shadow-sm border rounded-3 h-100">
-          <div class="card-body text-center py-3">
-            <div class="small text-muted">مجموع بیعانه‌ها</div>
-            <div class="h5 mb-0">{{ totals.total_deposit|default:0|ir_currency }} تومان</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-xl-3">
-        <div class="card shadow-sm border rounded-3 h-100">
-          <div class="card-body text-center py-3">
-            <div class="small text-muted">مانده قابل پرداخت</div>
-            <div class="h5 mb-0">{{ totals.remaining|default:0|ir_currency }} تومان</div>
-          </div>
-        </div>
-      </div>
-      <div class="col-6 col-xl-3">
-        <div class="card shadow-sm border rounded-3 h-100">
-          <div class="card-body text-center py-3">
-            <div class="small text-muted">وضعیت تسویه</div>
-            <div class="h5 mb-0">{{ totals.settlement_label|default:'-' }}</div>
-          </div>
-        </div>
+
+      <div class="d-flex flex-wrap align-items-center gap-2">
+        <span class="badge badge-sm bg-secondary-subtle text-secondary">
+          {{ reservation.get_status_display|default:reservation.status }}
+        </span>
+        {% with code=payment_summary.settlement_code %}
+          <span class="badge badge-sm
+            {% if code == 'SETTLED' %}bg-success-subtle text-success
+            {% elif code == 'OVERPAID' %}bg-info-subtle text-info
+            {% else %}bg-warning-subtle text-warning{% endif %}">
+            <i class="fi fi-rr-{% if code == 'SETTLED' %}check-circle{% elif code == 'OVERPAID' %}info{% else %}hourglass-end{% endif %} me-1"></i>{{ totals.settlement_label|default:'-' }}
+          </span>
+        {% endwith %}
       </div>
     </div>
+  </div>
 
-    <div class="row gy-4">
-      <div class="col-12">
-        <div class="card shadow-sm border rounded-3">
-          <div class="card-header bg-body-tertiary border-bottom py-3 d-flex justify-content-between align-items-center">
-            <h6 class="mb-0">بیعانه‌ها و پرداخت‌های مرحله‌ای</h6>
-            <span class="badge bg-info-subtle text-info">مجموع: {{ totals.total_paid|default:0|ir_currency }} تومان</span>
-          </div>
-          <div class="card-body">
-            <div class="table-responsive mb-0">
-              <table class="table table-sm align-middle mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th>مرحله</th>
-                    <th class="text-end">مبلغ</th>
-                    <th>تاریخ پرداخت</th>
-                    <th>تاریخ سررسید</th>
-                    <th>روش پرداخت</th>
-                    <th>کد رهگیری</th>
-                    <th>ثبت‌کننده</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for payment in staged_payments %}
-                    <tr>
-                      <td class="fw-semibold">{{ payment.stage_label }}</td>
-                      <td class="text-end">{{ payment.amount|ir_currency }} تومان</td>
-                      <td>{{ payment.payment_date_jalali|default:'-' }}</td>
-                      <td>{{ payment.due_date_jalali|default:'-' }}</td>
-                      <td>{{ payment.payment_method_label|default:'-' }}</td>
-                      <td>{{ payment.payment_reference|default:'-' }}</td>
-                      <td>{{ payment.created_by.get_full_name|default:'-' }}</td>
-                    </tr>
-                  {% empty %}
-                    <tr><td colspan="7" class="text-center text-muted">پرداخت مرحله‌ای ثبت نشده است.</td></tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          </div>
+  <div class="card-body">
+
+    {# ================= شاخص‌های کلیدی ================= #}
+    <div class="row g-2 mb-4">
+      {% include 'partials/_stat_card.html' with icon='fi-rr-tags' label='بهای پایه' value=reservation.rent_price badge_type='secondary' badge_text='تومان' col_class='col-6 col-xl-3' %}
+      {% include 'partials/_stat_card.html' with icon='fi-rr-badge-percent' label='تخفیف' value=reservation.discount_amount badge_type='danger' badge_text='تومان' col_class='col-6 col-xl-3' %}
+      {% include 'partials/_stat_card.html' with icon='fi-rr-file-invoice' label='قیمت نهایی' value=totals.final_price badge_type='primary' badge_text='تومان' col_class='col-6 col-xl-3' %}
+      {% include 'partials/_stat_card.html' with icon='fi-rr-coins' label='دریافتی تا کنون' value=totals.total_received badge_type='success' badge_text='تومان' col_class='col-6 col-xl-3' %}
+      {% include 'partials/_stat_card.html' with icon='fi-rr-add-document' label='درآمدهای جانبی' value=totals.additional_fees badge_type='info' badge_text='تومان' col_class='col-6 col-xl-3' %}
+      {% include 'partials/_stat_card.html' with icon='fi-rr-wallet' label='مجموع بیعانه‌ها' value=totals.total_deposit badge_type='primary' badge_text='تومان' col_class='col-6 col-xl-3' %}
+      {% include 'partials/_stat_card.html' with icon='fi-rr-hourglass-end' label='مانده قابل پرداخت' value=totals.remaining badge_type='warning' badge_text='تومان' col_class='col-6 col-xl-3' %}
+      {% include 'partials/_stat_card.html' with icon='fi-rr-money-check' label='اضافه‌پرداخت' value=totals.overpaid badge_type='info' badge_text='تومان' col_class='col-6 col-xl-3' %}
+    </div>
+
+    {# ================= بیعانه‌ها و پرداخت‌های مرحله‌ای ================= #}
+    <section class="fin-section">
+      <div class="fin-section__head">
+        <div class="d-flex align-items-center gap-2 min-w-0">
+          <span class="avatar avatar-xs rounded-3 bg-primary-subtle text-primary flex-shrink-0">
+            <i class="fi fi-rr-list"></i>
+          </span>
+          <h6 class="fin-section__title">بیعانه‌ها و پرداخت‌های مرحله‌ای</h6>
+          {% if staged_payments %}
+            <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ staged_payments|length }}</span>
+          {% endif %}
         </div>
-      </div>
-      <div class="col-12">
-        <div class="card shadow-sm border rounded-3">
-          <div class="card-header bg-body-tertiary border-bottom py-3">
-            <h6 class="mb-0">تراکنش‌ها</h6>
-          </div>
-          <div class="card-body">
-            <div class="table-responsive mb-0">
-              <table class="table table-sm align-middle mb-0">
-                <thead class="table-light">
-                  <tr>
-                    <th>تاریخ</th>
-                    <th>نوع</th>
-                    <th class="text-end">مبلغ</th>
-                    <th>ایجادکننده</th>
-                    <th>شرح</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for tx in transactions %}
-                    <tr>
-                      <td>{{ tx.transaction_date|jformat:"%Y/%m/%d %H:%M" }}</td>
-                      <td>{{ tx.get_type_display }}</td>
-                      <td class="text-end">{{ tx.amount|ir_currency }} تومان</td>
-                      <td>{{ tx.created_by.get_full_name }}</td>
-                      <td>{{ tx.description }}</td>
-                    </tr>
-                  {% empty %}
-                    <tr><td colspan="5" class="text-center text-muted">تراکنشی ثبت نشده است.</td></tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </div>
-          </div>
-        </div>
+        <span class="badge badge-sm bg-success-subtle text-success">
+          مجموع: {{ totals.total_paid|default:0|ir_currency }} تومان
+        </span>
       </div>
 
-      <div class="col-12 col-xl-6">
-        <div class="card shadow-sm border rounded-3">
-          <div class="card-header bg-body-tertiary border-bottom py-3">
-            <h6 class="mb-0">تضمین‌ها</h6>
+      {% if staged_payments %}
+        <div class="table-responsive">
+          <table class="table table-sm table-row-rounded align-middle mb-0">
+            <thead>
+              <tr>
+                <th>مرحله</th>
+                <th class="text-end">مبلغ</th>
+                <th>تاریخ پرداخت</th>
+                <th>تاریخ سررسید</th>
+                <th>روش پرداخت</th>
+                <th>کد رهگیری</th>
+                <th>ثبت‌کننده</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for payment in staged_payments %}
+                <tr>
+                  <td class="fw-semibold">
+                    {{ payment.stage_label }}
+                    {% if payment.is_legacy %}
+                      <span class="badge badge-sm bg-secondary-subtle text-secondary ms-1">داده قدیمی</span>
+                    {% endif %}
+                    {% if payment.is_voided %}
+                      <span class="badge badge-sm bg-danger-subtle text-danger ms-1">ابطال‌شده</span>
+                    {% endif %}
+                  </td>
+                  <td class="text-end fw-semibold">
+                    {{ payment.amount|default:0|ir_currency }}
+                    <span class="text-muted text-2xs">تومان</span>
+                  </td>
+                  <td>{{ payment.payment_date_jalali|default:'-' }}</td>
+                  <td>{{ payment.due_date_jalali|default:'-' }}</td>
+                  <td>{{ payment.payment_method_label|default:'-' }}</td>
+                  <td>{{ payment.payment_reference|default:'-' }}</td>
+                  <td>{{ payment.created_by.get_full_name|default:'-' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state py-4">
+          <span class="empty-state__icon"><i class="fi fi-rr-list"></i></span>
+          <p class="mb-0">پرداخت مرحله‌ای ثبت نشده است.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    {# ================= تراکنش‌ها ================= #}
+    <section class="fin-section">
+      <div class="fin-section__head">
+        <div class="d-flex align-items-center gap-2 min-w-0">
+          <span class="avatar avatar-xs rounded-3 bg-info-subtle text-info flex-shrink-0">
+            <i class="fi fi-rr-order-history"></i>
+          </span>
+          <h6 class="fin-section__title">تراکنش‌ها</h6>
+          {% if transactions %}
+            <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ transactions|length }}</span>
+          {% endif %}
+        </div>
+      </div>
+
+      {% if transactions %}
+        <div class="table-responsive">
+          <table class="table table-sm table-row-rounded align-middle mb-0">
+            <thead>
+              <tr>
+                <th>تاریخ</th>
+                <th>نوع</th>
+                <th class="text-end">مبلغ</th>
+                <th>ایجادکننده</th>
+                <th>شرح</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for tx in transactions %}
+                <tr>
+                  <td>{{ tx.transaction_date|jformat:"%Y/%m/%d %H:%M" }}</td>
+                  <td>
+                    <span class="badge badge-sm {% if tx.is_outflow %}bg-danger-subtle text-danger{% else %}bg-success-subtle text-success{% endif %}">
+                      {{ tx.get_type_display }}
+                    </span>
+                  </td>
+                  <td class="text-end fw-semibold">
+                    {{ tx.amount|ir_currency }} <span class="text-muted text-2xs">تومان</span>
+                  </td>
+                  <td>{{ tx.created_by.get_full_name|default:'-' }}</td>
+                  <td class="text-muted text-2xs">{{ tx.description|default:'-' }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state py-4">
+          <span class="empty-state__icon"><i class="fi fi-rr-order-history"></i></span>
+          <p class="mb-0">تراکنشی ثبت نشده است.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    {# ================= تضمین‌ها و خسارت‌ها ================= #}
+    <section class="fin-section">
+      <div class="row g-3">
+        <div class="col-12 col-xl-6">
+          <div class="fin-section__head">
+            <div class="d-flex align-items-center gap-2 min-w-0">
+              <span class="avatar avatar-xs rounded-3 bg-primary-subtle text-primary flex-shrink-0">
+                <i class="fi fi-rr-clip"></i>
+              </span>
+              <h6 class="fin-section__title">تضمین‌ها</h6>
+              {% if guarantees %}
+                <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ guarantees|length }}</span>
+              {% endif %}
+            </div>
           </div>
-          <div class="card-body">
-            <div class="table-responsive mb-0">
-              <table class="table table-sm align-middle mb-0">
-                <thead class="table-light">
+
+          {% if guarantees %}
+            <div class="table-responsive">
+              <table class="table table-sm table-row-rounded align-middle mb-0">
+                <thead>
                   <tr>
-                    <th>کد</th>
+                    <th>کد مرجع</th>
                     <th>نوع</th>
-                    <th class="text-end">مبلغ</th>
+                    <th class="text-end">مبلغ تقریبی</th>
                     <th>وضعیت</th>
+                    <th>تاریخ دریافت</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for g in guarantees %}
                     <tr>
-                      <td>{{ g.tracking_code }}</td>
+                      <td class="fw-semibold">{{ g.tracking_code }}</td>
                       <td>{{ g.guarantee_type }}</td>
-                      <td class="text-end">{{ g.estimated_value|default:0|ir_currency }} تومان</td>
-                      <td>{{ g.get_status_display|default:g.status }}</td>
+                      <td class="text-end">
+                        {{ g.estimated_value|default:0|ir_currency }}
+                        <span class="text-muted text-2xs">تومان</span>
+                      </td>
+                      <td>
+                        {% if g.status == 'RECEIVED' %}
+                          <span class="badge badge-sm bg-info-subtle text-info">{{ g.get_status_display|default:g.status }}</span>
+                        {% elif g.status == 'RETURNED' %}
+                          <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ g.get_status_display|default:g.status }}</span>
+                        {% else %}
+                          <span class="badge badge-sm bg-danger-subtle text-danger">{{ g.get_status_display|default:g.status }}</span>
+                        {% endif %}
+                      </td>
+                      <td class="text-muted text-2xs">{{ g.received_at|jformat:"%Y/%m/%d" }}</td>
                     </tr>
-                  {% empty %}
-                    <tr><td colspan="4" class="text-center text-muted">تضمینی ثبت نشده است.</td></tr>
                   {% endfor %}
                 </tbody>
               </table>
             </div>
-          </div>
+          {% else %}
+            <div class="empty-state py-4">
+              <span class="empty-state__icon"><i class="fi fi-rr-clip"></i></span>
+              <p class="mb-0">تضمینی ثبت نشده است.</p>
+            </div>
+          {% endif %}
         </div>
-      </div>
 
-      <div class="col-12">
-        <div class="card shadow-sm border rounded-3">
-          <div class="card-header bg-body-tertiary border-bottom py-3">
-            <h6 class="mb-0">خسارت‌ها</h6>
+        <div class="col-12 col-xl-6">
+          <div class="fin-section__head">
+            <div class="d-flex align-items-center gap-2 min-w-0">
+              <span class="avatar avatar-xs rounded-3 bg-danger-subtle text-danger flex-shrink-0">
+                <i class="fi fi-rr-triangle-warning"></i>
+              </span>
+              <h6 class="fin-section__title">خسارت‌ها</h6>
+              {% if damages %}
+                <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ damages|length }}</span>
+              {% endif %}
+            </div>
           </div>
-          <div class="card-body">
-            <div class="table-responsive mb-0">
-              <table class="table table-sm align-middle mb-0">
-                <thead class="table-light">
+
+          {% if damages %}
+            <div class="table-responsive">
+              <table class="table table-sm table-row-rounded align-middle mb-0">
+                <thead>
                   <tr>
                     <th>تاریخ</th>
                     <th>نوع</th>
+                    <th>شدت</th>
                     <th class="text-end">مبلغ</th>
                     <th>وضعیت دریافت</th>
                   </tr>
@@ -200,312 +286,477 @@
                 <tbody>
                   {% for d in damages %}
                     <tr>
-                      <td>{{ d.detected_at|jformat:"%Y/%m/%d %H:%M" }}</td>
-                      <td>{{ d.damage_type }}</td>
-                      <td class="text-end">{{ d.amount|default:0|ir_currency }} تومان</td>
-                      <td>{% if d.collected %}<span class="badge bg-success-subtle text-success">پرداخت شد</span>{% else %}<span class="badge bg-danger-subtle text-danger">پرداخت نشده</span>{% endif %}</td>
+                      <td class="text-muted text-2xs">{{ d.detected_at|jformat:"%Y/%m/%d" }}</td>
+                      <td class="fw-semibold">
+                        {{ d.damage_type }}
+                        {% if d.dispute_status != 'NONE' and d.dispute_status %}
+                          <span class="badge badge-sm bg-warning-subtle text-warning ms-1">{{ d.get_dispute_status_display }}</span>
+                        {% endif %}
+                      </td>
+                      <td>{{ d.get_severity_display|default:'-' }}</td>
+                      <td class="text-end">
+                        {{ d.amount|default:0|ir_currency }}
+                        <span class="text-muted text-2xs">تومان</span>
+                      </td>
+                      <td>
+                        {% if d.collected %}
+                          <span class="badge badge-sm bg-success-subtle text-success">پرداخت شد</span>
+                        {% else %}
+                          <span class="badge badge-sm bg-danger-subtle text-danger">پرداخت نشده</span>
+                        {% endif %}
+                      </td>
                     </tr>
-                  {% empty %}
-                    <tr><td colspan="4" class="text-center text-muted">خسارتی ثبت نشده است.</td></tr>
                   {% endfor %}
                 </tbody>
               </table>
             </div>
-          </div>
-        </div>
-      </div>
-
-      <div class="col-12">
-        <div class="card shadow-sm border rounded-3">
-          <div class="card-header bg-body-tertiary border-bottom py-3">
-            <h6 class="mb-0">هزینه‌های جانبی</h6>
-          </div>
-          <div class="card-body">
-            <div class="d-flex justify-content-between align-items-center mb-3">
-              <div class="text-muted small">جمع کل هزینه‌های جانبی ثبت‌شده برای این رزرو</div>
-              <div class="fw-bold">{{ totals.additional_fees|default:0|ir_currency }} تومان</div>
+          {% else %}
+            <div class="empty-state py-4">
+              <span class="empty-state__icon"><i class="fi fi-rr-triangle-warning"></i></span>
+              <p class="mb-0">خسارتی ثبت نشده است.</p>
             </div>
-            {% if additional_fee_items %}
-              <div class="table-responsive mb-0">
-                <table class="table table-sm align-middle mb-0">
-                  <thead class="table-light">
-                    <tr>
-                      <th>عنوان</th>
-                      <th>مبلغ</th>
-                      <th>توضیحات</th>
-                      <th>تاریخ ثبت</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {% for fee in additional_fee_items %}
-                      <tr>
-                        <td>{{ fee.title }}</td>
-                        <td class="text-end">{{ fee.amount|ir_currency }} تومان</td>
-                        <td>{{ fee.notes|default:'-' }}</td>
-                        <td>{{ fee.created_at|jformat:"%Y/%m/%d %H:%M" }}</td>
-                      </tr>
-                    {% endfor %}
-                  </tbody>
-                </table>
-              </div>
-            {% else %}
-              <div class="text-muted">هزینه جانبی‌ای برای این رزرو ثبت نشده است.</div>
-            {% endif %}
-          </div>
+          {% endif %}
+        </div>
+      </div>
+    </section>
+
+    {# ================= هزینه‌های جانبی ================= #}
+    <section class="fin-section">
+      <div class="fin-section__head">
+        <div class="d-flex align-items-center gap-2 min-w-0">
+          <span class="avatar avatar-xs rounded-3 bg-info-subtle text-info flex-shrink-0">
+            <i class="fi fi-rr-add-document"></i>
+          </span>
+          <h6 class="fin-section__title">هزینه‌های جانبی</h6>
+          {% if additional_fee_items %}
+            <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ additional_fee_items|length }}</span>
+          {% endif %}
+        </div>
+        <span class="badge badge-sm bg-info-subtle text-info">
+          جمع: {{ totals.additional_fees|default:0|ir_currency }} تومان
+        </span>
+      </div>
+
+      {% if additional_fee_items %}
+        <div class="table-responsive">
+          <table class="table table-sm table-row-rounded align-middle mb-0">
+            <thead>
+              <tr>
+                <th>عنوان</th>
+                <th class="text-end">مبلغ</th>
+                <th>توضیحات</th>
+                <th>تاریخ ثبت</th>
+              </tr>
+            </thead>
+            <tbody>
+              {% for fee in additional_fee_items %}
+                <tr>
+                  <td class="fw-semibold">{{ fee.title }}</td>
+                  <td class="text-end">
+                    {{ fee.amount|ir_currency }} <span class="text-muted text-2xs">تومان</span>
+                  </td>
+                  <td class="text-muted text-2xs">{{ fee.notes|default:'-' }}</td>
+                  <td class="text-muted text-2xs">{{ fee.created_at|jformat:"%Y/%m/%d %H:%M" }}</td>
+                </tr>
+              {% endfor %}
+            </tbody>
+          </table>
+        </div>
+      {% else %}
+        <div class="empty-state py-4">
+          <span class="empty-state__icon"><i class="fi fi-rr-add-document"></i></span>
+          <p class="mb-0">هزینه جانبی‌ای برای این رزرو ثبت نشده است.</p>
+        </div>
+      {% endif %}
+    </section>
+
+    {# ================= جریمه‌ها ================= #}
+    <section class="fin-section">
+      <div class="fin-section__head">
+        <div class="d-flex align-items-center gap-2 min-w-0">
+          <span class="avatar avatar-xs rounded-3 bg-warning-subtle text-warning flex-shrink-0">
+            <i class="fi fi-rr-scale"></i>
+          </span>
+          <h6 class="fin-section__title">اطلاعات مالی و جریمه‌ها</h6>
         </div>
       </div>
 
-      <div class="col-12">
-        <div class="card shadow-sm border rounded-3">
-          <div class="card-header bg-body-tertiary border-bottom py-3">
-            <h6 class="mb-0">اطلاعات مالی و جریمه‌ها</h6>
-          </div>
-          <div class="card-body">
-            <div class="row gy-3 mb-4">
-              <!-- Cancellation Fee Section -->
-              <div class="col-12 col-xl-6">
-                <div class="card border">
-                  <div class="card-header bg-light border-bottom py-2">
-                    <h6 class="mb-0 small text-danger">جریمه لغو</h6>
+      <div class="row g-3">
+        {# --- جریمه لغو --- #}
+        <div class="col-12 col-xl-6">
+          <div class="fin-tile">
+            <div class="fin-tile__head text-danger">
+              <i class="fi fi-rr-ban"></i>جریمه لغو
+            </div>
+            <div class="fin-tile__body">
+              <div class="row gy-3 mb-3">
+                <div class="col-6">
+                  <div class="text-muted text-2xs">مبلغ کل جریمه</div>
+                  <div class="fw-semibold">{{ cancellation_total|default:0|ir_currency }} <span class="text-muted text-2xs">تومان</span></div>
+                </div>
+                <div class="col-6">
+                  <div class="text-muted text-2xs">پرداخت‌شده</div>
+                  <div class="fw-semibold">{{ reservation.cancellation_fee_paid_amount|default:0|ir_currency }} <span class="text-muted text-2xs">تومان</span></div>
+                </div>
+                <div class="col-6">
+                  <div class="text-muted text-2xs">مانده تا پرداخت</div>
+                  <div class="fw-semibold {% if cancellation_remaining|default:0 > 0 %}text-danger{% endif %}">
+                    {{ cancellation_remaining|default:0|ir_currency }} <span class="text-muted text-2xs">تومان</span>
                   </div>
-                  <div class="card-body">
-                    <div class="row gy-2 mb-3">
-                      <div class="col-6">
-                        <div class="small text-muted">مبلغ کل جریمه</div>
-                        <div class="fw-semibold">{{ cancellation_total|default:0|ir_currency }} تومان</div>
-                      </div>
-                      <div class="col-6">
-                        <div class="small text-muted">پرداخت‌شده</div>
-                        <div class="fw-semibold">{{ reservation.cancellation_fee_paid_amount|default:0|ir_currency }} تومان</div>
-                      </div>
-                      <div class="col-6">
-                        <div class="small text-muted">مانده تا پرداخت</div>
-                        <div class="fw-semibold">{{ cancellation_remaining|default:0|ir_currency }} تومان</div>
-                      </div>
-                      <div class="col-6">
-                        <div class="small text-muted">روش پرداخت</div>
-                        <div class="fw-semibold">{{ reservation.cancellation_fee_payment_method|default:'-' }}</div>
-                      </div>
-                      {% if reservation.cancellation_fee_tracking_code %}
-                      <div class="col-12">
-                        <div class="small text-muted">کد رهگیری</div>
-                        <div class="fw-semibold text-truncate">{{ reservation.cancellation_fee_tracking_code }}</div>
-                      </div>
-                      {% endif %}
+                </div>
+                <div class="col-6">
+                  <div class="text-muted text-2xs">روش پرداخت</div>
+                  <div class="fw-semibold">{{ reservation.cancellation_fee_payment_method|default:'-' }}</div>
+                </div>
+                {% if reservation.cancellation_fee_tracking_code %}
+                  <div class="col-12">
+                    <div class="text-muted text-2xs">کد رهگیری</div>
+                    <div class="fw-semibold text-truncate" title="{{ reservation.cancellation_fee_tracking_code }}">
+                      {{ reservation.cancellation_fee_tracking_code }}
                     </div>
-                    {% if can_pay_cancellation_penalty %}
-                      <button type="button" class="btn btn-sm btn-outline-danger w-100 open-penalty-form" data-reservation-id="{{ reservation.pk }}" data-penalty-type="CANCELLATION" data-remaining-amount="{{ cancellation_remaining|default:0 }}">
-                        <i class="fi fi-rr-plus me-2"></i>پرداخت مانده جریمه لغو
-                      </button>
-                    {% elif cancellation_remaining|default:0 > 0 %}
-                      <div class="text-muted small">پرداخت جریمه لغو فقط برای رزروهای لغو شده مجاز است.</div>
-                    {% else %}
-                      <div class="text-muted small">جریمه لغو برای این رزرو تسویه شده است.</div>
-                    {% endif %}
                   </div>
-                </div>
+                {% endif %}
               </div>
 
-              <!-- Damage Fee Section -->
-              <div class="col-12 col-xl-6">
-                <div class="card border">
-                  <div class="card-header bg-light border-bottom py-2">
-                    <h6 class="mb-0 small text-warning">جریمه خسارت</h6>
+              {% if can_pay_cancellation_penalty %}
+                <button type="button"
+                        class="btn btn-sm btn-outline-danger w-100 open-penalty-form"
+                        data-reservation-id="{{ reservation.pk }}"
+                        data-penalty-type="CANCELLATION"
+                        data-remaining-amount="{{ cancellation_remaining|default:0 }}">
+                  <i class="fi fi-rr-money-check me-2"></i>پرداخت مانده جریمه لغو
+                </button>
+              {% elif cancellation_remaining|default:0 > 0 %}
+                <div class="text-muted text-2xs">
+                  <i class="fi fi-rr-info me-1"></i>پرداخت جریمه لغو فقط برای رزروهای لغو شده مجاز است.
+                </div>
+              {% else %}
+                <div class="text-muted text-2xs">
+                  <i class="fi fi-rr-check-circle me-1"></i>جریمه لغو برای این رزرو تسویه شده است.
+                </div>
+              {% endif %}
+            </div>
+          </div>
+        </div>
+
+        {# --- جریمه خسارت --- #}
+        <div class="col-12 col-xl-6">
+          <div class="fin-tile">
+            <div class="fin-tile__head text-warning">
+              <i class="fi fi-rr-triangle-warning"></i>جریمه خسارت
+            </div>
+            <div class="fin-tile__body">
+              <div class="row gy-3 mb-3">
+                <div class="col-6">
+                  <div class="text-muted text-2xs">مبلغ کل جریمه</div>
+                  <div class="fw-semibold">{{ reservation.damage_amount|default:0|ir_currency }} <span class="text-muted text-2xs">تومان</span></div>
+                </div>
+                <div class="col-6">
+                  <div class="text-muted text-2xs">پرداخت‌شده</div>
+                  <div class="fw-semibold">{{ reservation.damage_fee_paid_amount|default:0|ir_currency }} <span class="text-muted text-2xs">تومان</span></div>
+                </div>
+                <div class="col-6">
+                  <div class="text-muted text-2xs">مانده تا پرداخت</div>
+                  <div class="fw-semibold {% if damage_remaining|default:0 > 0 %}text-warning{% endif %}">
+                    {{ damage_remaining|default:0|ir_currency }} <span class="text-muted text-2xs">تومان</span>
                   </div>
-                  <div class="card-body">
-                    <div class="row gy-2 mb-3">
-                      <div class="col-6">
-                        <div class="small text-muted">مبلغ کل جریمه</div>
-                        <div class="fw-semibold">{{ reservation.damage_amount|default:0|ir_currency }} تومان</div>
-                      </div>
-                      <div class="col-6">
-                        <div class="small text-muted">پرداخت‌شده</div>
-                        <div class="fw-semibold">{{ reservation.damage_fee_paid_amount|default:0|ir_currency }} تومان</div>
-                      </div>
-                      <div class="col-6">
-                        <div class="small text-muted">مانده تا پرداخت</div>
-                        <div class="fw-semibold">{{ damage_remaining|default:0|ir_currency }} تومان</div>
-                      </div>
-                      <div class="col-6">
-                        <div class="small text-muted">روش پرداخت</div>
-                        <div class="fw-semibold">{{ reservation.damage_fee_payment_method|default:'-' }}</div>
-                      </div>
-                      {% if reservation.damage_fee_tracking_code %}
-                      <div class="col-12">
-                        <div class="small text-muted">کد رهگیری</div>
-                        <div class="fw-semibold text-truncate">{{ reservation.damage_fee_tracking_code }}</div>
-                      </div>
-                      {% endif %}
+                </div>
+                <div class="col-6">
+                  <div class="text-muted text-2xs">روش پرداخت</div>
+                  <div class="fw-semibold">{{ reservation.damage_fee_payment_method|default:'-' }}</div>
+                </div>
+                {% if reservation.damage_fee_tracking_code %}
+                  <div class="col-12">
+                    <div class="text-muted text-2xs">کد رهگیری</div>
+                    <div class="fw-semibold text-truncate" title="{{ reservation.damage_fee_tracking_code }}">
+                      {{ reservation.damage_fee_tracking_code }}
                     </div>
-                    {% if can_pay_damage_penalty %}
-                      <button type="button" class="btn btn-sm btn-outline-warning w-100 open-penalty-form" data-reservation-id="{{ reservation.pk }}" data-penalty-type="DAMAGE" data-remaining-amount="{{ damage_remaining|default:0 }}">
-                        <i class="fi fi-rr-plus me-2"></i>پرداخت مانده جریمه خسارت
-                      </button>
-                    {% elif damage_remaining|default:0 > 0 %}
-                      <div class="text-muted small">برای این رزرو جریمه خسارت ثبت نشده یا در وضعیت قابل پرداخت نیست.</div>
-                    {% else %}
-                      <div class="text-muted small">جریمه خسارت برای این رزرو تسویه شده است.</div>
-                    {% endif %}
                   </div>
-                </div>
+                {% endif %}
               </div>
-            </div>
-          </div>
-        </div>
-      </div>
 
-      <div class="col-12">
-        <div class="card shadow-sm border rounded-3">
-          <div class="card-header bg-body-tertiary border-bottom py-3">
-            <h6 class="mb-0">لغو رزرو</h6>
-          </div>
-          <div class="card-body">
-            {% if cancellation %}
-              <div class="row gy-2 mb-4">
-                <div class="col-12 col-md-4"><strong>تاریخ لغو:</strong> {{ cancellation.cancelled_at|jformat:"%Y/%m/%d %H:%M" }}</div>
-                <div class="col-12 col-md-4"><strong>بازپرداخت:</strong> {{ cancellation.refund_amount|default:0|ir_currency }} تومان</div>
-                <div class="col-12 col-md-4"><strong>جریمه:</strong> {{ cancellation.penalty_amount|default:0|ir_currency }} تومان</div>
-              </div>
-              <div class="d-grid gap-2 d-sm-flex">
-                <button type="button" class="btn btn-sm btn-outline-primary open-damage-form temporarily-disabled-action" data-reservation-id="{{ reservation.pk }}" data-form-type="damage" data-action-disabled="true" aria-disabled="true" tabindex="-1" style="opacity: 0.65; cursor: not-allowed;">
-                  <i class="fi fi-rr-plus me-2"></i>ثبت خسارت
+              {% if can_pay_damage_penalty %}
+                <button type="button"
+                        class="btn btn-sm btn-outline-warning w-100 open-penalty-form"
+                        data-reservation-id="{{ reservation.pk }}"
+                        data-penalty-type="DAMAGE"
+                        data-remaining-amount="{{ damage_remaining|default:0 }}">
+                  <i class="fi fi-rr-money-check me-2"></i>پرداخت مانده جریمه خسارت
                 </button>
-                <button type="button" class="btn btn-sm btn-outline-success open-refund-form temporarily-disabled-action" data-reservation-id="{{ reservation.pk }}" data-form-type="refund" data-action-disabled="true" aria-disabled="true" tabindex="-1" style="opacity: 0.65; cursor: not-allowed;">
-                  <i class="fi fi-rr-undo me-2"></i>ثبت بازگشت وجه
-                </button>
-              </div>
-            {% else %}
-              <div class="text-muted">این رزرو لغو نشده است.</div>
-            {% endif %}
+              {% elif damage_remaining|default:0 > 0 %}
+                <div class="text-muted text-2xs">
+                  <i class="fi fi-rr-info me-1"></i>برای این رزرو جریمه خسارت ثبت نشده یا در وضعیت قابل پرداخت نیست.
+                </div>
+              {% else %}
+                <div class="text-muted text-2xs">
+                  <i class="fi fi-rr-check-circle me-1"></i>جریمه خسارت برای این رزرو تسویه شده است.
+                </div>
+              {% endif %}
+            </div>
           </div>
         </div>
       </div>
+    </section>
 
-      <!-- Damage Form Modal -->
-      <div class="modal fade" id="damageModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">ثبت خسارت</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="damageForm" method="post" action="{% url 'financial:add_damage' reservation.pk %}">
-              {% csrf_token %}
-              <div class="modal-body">
-                <div class="mb-3">
-                  <label for="damageType" class="form-label">نوع خسارت</label>
-                  <input type="text" class="form-control" id="damageType" name="damage_type" required>
-                </div>
-                <div class="mb-3">
-                  <label for="damageAmount" class="form-label">مبلغ خسارت (تومان)</label>
-                  <input type="number" class="form-control" id="damageAmount" name="amount" min="0">
-                </div>
-                <div class="mb-3">
-                  <label for="damagePaymentRef" class="form-label">کد پیگیری پرداخت</label>
-                  <input type="text" class="form-control" id="damagePaymentRef" name="payment_reference" placeholder="اختیاری">
-                </div>
-                <div class="mb-3">
-                  <label for="damageDesc" class="form-label">شرح</label>
-                  <textarea class="form-control" id="damageDesc" name="description" rows="3"></textarea>
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
-                <button type="submit" class="btn btn-primary">ثبت خسارت</button>
-              </div>
-            </form>
-          </div>
+    {# ================= لغو رزرو ================= #}
+    <section class="fin-section">
+      <div class="fin-section__head">
+        <div class="d-flex align-items-center gap-2 min-w-0">
+          <span class="avatar avatar-xs rounded-3 bg-danger-subtle text-danger flex-shrink-0">
+            <i class="fi fi-rr-undo"></i>
+          </span>
+          <h6 class="fin-section__title">لغو رزرو</h6>
         </div>
+        {% if cancellation %}
+          <span class="badge badge-sm bg-danger-subtle text-danger">
+            {{ cancellation.get_refund_status_display|default:cancellation.refund_status }}
+          </span>
+        {% endif %}
       </div>
 
-      <!-- Refund Form Modal -->
-      <div class="modal fade" id="refundModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">ثبت بازگشت وجه</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
-            </div>
-            <form id="refundForm" method="post" action="{% url 'financial:create_transaction' reservation.pk %}">
-              {% csrf_token %}
-              <div class="modal-body">
-                <div class="mb-3">
-                  <label for="refundAmount" class="form-label">مبلغ بازگشت (تومان)</label>
-                  <input type="number" class="form-control" id="refundAmount" name="amount" min="0" required>
-                </div>
-                <div class="mb-3">
-                  <label for="refundMethod" class="form-label">روش پرداخت</label>
-                  <select class="form-select" id="refundMethod" name="payment_method">
-                    <option value="">انتخاب روش</option>
-                    <option value="CASH">نقد</option>
-                    <option value="CARD">کارت</option>
-                    <option value="TRANSFER">انتقال بانکی</option>
-                    <option value="CHECK">چک</option>
-                  </select>
-                </div>
-                <div class="mb-3">
-                  <label for="refundRef" class="form-label">کد پیگیری</label>
-                  <input type="text" class="form-control" id="refundRef" name="external_reference" placeholder="کد پیگیری بازگشت وجه">
-                </div>
-                <div class="mb-3">
-                  <label for="refundNote" class="form-label">یادداشت</label>
-                  <textarea class="form-control" id="refundNote" name="note" rows="3"></textarea>
-                </div>
-                <input type="hidden" name="type" value="REFUND">
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
-                <button type="submit" class="btn btn-success">ثبت بازگشت وجه</button>
-              </div>
-            </form>
+      {% if cancellation %}
+        <div class="row gy-3 mb-4">
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="text-muted text-2xs">تاریخ لغو</div>
+            <div class="fw-semibold">{{ cancellation.cancelled_at|jformat:"%Y/%m/%d %H:%M" }}</div>
           </div>
-        </div>
-      </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="text-muted text-2xs">مبلغ بازپرداخت</div>
+            <div class="fw-semibold">{{ cancellation.refund_amount|default:0|ir_currency }} <span class="text-muted text-2xs">تومان</span></div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="text-muted text-2xs">جریمه نگه‌داشته‌شده</div>
+            <div class="fw-semibold">{{ cancellation.penalty_amount|default:0|ir_currency }} <span class="text-muted text-2xs">تومان</span></div>
+          </div>
+          <div class="col-12 col-md-6 col-xl-3">
+            <div class="text-muted text-2xs">بیعانه در زمان لغو</div>
+            <div class="fw-semibold">{{ cancellation.deposit_at_cancel|default:0|ir_currency }} <span class="text-muted text-2xs">تومان</span></div>
+          </div>
 
-      <!-- Penalty Payment Modal -->
-      <div class="modal fade" id="penaltyPaymentModal" tabindex="-1" aria-hidden="true">
-        <div class="modal-dialog modal-dialog-centered">
-          <div class="modal-content">
-            <div class="modal-header">
-              <h5 class="modal-title">پرداخت جریمه</h5>
-              <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          {% if cancellation.refund_method %}
+            <div class="col-12 col-md-6 col-xl-3">
+              <div class="text-muted text-2xs">روش بازپرداخت</div>
+              <div class="fw-semibold">{{ cancellation.get_refund_method_display|default:cancellation.refund_method }}</div>
             </div>
-            <form id="penaltyPaymentForm" method="post" action="{% url 'reservations:penalty_payment' reservation.pk %}">
-              {% csrf_token %}
-              <div class="modal-body">
-                <div class="mb-3">
-                  <label for="penaltyType" class="form-label">نوع جریمه</label>
-                  <select class="form-select" id="penaltyType" name="penalty_type" required>
-                    <option value="">انتخاب کنید</option>
-                    <option value="CANCELLATION">جریمه لغو</option>
-                    <option value="DAMAGE">جریمه خسارت</option>
-                  </select>
-                </div>
-                <div class="mb-3">
-                  <label for="penaltyAmount" class="form-label">مبلغ پرداخت (تومان)</label>
-                  <input type="text" class="form-control money-input" id="penaltyAmount" name="penalty_amount" inputmode="numeric" min="0" required>
-                </div>
-                <div class="mb-3">
-                  <label for="penaltyPaymentMethod" class="form-label">روش پرداخت</label>
-                  <select class="form-select" id="penaltyPaymentMethod" name="penalty_payment_method" required>
-                    <option value="">انتخاب کنید</option>
-                    <option value="CASH">نقد</option>
-                    <option value="TRANSFER">انتقال بانکی</option>
-                    <option value="POS">کارتخوان</option>
-                  </select>
-                </div>
-                <div class="mb-3">
-                  <label for="penaltyPaymentRef" class="form-label">کد رهگیری پرداخت</label>
-                  <input type="text" class="form-control" id="penaltyPaymentRef" name="penalty_payment_tracking_code">
-                </div>
-              </div>
-              <div class="modal-footer">
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
-                <button type="submit" class="btn btn-success">ثبت پرداخت جریمه</button>
-              </div>
-            </form>
-          </div>
+          {% endif %}
+          {% if cancellation.refund_posted_at %}
+            <div class="col-12 col-md-6 col-xl-3">
+              <div class="text-muted text-2xs">تاریخ ثبت بازپرداخت</div>
+              <div class="fw-semibold">{{ cancellation.refund_posted_at|jformat:"%Y/%m/%d %H:%M" }}</div>
+            </div>
+          {% endif %}
+          {% if cancellation.approved_by %}
+            <div class="col-12 col-md-6 col-xl-3">
+              <div class="text-muted text-2xs">تأییدکننده</div>
+              <div class="fw-semibold">{{ cancellation.approved_by.get_full_name|default:cancellation.approved_by.username }}</div>
+            </div>
+          {% endif %}
+          {% if cancellation.reason %}
+            <div class="col-12">
+              <div class="text-muted text-2xs">دلیل لغو</div>
+              <div class="fw-semibold">{{ cancellation.reason }}</div>
+            </div>
+          {% endif %}
         </div>
+
+        <div class="d-grid gap-2 d-sm-flex">
+          <button type="button"
+                  class="btn btn-sm btn-outline-primary open-damage-form temporarily-disabled-action"
+                  data-reservation-id="{{ reservation.pk }}"
+                  data-form-type="damage"
+                  data-action-disabled="true"
+                  aria-disabled="true"
+                  tabindex="-1">
+            <i class="fi fi-rr-triangle-warning me-2"></i>ثبت خسارت
+          </button>
+          <button type="button"
+                  class="btn btn-sm btn-outline-success open-refund-form temporarily-disabled-action"
+                  data-reservation-id="{{ reservation.pk }}"
+                  data-form-type="refund"
+                  data-action-disabled="true"
+                  aria-disabled="true"
+                  tabindex="-1">
+            <i class="fi fi-rr-undo me-2"></i>ثبت بازگشت وجه
+          </button>
+        </div>
+      {% else %}
+        <div class="empty-state py-4">
+          <span class="empty-state__icon"><i class="fi fi-rr-check-circle"></i></span>
+          <p class="mb-0">این رزرو لغو نشده است.</p>
+        </div>
+      {% endif %}
+    </section>
+  </div>
+
+  {% comment %}
+  مودال‌ها — داخل کارت ریشه (به توضیح بالای فایل نگاه کنید).
+  فرم‌ها ``novalidate`` هستند تا اعتبارسنجی سمت سرور و پیام‌های فارسی
+  (که با renderFormErrors روی همان فیلد نشان داده می‌شوند) جای پیام‌های
+  پیش‌فرض مرورگر را بگیرند.
+  {% endcomment %}
+
+  {# ---------- مودال ثبت خسارت ---------- #}
+  <div class="modal fade" id="damageModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="d-flex align-items-center gap-2 min-w-0">
+            <span class="avatar avatar-xs rounded-3 bg-danger-subtle text-danger flex-shrink-0">
+              <i class="fi fi-rr-triangle-warning"></i>
+            </span>
+            <h5 class="modal-title mb-0">ثبت خسارت</h5>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+        </div>
+
+        <form id="damageForm" method="post" action="{% url 'financial:add_damage' reservation.pk %}" novalidate>
+          {% csrf_token %}
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="damageType" class="form-label">نوع خسارت <span class="text-danger">*</span></label>
+              <input type="text" class="form-control" id="damageType" name="damage_type"
+                     placeholder="مثلاً: پارگی لبهٔ دامن" required>
+            </div>
+            <div class="mb-3">
+              <label for="damageAmount" class="form-label">مبلغ خسارت (تومان)</label>
+              <input type="text" class="form-control money-input" id="damageAmount" name="amount"
+                     inputmode="numeric" placeholder="0">
+            </div>
+            <div class="mb-3">
+              <label for="damagePaymentRef" class="form-label">کد پیگیری پرداخت</label>
+              <input type="text" class="form-control" id="damagePaymentRef" name="payment_reference"
+                     placeholder="اختیاری">
+            </div>
+            <div class="mb-3">
+              <label for="damageDesc" class="form-label">شرح</label>
+              <textarea class="form-control" id="damageDesc" name="description" rows="3"
+                        placeholder="توضیح تکمیلی (اختیاری)"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+            <button type="submit" class="btn btn-danger">
+              <i class="fi fi-rr-check me-1"></i>ثبت خسارت
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# ---------- مودال بازگشت وجه ---------- #}
+  <div class="modal fade" id="refundModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="d-flex align-items-center gap-2 min-w-0">
+            <span class="avatar avatar-xs rounded-3 bg-success-subtle text-success flex-shrink-0">
+              <i class="fi fi-rr-undo"></i>
+            </span>
+            <h5 class="modal-title mb-0">ثبت بازگشت وجه</h5>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+        </div>
+
+        <form id="refundForm" method="post" action="{% url 'financial:create_transaction' reservation.pk %}" novalidate>
+          {% csrf_token %}
+          <input type="hidden" name="type" value="REFUND">
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="refundAmount" class="form-label">مبلغ بازگشت (تومان) <span class="text-danger">*</span></label>
+              <input type="text" class="form-control money-input" id="refundAmount" name="amount"
+                     inputmode="numeric" placeholder="0" required>
+            </div>
+            <div class="mb-3">
+              <label for="refundMethod" class="form-label">روش پرداخت</label>
+              {% comment %}
+              توجه: گزینه‌ها باید با ``PaymentMethod.CHOICES`` در
+              reservations/constants.py یکی باشند (CASH/TRANSFER/POS).
+              پیش‌تر CARD و CHECK هم اینجا بودند که در فرم معتبر نبودند و
+              انتخابشان خطای «مقدار معتبر نیست» می‌داد.
+              {% endcomment %}
+              <select class="form-select" id="refundMethod" name="payment_method">
+                <option value="">انتخاب روش</option>
+                <option value="CASH">نقدی</option>
+                <option value="TRANSFER">انتقال بانکی</option>
+                <option value="POS">کارتخوان</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="refundRef" class="form-label">کد پیگیری</label>
+              <input type="text" class="form-control" id="refundRef" name="external_reference"
+                     placeholder="کد پیگیری بازگشت وجه">
+            </div>
+            <div class="mb-3">
+              <label for="refundNote" class="form-label">یادداشت</label>
+              <textarea class="form-control" id="refundNote" name="note" rows="3"
+                        placeholder="توضیح تکمیلی (اختیاری)"></textarea>
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+            <button type="submit" class="btn btn-success">
+              <i class="fi fi-rr-check me-1"></i>ثبت بازگشت وجه
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  {# ---------- مودال پرداخت جریمه ---------- #}
+  <div class="modal fade" id="penaltyPaymentModal" tabindex="-1" aria-hidden="true">
+    <div class="modal-dialog modal-dialog-centered">
+      <div class="modal-content">
+        <div class="modal-header">
+          <div class="d-flex align-items-center gap-2 min-w-0">
+            <span class="avatar avatar-xs rounded-3 bg-warning-subtle text-warning flex-shrink-0">
+              <i class="fi fi-rr-money-check"></i>
+            </span>
+            <h5 class="modal-title mb-0">پرداخت جریمه</h5>
+          </div>
+          <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+        </div>
+
+        <form id="penaltyPaymentForm" method="post" action="{% url 'reservations:penalty_payment' reservation.pk %}" novalidate>
+          {% csrf_token %}
+          <div class="modal-body">
+            <div class="mb-3">
+              <label for="penaltyType" class="form-label">نوع جریمه <span class="text-danger">*</span></label>
+              <select class="form-select" id="penaltyType" name="penalty_type" required>
+                <option value="">انتخاب کنید</option>
+                <option value="CANCELLATION">جریمه لغو</option>
+                <option value="DAMAGE">جریمه خسارت</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="penaltyAmount" class="form-label">مبلغ پرداخت (تومان) <span class="text-danger">*</span></label>
+              <input type="text" class="form-control money-input" id="penaltyAmount" name="penalty_amount"
+                     inputmode="numeric" placeholder="0" required>
+              <div class="form-text text-2xs">مبلغ نمی‌تواند از مانده جریمه بیشتر باشد.</div>
+            </div>
+            <div class="mb-3">
+              <label for="penaltyPaymentMethod" class="form-label">روش پرداخت</label>
+              <select class="form-select" id="penaltyPaymentMethod" name="penalty_payment_method">
+                <option value="">انتخاب کنید</option>
+                <option value="CASH">نقدی</option>
+                <option value="TRANSFER">انتقال بانکی</option>
+                <option value="POS">کارتخوان</option>
+              </select>
+            </div>
+            <div class="mb-3">
+              <label for="penaltyPaymentRef" class="form-label">کد رهگیری پرداخت</label>
+              <input type="text" class="form-control" id="penaltyPaymentRef" name="penalty_payment_tracking_code"
+                     placeholder="اختیاری">
+            </div>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+            <button type="submit" class="btn btn-success">
+              <i class="fi fi-rr-check me-1"></i>ثبت پرداخت جریمه
+            </button>
+          </div>
+        </form>
       </div>
     </div>
   </div>
@@ -514,4 +765,3 @@
 {% block extra_js %}
   {% include 'includes/scripts/financial_reservation_partial_js.html' %}
 {% endblock %}
-

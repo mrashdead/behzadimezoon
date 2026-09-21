@@ -1,3 +1,9 @@
+> ⚠️ **سند تاریخی (Historical Snapshot) — منقضی‌شده**
+>
+> این فایل گزارش پیاده‌سازی جست‌وجوی پیشرفته در یک مقطع زمانی مشخص است و
+> **مستندات جاری سیستم نیست**. برای وضعیت فعلی به `README.md` و
+> `docs/audit_mezoon_v1.md` مراجعه کنید.
+
 # 🎯 Advanced Search Implementation - Complete Guide
 
 ## ✅ Implementation Status: COMPLETE

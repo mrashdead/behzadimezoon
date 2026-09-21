@@ -50,6 +50,15 @@ class DashboardView(TemplateView):
         # Backwards-compatible single value used in template
         context['total_income'] = context['totals'].get('total_cash_inflow', 0)
 
+        # داده‌های تکمیلی داشبورد (پیش‌تر محاسبه می‌شدند ولی به قالب نمی‌رسیدند)
+        context['payment_stats'] = financial_ctx.get('payment_stats', {})
+        context['upcoming_payments'] = financial_ctx.get('upcoming_payments', [])
+        context['cancelled_totals'] = financial_ctx.get('cancelled_totals', {})
+        context['reporting'] = financial_ctx.get('reporting', {})
+        context['chart_labels'] = financial_ctx.get('chart_labels', [])
+        context['revenue_data'] = financial_ctx.get('revenue_data', [])
+        context['expense_data'] = financial_ctx.get('expense_data', [])
+
         # Defer newly added DB columns until migrations have been applied
         context['recent_reservations'] = user_reservations.select_related(
             'customer', 'dress'

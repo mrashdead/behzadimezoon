@@ -2,12 +2,13 @@
 
 import ast
 import json
+import logging
 from datetime import date
 from datetime import timedelta
 import time
 from django.conf import settings
 from django.db import transaction
-from django.db.models import Q
+from django.db.models import Q, Count
 from django.db.utils import OperationalError
 from django.http import JsonResponse, HttpResponse, HttpResponseForbidden, QueryDict
 from django.views.decorators.http import require_POST
@@ -17,6 +18,7 @@ from io import BytesIO
 from openpyxl import Workbook
 from django.utils.dateparse import parse_date
 from django.utils import timezone
+from urllib.parse import urlencode
 from django.core.exceptions import ValidationError, PermissionDenied
 from django.core.paginator import EmptyPage, PageNotAnInteger, Paginator
 from django.shortcuts import render, get_object_or_404, redirect
@@ -305,6 +307,27 @@ def reservation_list(request):
         'remaining_payment_tracking_code', 'remaining_paid_at', 'cancellation_fee'
     )
 
+    # ------------------------------------------------------------------
+    # شمارش وضعیت‌ها برای کارت‌های خلاصهٔ بالای صفحه
+    # ------------------------------------------------------------------
+    # ⚠️ این شمارش باید **پیش از** اعمال فیلتر وضعیت انجام شود، وگرنه با
+    # انتخاب یک وضعیت، بقیهٔ کارت‌ها صفر می‌شوند و کاربر فکر می‌کند رزروی
+    # در آن وضعیت وجود ندارد. بنابراین روی مجموعهٔ «جستجو-فیلترشده» ولی
+    # «بدون فیلتر وضعیت» حساب می‌کنیم.
+    status_counts = {
+        row['status']: row['total']
+        for row in reservations.values('status').annotate(total=Count('id'))
+    }
+    status_total = sum(status_counts.values())
+
+    # فیلتر وضعیت (کارت‌های خلاصه به‌صورت لینک عمل می‌کنند)
+    status_filter = (request.GET.get('status') or '').strip().upper()
+    valid_statuses = {value for value, _ in ReservationStatus.CHOICES}
+    if status_filter not in valid_statuses:
+        status_filter = ''
+    if status_filter:
+        reservations = reservations.filter(status=status_filter)
+
     paginator = Paginator(reservations, 20)
     page_number = request.GET.get('page', 1)
     try:
@@ -332,6 +355,12 @@ def reservation_list(request):
         "damage_return_form": DamageReturnForm(),
         "sort": request.GET.get('sort', 'id'),
         "order": request.GET.get('order', 'desc'),
+        "status_counts": status_counts,
+        "status_total": status_total,
+        "status_filter": status_filter,
+        # پسوند آمادهٔ URL برای حفظ جستجوی جاری وقتی کاربر روی کارت‌های
+        # خلاصهٔ وضعیت کلیک می‌کند (قالب نمی‌تواند دو متغیر را به هم بچسباند).
+        "search_qs": f"&{urlencode({'search': search_query})}" if search_query else "",
     }
 
     # داده‌های پرداخت‌های مرحله‌ای (بیعانه) برای هر رزرو
@@ -1168,18 +1197,28 @@ def reservation_edit(request, pk):
                     "اطلاعات پرداخت این رزرو قدیمی است. لطفاً صفحه را دوباره بارگذاری کنید."
                 )
 
-        if payment_rows or payments_submitted:
-            ReservationPaymentService.replace_staged_payments(
-                reservation,
-                payment_rows,
-                request.user,
-                expected_revision=request.POST.get('payment_revision'),
-            )
-            reservation.refresh_from_db()
+        # ایراد M-8: «جایگزینی پرداخت‌ها» و «ذخیرهٔ نهایی مالی» باید در یک
+        # تراکنش و زیر قفل ردیف رزرو انجام شوند؛ در غیر این صورت دو درخواست
+        # هم‌زمان می‌توانند محاسبات یکدیگر را بازنویسی کنند.
+        with transaction.atomic():
+            Reservation.all_objects.select_for_update().get(pk=reservation.pk)
 
-        # Explicitly update financial fields and snapshots before saving
-        ReservationFinancialService.update_financial_status(reservation)
-        ReservationFinancialService.save_reservation_financials(reservation)
+            if payment_rows or payments_submitted:
+                ReservationPaymentService.replace_staged_payments(
+                    reservation,
+                    payment_rows,
+                    request.user,
+                    expected_revision=request.POST.get('payment_revision'),
+                )
+                # مهم: اینجا نباید ``refresh_from_db()`` صدا زده شود، چون تمام
+                # تغییرات ویرایش‌شدهٔ فرم (تاریخ، لباس، شماره قرارداد، تضامین و…)
+                # را که هنوز ذخیره نشده‌اند از بین می‌برد. به‌جای آن فقط
+                # فیلدهای کش مالی را تازه می‌کنیم.
+                ReservationPaymentService.refresh_payment_caches(reservation)
+
+            # Explicitly update financial fields and snapshots before saving
+            ReservationFinancialService.update_financial_status(reservation)
+            ReservationFinancialService.save_reservation_financials(reservation)
 
     except PaymentStageError as e:
         return JsonResponse(
@@ -1191,9 +1230,18 @@ def reservation_edit(request, pk):
             return JsonResponse({"success": False, "errors": e.message_dict})
         return JsonResponse({"success": False, "errors": {"__all__": list(e.messages)}}, status=400)
     except Exception as e:
-        import traceback, sys
-        traceback.print_exc(file=sys.stderr)
-        return JsonResponse({"success": False, "message": 'خطا در ویرایش رزرو: ' + str(e)})
+        # ایراد L-3: پیش‌تر خطای غیرمنتظره با کد وضعیت ۲۰۰ و
+        # ``success: false`` برگردانده می‌شد که هم پایش (monitoring) را
+        # گمراه می‌کرد و هم معنای HTTP را نقض می‌کرد. حالا ۵۰۰ برمی‌گردد و
+        # پاسخ همچنان JSON با ساختار یکسان است (هندلر فرانت‌اند هم
+        # ``!response.ok && !data.success`` را مدیریت می‌کند).
+        logging.getLogger('reservations.edit').exception(
+            'خطای غیرمنتظره در ویرایش رزرو %s', pk
+        )
+        return JsonResponse(
+            {"success": False, "message": 'خطا در ویرایش رزرو: ' + str(e)},
+            status=500,
+        )
 
     # قرارداد پاسخ بدون تغییر می‌ماند؛ جزئیات مالی از طریق
     # «جزئیات رزرو»، «بخش مالی» و «فاکتور» قابل مشاهده است.
@@ -1413,12 +1461,23 @@ def reservation_delete_permanent(request, pk):
 
 @login_required
 def check_availability(request):
+    """
+    بررسی در‌لحظه‌ای موجودی لباس در یک بازه.
+
+    ورودی‌ها: ``dress_id``، ``start_date``، ``rental_days`` و اختیاری
+    ``customer_id`` و ``exclude_reservation_id``.
+
+    ``exclude_reservation_id`` برای حالت «ویرایش رزرو» لازم است؛ بدون آن،
+    خودِ رزروی که در حال ویرایش است با خودش تداخل می‌کند و همیشه
+    «موجود نیست» گزارش می‌شود.
+    """
 
     payload = request.POST if request.method == "POST" else request.GET
     dress_id = payload.get("dress_id")
     start_date = payload.get("start_date")
     rental_days = payload.get("rental_days")
     customer_id = payload.get("customer_id")
+    exclude_reservation_id = payload.get("exclude_reservation_id")
 
     if not all([dress_id, start_date, rental_days]):
         return JsonResponse({"success": False, "message": "اطلاعات ناقص است."})
@@ -1436,18 +1495,33 @@ def check_availability(request):
     customer = Customer.objects.get(id=customer_id) if customer_id else None
     event_date = getattr(customer, "ceremony_date", None) if customer else None
 
+    # در حالت ویرایش، رزرو جاری باید از بررسی تداخل کنار گذاشته شود
+    exclude_id = None
+    if exclude_reservation_id:
+        try:
+            exclude_id = int(exclude_reservation_id)
+        except (TypeError, ValueError):
+            exclude_id = None
+
     is_available, end_date = ReservationAvailabilityService.is_dress_available(
-        dress=dress, start_date=start_date_obj, rental_days=rental_days
+        dress=dress,
+        start_date=start_date_obj,
+        rental_days=rental_days,
+        exclude_reservation_id=exclude_id,
     )
 
     event_date_matches = False
     if event_date and end_date:
         event_date_matches = start_date_obj <= event_date <= end_date
 
+    # تاریخ تحویل لباس: یک روز قبل از شروع اجاره (همان منطق Reservation.save)
+    delivery_date_iso = (start_date_obj - timedelta(days=1)).isoformat()
+
     return JsonResponse({
         "success": True,
         "available": is_available,
         "end_date": end_date.isoformat() if end_date else None,
+        "delivery_date": delivery_date_iso,
         "rent_price": str(dress.daily_rent_price),
         "event_date": date_to_iso(event_date),
         "ceremony_date_matches": event_date_matches,

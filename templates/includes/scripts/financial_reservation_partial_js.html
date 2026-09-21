@@ -13,6 +13,11 @@
   }
 
   function showToast(message, variant = 'info') {
+    // اگر سیستم اعلان سراسری برنامه موجود باشد از آن استفاده می‌کنیم تا
+    // ظاهر پیام‌ها با بقیهٔ صفحات یکسان بماند.
+    if (window.UIHelpers && typeof UIHelpers.showToast === 'function') {
+      return UIHelpers.showToast(message, variant);
+    }
     const toast = document.createElement('div');
     toast.className = `toast align-items-center text-bg-${variant} border-0 show`;
     toast.setAttribute('role', 'alert');
@@ -63,7 +68,9 @@
   }
 
   function showInactiveActionMessage() {
-    window.alert('موقتا غیر فعال');
+    // پیش‌تر از هشدار بومی مرورگر استفاده می‌شد؛ هم ظاهرش با برنامه
+    // هم‌خوان نبود و هم پیام گویا نبود.
+    showToast('این عملیات در حال حاضر غیرفعال است.', 'warning');
   }
 
   function isTemporarilyDisabledAction(button) {
@@ -85,19 +92,45 @@
     }
   }
 
+  /**
+   * اسکریپت‌هایی که با ``innerHTML`` وارد صفحه می‌شوند هرگز اجرا نمی‌شوند.
+   * این تابع آن‌ها را از نو می‌سازد و به ``body`` وصل می‌کند تا مرورگر
+   * اجرایشان کند، بعد حذفشان می‌کند.
+   *
+   * چرا لازم است؟ قالب خلاصهٔ مالی دکمه‌های مودال (ثبت خسارت، بازگشت وجه،
+   * پرداخت جریمه) را با خود می‌آورد و شنونده‌های رویداد در همین اسکریپت
+   * بسته می‌شوند. پیش‌تر ``refreshFinancialPartial`` فقط HTML را جایگزین
+   * می‌کرد و اسکریپت را اجرا نمی‌کرد؛ نتیجه این بود که **بعد از اولین
+   * عملیات موفق، دکمه‌های مودال‌ها بی‌اثر می‌شدند** و کلیک روی آن‌ها هیچ
+   * کاری نمی‌کرد.
+   */
+  function runFragmentScripts(root) {
+    root.querySelectorAll('script').forEach(function (oldScript) {
+      const newScript = document.createElement('script');
+      Array.from(oldScript.attributes).forEach(function (attr) {
+        newScript.setAttribute(attr.name, attr.value);
+      });
+      newScript.textContent = oldScript.textContent;
+      document.body.appendChild(newScript);
+      newScript.remove();
+    });
+  }
+
   async function refreshFinancialPartial() {
     try {
-      const url = document.querySelector('[data-financial-url]').dataset.financialUrl;
-      const res = await fetch(url);
+      const oldCard = document.querySelector('[data-financial-url]');
+      if (!oldCard) return;
+      const res = await fetch(oldCard.dataset.financialUrl);
       if (!res.ok) return;
       const html = await res.text();
       const temp = document.createElement('div');
       temp.innerHTML = html;
       const newCard = temp.querySelector('.card');
-      if (newCard) {
-        const oldCard = document.querySelector('[data-financial-url]');
-        oldCard.parentNode.replaceChild(newCard, oldCard);
-      }
+      if (!newCard) return;
+      oldCard.parentNode.replaceChild(newCard, oldCard);
+      // اسکریپت این fragment بیرون از کارت ریشه است، پس از ``temp``
+      // (و نه ``newCard``) اجرا می‌شود.
+      runFragmentScripts(temp);
     } catch (error) {
       console.warn('refresh failed', error);
     }
@@ -111,15 +144,34 @@
     try {
       const res = await fetch(form.action, { method: 'POST', headers: { 'X-CSRFToken': getCookie('csrftoken') }, body: data });
       const json = await res.json();
-      if (!res.ok || json.error) {
-        if (json.error && typeof json.error === 'object') renderFormErrors(form, json.error);
-        else showToast(json.error || 'خطا در عملیات', 'danger');
+
+      // قرارداد جدید سرور ``{success, errors, message}`` است و قرارداد قدیمی
+      // ``{error}``؛ هر دو را می‌پذیریم.
+      const errorPayload = json.errors || json.error;
+
+      if (!res.ok || json.success === false || errorPayload) {
+        if (errorPayload && typeof errorPayload === 'object') {
+          renderFormErrors(form, errorPayload);
+        }
+        // ⚠️ پیام سرور باید نمایش داده شود. پیش‌تر فقط ``json.error`` خوانده
+        // می‌شد؛ ویو ``reservation_record_penalty_payment`` برای خطاهای
+        // غیرفیلدی فقط ``message`` می‌فرستد (مثلاً «باید حداقل یک جریمه برای
+        // پرداخت انتخاب کنید.») و کاربر پیام عمومی «خطا در عملیات» را
+        // می‌دید.
+        const message = json.message || (typeof json.error === 'string' ? json.error : '');
+        if (message) showToast(message, 'danger');
+        else if (!errorPayload) showToast('خطا در عملیات', 'danger');
         if (btn) btn.disabled = false;
         return;
       }
+
       showToast(json.message || 'عملیات موفق', 'success');
-      if (onSuccess) onSuccess(json);
-      setTimeout(function () { refreshFinancialPartial(); }, 1000);
+      if (onSuccess) {
+        onSuccess(json);
+      } else {
+        // فقط وقتی که مصرف‌کننده خودش تازه‌سازی را انجام نمی‌دهد
+        setTimeout(function () { refreshFinancialPartial(); }, 1000);
+      }
     } catch (error) {
       showToast('خطا در ارتباط با سرور', 'danger');
       if (btn) btn.disabled = false;

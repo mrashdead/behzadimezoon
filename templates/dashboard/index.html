@@ -9,93 +9,197 @@
 {% endblock %}
 
 {% block content %}
+    {# ----------------------------- وضعیت دفتر مالی ----------------------------- #}
+    {% if uses_transaction_ledger %}
+        <div class="alert alert-success d-flex align-items-center gap-2 py-2 mb-3" role="status">
+            <i class="fi fi-rr-check-circle"></i>
+            <span>دفتر تراکنش‌محور فعال است؛ همه اعداد مالی از تراکنش‌های معتبر محاسبه می‌شوند.</span>
+        </div>
+    {% else %}
+        <div class="alert alert-warning d-flex align-items-center gap-2 py-2 mb-3" role="status">
+            <i class="fi fi-rr-info"></i>
+            <span>
+                حالت سازگاری قدیمی فعال است (هنوز تراکنش معتبری ثبت نشده).
+                برای فعال‌سازی دفتر تراکنش‌محور، دستور <code>backfill_staged_payments</code> را اجرا کنید.
+            </span>
+        </div>
+    {% endif %}
+
+    {% if open_reconciliation_issues %}
+        <div class="alert alert-danger d-flex align-items-center gap-2 py-2 mb-3" role="status">
+            <i class="fi fi-rr-triangle-warning"></i>
+            <span>
+                {{ open_reconciliation_issues }} مورد باز تطبیق مالی وجود دارد.
+                <a href="{% url 'financial:reconcile_admin' %}" class="alert-link">مشاهده و رفع</a>
+            </span>
+        </div>
+    {% endif %}
+
+    {# ---------------------------------- KPIها ---------------------------------- #}
     <div class="row g-3 mb-4">
         {% include 'partials/_stat_card.html' with icon='fi-rr-users' label='تعداد مشتریان' value=customers_count badge_type='success' badge_text='نفر' %}
         {% include 'partials/_stat_card.html' with icon='fi-rr-person-dress' label='تعداد محصولات' value=dresses_count badge_type='info' badge_text='لباس' %}
         {% include 'partials/_stat_card.html' with icon='fi-rr-calendar' label='رزروهای فعال' value=active_reservations_count badge_type='warning' badge_text='رزرو' %}
         {% include 'partials/_stat_card.html' with icon='fi-rr-coins' label='درآمد کل (نقدی)' value=totals.total_cash_inflow badge_type='primary' badge_text='تومان' %}
-        {# درآمد تعهدی حذف شد - درخواست کاربر #}
+
+        {% include 'partials/_stat_card.html' with icon='fi-rr-wallet' label='مانده مطالبات' value=totals.total_remaining badge_type='danger' badge_text='تومان' %}
+        {% include 'partials/_stat_card.html' with icon='fi-rr-receipt' label='درآمد امروز' value=totals.today_income badge_type='success' badge_text='تومان' %}
+
+        {% include 'partials/_stat_card.html' with icon='fi-rr-credit-card' label='مجموع بیعانه‌ها' value=totals.total_deposit badge_type='info' badge_text='تومان' %}
+        {% include 'partials/_stat_card.html' with icon='fi-rr-chart-histogram' label='ارزش کل رزروها' value=reporting.reservation_summary.total_gross_reservation_value badge_type='secondary' badge_text='تومان' %}
     </div>
 
-    <div class="row mt-3">
-        <div class="col-lg-6 mb-3">
+    {# ------------------------- نمودارها ------------------------- #}
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-xl-8">
             <div class="card border-0 shadow-sm h-100">
-                <div class="card-header d-flex align-items-center justify-content-between border-0 pb-0">
-                    <h6 class="card-title mb-0">
-                        <i class="fi fi-rr-list me-2"></i>
-                        آخرین تراکنش‌ها ({{ recent_transactions|length }})
-                    </h6>
+                <div class="card-header bg-transparent border-0 pb-0 d-flex align-items-center justify-content-between flex-wrap gap-2">
+                    <div>
+                        <h6 class="card-title mb-1">
+                            <i class="fi fi-rr-chart-histogram me-2"></i>
+                            روند درآمد و هزینه
+                        </h6>
+                        <p class="text-muted text-2xs mb-0">۳۰ روز گذشته</p>
+                    </div>
+                    <div class="d-flex align-items-center gap-3 text-2xs">
+                        <span class="d-flex align-items-center gap-1">
+                            <i class="fi fi-rr-square text-success"></i> درآمد
+                        </span>
+                        <span class="d-flex align-items-center gap-1">
+                            <i class="fi fi-rr-square text-danger"></i> هزینه
+                        </span>
+                    </div>
                 </div>
-                <div class="card-body px-1 pt-2 pb-2">
+                <div class="card-body pt-2">
+                    <div id="dashboardTrendChart" class="chart-box"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-4">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 pb-0">
+                    <h6 class="card-title mb-1">
+                        <i class="fi fi-rr-list-check me-2"></i>
+                        وضعیت پرداخت رزروها
+                    </h6>
+                    <p class="text-muted text-2xs mb-0">{{ payment_stats.total|default:0 }} رزرو</p>
+                </div>
+                <div class="card-body pt-0">
+                    <div id="dashboardPaymentChart" class="chart-box chart-box--sm"></div>
+
+                    <div class="d-grid gap-2 mt-2">
+                        <div class="d-flex align-items-center justify-content-between text-1xs">
+                            <span class="d-flex align-items-center gap-2">
+                                <i class="fi fi-rr-square text-success"></i> تسویه کامل
+                            </span>
+                            <span class="fw-semibold">{{ payment_stats.paid|default:0 }}</span>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between text-1xs">
+                            <span class="d-flex align-items-center gap-2">
+                                <i class="fi fi-rr-square text-warning"></i> پرداخت جزئی
+                            </span>
+                            <span class="fw-semibold">{{ payment_stats.partial|default:0 }}</span>
+                        </div>
+                        <div class="d-flex align-items-center justify-content-between text-1xs">
+                            <span class="d-flex align-items-center gap-2">
+                                <i class="fi fi-rr-square text-danger"></i> بدون پرداخت
+                            </span>
+                            <span class="fw-semibold">{{ payment_stats.unpaid|default:0 }}</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# --------------------- پرداخت‌های پیش‌رو و تراکنش‌ها --------------------- #}
+    <div class="row g-3 mb-4">
+        <div class="col-12 col-xl-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 pb-0 d-flex align-items-center justify-content-between">
+                    <h6 class="card-title mb-0">
+                        <i class="fi fi-rr-clock me-2"></i>
+                        پرداخت‌های پیش‌رو
+                        <span class="badge badge-sm bg-danger-subtle text-danger ms-1">{{ upcoming_payments|length }}</span>
+                    </h6>
+                    <a href="{% url 'financial:list' %}" class="btn-link text-2xs">مشاهده همه</a>
+                </div>
+                <div class="card-body pt-2">
                     <div class="table-responsive">
                         <table class="table table-sm table-row-rounded align-middle mb-0">
-                            <thead class="table-light">
+                            <thead>
+                                <tr>
+                                    <th>مشتری</th>
+                                    <th>لباس</th>
+                                    <th>تاریخ شروع</th>
+                                    <th class="text-end">مانده</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in upcoming_payments %}
+                                    <tr>
+                                        <td class="text-truncate" style="max-width: 140px;">
+                                            {{ item.customer.bride_first_name }} {{ item.customer.bride_last_name }}
+                                        </td>
+                                        <td>{{ item.dress.code }}</td>
+                                        <td>{{ item.start_date|jformat:"%Y/%m/%d" }}</td>
+                                        <td class="text-end fw-semibold text-danger">{{ item.amount_remaining|ir_currency }}</td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4 text-muted">
+                                            <i class="fi fi-rr-check-circle d-block mb-1"></i>
+                                            مانده پرداختی وجود ندارد.
+                                        </td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-12 col-xl-6">
+            <div class="card border-0 shadow-sm h-100">
+                <div class="card-header bg-transparent border-0 pb-0 d-flex align-items-center justify-content-between">
+                    <h6 class="card-title mb-0">
+                        <i class="fi fi-rr-list me-2"></i>
+                        آخرین تراکنش‌ها
+                        <span class="badge badge-sm bg-primary-subtle text-primary ms-1">{{ recent_transactions|length }}</span>
+                    </h6>
+                    <a href="{% url 'financial:list' %}" class="btn-link text-2xs">مشاهده همه</a>
+                </div>
+                <div class="card-body pt-2">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-row-rounded align-middle mb-0">
+                            <thead>
                                 <tr>
                                     <th>رزرو</th>
-                                    <th>شرح تراکنش</th>
-                                    <th>مبلغ</th>
+                                    <th>شرح</th>
                                     <th>تاریخ</th>
+                                    <th class="text-end">مبلغ</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {% for tx in recent_transactions %}
-                                <tr>
-                                    <td>{% if tx.reservation %}#{{ tx.reservation.id }}{% else %}-{% endif %}</td>
-                                    <td>{{ tx.get_transaction_type_display|default:'تراکنش' }}</td>
-                                    <td>{{ tx.amount|ir_currency }}</td>
-                                    <td>{{ tx.transaction_date|jformat:"%Y/%m/%d %H:%M" }}</td>
-                                </tr>
+                                    <tr>
+                                        <td>
+                                            {% if tx.reservation %}
+                                                <span class="badge badge-sm bg-secondary-subtle text-secondary">#{{ tx.reservation.id }}</span>
+                                            {% else %}
+                                                <span class="text-muted">-</span>
+                                            {% endif %}
+                                        </td>
+                                        <td>{{ tx.get_transaction_type_display|default:'تراکنش' }}</td>
+                                        <td class="text-2xs text-muted">{{ tx.transaction_date|jformat:"%Y/%m/%d" }}</td>
+                                        <td class="text-end fw-semibold">{{ tx.amount|ir_currency }}</td>
+                                    </tr>
                                 {% empty %}
-                                <tr>
-                                    <td colspan="4" class="text-center py-4 text-muted">
-                                        تراکنشی یافت نشد.
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <div class="col-lg-6 mb-3">
-            <div class="card border-0 shadow-sm h-100">
-                <div class="card-header d-flex align-items-center justify-content-between border-0 pb-0">
-                    <h6 class="card-title mb-0">
-                        <i class="fi fi-rr-clock-five me-2"></i>
-                        آخرین رزروهای فعال ({{ active_reservations|length }})
-                    </h6>
-                </div>
-                <div class="card-body px-1 pt-2 pb-2">
-                    <div class="table-responsive">
-                        <table class="table table-sm table-row-rounded align-middle mb-0">
-                            <thead class="table-light">
-                                <tr>
-                                    <th>مشتری</th>
-                                    <th>لباس</th>
-                                    <th>تاریخ</th>
-                                    <th>وضعیت</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {% for reservation in active_reservations %}
-                                <tr>
-                                    <td>{{ reservation.customer.bride_first_name }} {{ reservation.customer.bride_last_name }}</td>
-                                    <td>{{ reservation.dress.code }}</td>
-                                    <td>{{ reservation.start_date|jformat:"%Y/%m/%d" }}</td>
-                                    <td>
-                                        <span class="badge bg-warning-subtle text-warning">
-                                            {{ reservation.get_status_display }}
-                                        </span>
-                                    </td>
-                                </tr>
-                                {% empty %}
-                                <tr>
-                                    <td colspan="4" class="text-center py-4 text-muted">
-                                        رزروی فعال وجود ندارد.
-                                    </td>
-                                </tr>
+                                    <tr>
+                                        <td colspan="4" class="text-center py-4 text-muted">تراکنشی یافت نشد.</td>
+                                    </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
@@ -104,10 +208,330 @@
             </div>
         </div>
     </div>
+
+    {# --------------------------- رزروهای فعال --------------------------- #}
+    <div class="row g-3 mb-4">
+        <div class="col-12">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-transparent border-0 pb-0 d-flex align-items-center justify-content-between">
+                    <h6 class="card-title mb-0">
+                        <i class="fi fi-rr-clock-five me-2"></i>
+                        آخرین رزروهای فعال
+                        <span class="badge badge-sm bg-warning-subtle text-warning ms-1">{{ active_reservations|length }}</span>
+                    </h6>
+                    <a href="{% url 'reservations:list' %}" class="btn-link text-2xs">مشاهده همه</a>
+                </div>
+                <div class="card-body pt-2">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-row-rounded align-middle mb-0">
+                            <thead>
+                                <tr>
+                                    <th>مشتری</th>
+                                    <th>لباس</th>
+                                    <th>شماره قرارداد</th>
+                                    <th>شروع</th>
+                                    <th>پایان</th>
+                                    <th>مدت</th>
+                                    <th>وضعیت</th>
+                                    <th class="text-end">مبلغ نهایی</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for reservation in active_reservations %}
+                                    <tr>
+                                        <td>{{ reservation.customer.bride_first_name }} {{ reservation.customer.bride_last_name }}</td>
+                                        <td>{{ reservation.dress.code }}</td>
+                                        <td class="text-2xs text-muted">{{ reservation.contract_number|default:'-' }}</td>
+                                        <td>{{ reservation.start_date|jformat:"%Y/%m/%d" }}</td>
+                                        <td>{{ reservation.end_date|jformat:"%Y/%m/%d" }}</td>
+                                        <td>{{ reservation.rental_days }} روز</td>
+                                        <td>
+                                            <span class="badge badge-sm bg-warning-subtle text-warning">
+                                                {{ reservation.get_status_display }}
+                                            </span>
+                                        </td>
+                                        <td class="text-end fw-semibold">{{ reservation.final_price|ir_currency }}</td>
+                                    </tr>
+                                {% empty %}
+                                    <tr>
+                                        <td colspan="8" class="text-center py-4 text-muted">رزروی فعال وجود ندارد.</td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    {# ----------------------------- خلاصه لغوها ----------------------------- #}
+    {% if cancelled_totals.total_cancelled_reservations %}
+        <div class="row g-3">
+            <div class="col-12">
+                <div class="card border-0 shadow-sm">
+                    <div class="card-header bg-transparent border-0 pb-0">
+                        <h6 class="card-title mb-0">
+                            <i class="fi fi-rr-ban me-2"></i>
+                            خلاصه رزروهای لغو‌شده
+                        </h6>
+                    </div>
+                    <div class="card-body">
+                        <div class="row g-3">
+                            {% include 'partials/_detail_card.html' with label='تعداد رزروهای لغو‌شده' value=cancelled_totals.total_cancelled_reservations %}
+                            {% include 'partials/_detail_card.html' with label='مبلغ دریافت‌شده' value=cancelled_totals.cancelled_received_amount|ir_currency amount_style=True %}
+                            {% include 'partials/_detail_card.html' with label='بازپرداخت‌شده' value=cancelled_totals.cancelled_refunded_amount|ir_currency amount_style=True %}
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    {% endif %}
 {% endblock %}
 
 {% block extra_js %}
+{{ chart_labels|json_script:"dashboardChartLabels" }}
+{{ revenue_data|json_script:"dashboardRevenueData" }}
+{{ expense_data|json_script:"dashboardExpenseData" }}
+{{ payment_stats|json_script:"dashboardPaymentStats" }}
+<script>
+(function () {
+  'use strict';
 
+  function readJson(id, fallback) {
+    var el = document.getElementById(id);
+    if (!el) return fallback;
+    try {
+      var parsed = JSON.parse(el.textContent);
+      return parsed === null || parsed === undefined ? fallback : parsed;
+    } catch (err) {
+      console.warn('خواندن دادهٔ نمودار ناموفق بود:', id, err);
+      return fallback;
+    }
+  }
+
+  var LABELS = readJson('dashboardChartLabels', []);
+  var REVENUE = readJson('dashboardRevenueData', []);
+  var EXPENSE = readJson('dashboardExpenseData', []);
+  var PAYMENT = readJson('dashboardPaymentStats', {});
+
+  if (typeof ApexCharts === 'undefined') {
+    console.warn('ApexCharts بارگذاری نشده است؛ نمودارهای داشبورد رندر نمی‌شوند.');
+    return;
+  }
+
+  var trendChart = null;
+  var paymentChart = null;
+
+  function themeVar(name, fallback) {
+    var value = getComputedStyle(document.documentElement).getPropertyValue(name);
+    return (value && value.trim()) || fallback;
+  }
+
+  function isDark() {
+    return document.documentElement.getAttribute('data-bs-theme') === 'dark';
+  }
+
+  function palette() {
+    var dark = isDark();
+    return {
+      dark: dark,
+      text: themeVar('--bs-body-color', dark ? '#dee2e6' : '#212529'),
+      muted: themeVar('--bs-secondary-color', dark ? '#adb5bd' : '#6c757d'),
+      grid: dark ? 'rgba(255,255,255,.08)' : 'rgba(15,23,42,.07)',
+      border: dark ? 'rgba(255,255,255,.12)' : 'rgba(0,0,0,.1)',
+      surface: themeVar('--bs-body-bg', dark ? '#1b2430' : '#ffffff'),
+      success: themeVar('--bs-success', '#198754'),
+      danger: themeVar('--bs-danger', '#dc3545'),
+      warning: themeVar('--bs-warning', '#ffc107'),
+    };
+  }
+
+  function fa(value) {
+    var n = Number(value);
+    if (isNaN(n)) return '۰';
+    return n.toLocaleString('fa-IR');
+  }
+
+  /* برچسب‌های محور افقی میلادی هستند (YYYY/MM/DD) و به شمسی کوتاه تبدیل می‌شوند. */
+  function toJalaliShort(gregorian) {
+    var parts = String(gregorian || '').split('/');
+    if (parts.length !== 3) return gregorian;
+    var d = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+    if (isNaN(d.getTime())) return gregorian;
+    try {
+      return new Intl.DateTimeFormat('fa-IR-u-ca-persian', {
+        month: '2-digit',
+        day: '2-digit'
+      }).format(d);
+    } catch (err) {
+      return gregorian;
+    }
+  }
+
+  function compact(value) {
+    var v = Number(value) || 0;
+    if (Math.abs(v) >= 1000000) return fa(Math.round(v / 1000000)) + 'م';
+    if (Math.abs(v) >= 1000) return fa(Math.round(v / 1000)) + 'ه';
+    return fa(v);
+  }
+
+  // ---------------------- نمودار روند درآمد و هزینه ----------------------
+  function trendOptions() {
+    var c = palette();
+    return {
+      chart: {
+        type: 'area',
+        height: 300,
+        toolbar: { show: false },
+        fontFamily: 'inherit',
+        background: 'transparent',
+        animations: { enabled: true, speed: 500 },
+      },
+      series: [
+        { name: 'درآمد', data: REVENUE },
+        { name: 'هزینه', data: EXPENSE },
+      ],
+      colors: [c.success, c.danger],
+      stroke: { curve: 'smooth', width: 2.5 },
+      fill: {
+        type: 'gradient',
+        gradient: { shadeIntensity: 0.6, opacityFrom: 0.4, opacityTo: 0.04, stops: [0, 90, 100] },
+      },
+      dataLabels: { enabled: false },
+      markers: { size: 0, hover: { size: 5 } },
+      grid: { borderColor: c.grid, strokeDashArray: 4, padding: { left: 6, right: 6 } },
+      legend: {
+        show: true,
+        position: 'top',
+        horizontalAlign: 'right',
+        labels: { colors: c.text },
+      },
+      xaxis: {
+        categories: LABELS.map(toJalaliShort),
+        tickAmount: 7,
+        labels: {
+          rotate: 0,
+          hideOverlappingLabels: true,
+          style: { colors: c.muted, fontSize: '11px' },
+        },
+        axisBorder: { color: c.border },
+        axisTicks: { color: c.border },
+        tooltip: { enabled: false },
+      },
+      yaxis: {
+        labels: {
+          style: { colors: c.muted, fontSize: '11px' },
+          formatter: compact,
+        },
+      },
+      tooltip: {
+        theme: c.dark ? 'dark' : 'light',
+        shared: true,
+        intersect: false,
+        y: { formatter: function (v) { return fa(v) + ' تومان'; } },
+      },
+      noData: {
+        text: 'داده‌ای برای نمایش وجود ندارد',
+        style: { color: c.muted, fontSize: '13px' },
+      },
+    };
+  }
+
+  function renderTrend() {
+    var el = document.querySelector('#dashboardTrendChart');
+    if (!el) return;
+    if (trendChart) { trendChart.destroy(); trendChart = null; }
+    el.innerHTML = '';
+    trendChart = new ApexCharts(el, trendOptions());
+    trendChart.render();
+  }
+
+  // ---------------------- نمودار وضعیت پرداخت ----------------------
+  function paymentOptions() {
+    var c = palette();
+    var values = [
+      Number(PAYMENT.paid || 0),
+      Number(PAYMENT.partial || 0),
+      Number(PAYMENT.unpaid || 0),
+    ];
+    var total = values.reduce(function (a, b) { return a + b; }, 0);
+
+    return {
+      chart: { type: 'donut', height: 230, fontFamily: 'inherit', background: 'transparent' },
+      series: total > 0 ? values : [1],
+      labels: total > 0 ? ['تسویه کامل', 'پرداخت جزئی', 'بدون پرداخت'] : ['بدون داده'],
+      colors: total > 0 ? [c.success, c.warning, c.danger] : [c.grid],
+      stroke: { width: 2, colors: [c.surface] },
+      legend: { show: false },
+      dataLabels: {
+        enabled: total > 0,
+        formatter: function (val) { return fa(Math.round(val)) + '٪'; },
+        style: { fontSize: '11px', fontWeight: 600 },
+        dropShadow: { enabled: false },
+      },
+      plotOptions: {
+        pie: {
+          donut: {
+            size: '68%',
+            labels: {
+              show: true,
+              name: { show: false },
+              value: {
+                show: true,
+                fontSize: '22px',
+                fontWeight: 700,
+                color: c.text,
+                formatter: function (v) { return fa(v); },
+              },
+              total: {
+                show: true,
+                showAlways: true,
+                label: 'کل رزروها',
+                color: c.muted,
+                fontSize: '11px',
+                formatter: function () { return fa(total); },
+              },
+            },
+          },
+        },
+      },
+      tooltip: {
+        theme: c.dark ? 'dark' : 'light',
+        y: { formatter: function (v) { return fa(v) + ' رزرو'; } },
+      },
+    };
+  }
+
+  function renderPayment() {
+    var el = document.querySelector('#dashboardPaymentChart');
+    if (!el) return;
+    if (paymentChart) { paymentChart.destroy(); paymentChart = null; }
+    el.innerHTML = '';
+    paymentChart = new ApexCharts(el, paymentOptions());
+    paymentChart.render();
+  }
+
+  function renderAll() { renderTrend(); renderPayment(); }
+
+  document.addEventListener('DOMContentLoaded', function () {
+    renderAll();
+
+    // هماهنگی نمودارها با تغییر تم روشن/تاریک
+    var observer = new MutationObserver(function (mutations) {
+      mutations.forEach(function (m) {
+        if (m.attributeName === 'data-bs-theme') renderAll();
+      });
+    });
+    observer.observe(document.documentElement, {
+      attributes: true,
+      attributeFilter: ['data-bs-theme'],
+    });
+  });
+
+  window.addEventListener('pageshow', function (event) {
+    if (event.persisted) renderAll();
+  });
+})();
+</script>
 {% endblock %}
-
-

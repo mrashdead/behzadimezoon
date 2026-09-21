@@ -1,8 +1,28 @@
 # financial/services/dashboard_service.py
 
 from django.db.models import Count, Q, Sum, Case, When, Value, BigIntegerField, F
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 import datetime
+import logging
+
+logger = logging.getLogger(__name__)
+
+
+def remaining_amount_expression():
+    """
+    عبارت ORM ماندهٔ رزرو بر پایهٔ مؤلفه‌های اصلی (نه فیلد مشتق‌شدهٔ
+    ``remaining_amount``).
+
+    ``remaining_payment_amount`` می‌تواند ``NULL`` باشد، بنابراین همهٔ
+    مؤلفه‌ها با ``Coalesce`` محافظت می‌شوند تا نتیجهٔ جمع ``NULL`` نشود.
+    """
+    return (
+        Coalesce(F('final_price'), Value(0))
+        - Coalesce(F('deposit_amount'), Value(0))
+        - Coalesce(F('remaining_payment_amount'), Value(0))
+        + Coalesce(F('refunded_amount'), Value(0))
+    )
 
 
 def _coerce_date_filter(value):
@@ -367,7 +387,8 @@ class DashboardService:
             expense_data.append(daily_expense)
 
         # Reservation aggregates
-        active_reservations = reservation_qs
+        # ایراد H-4: ``active_reservations`` باید فقط رزروهای فعال باشد.
+        active_reservations = reservation_qs.filter(status__in=DashboardService.ACTIVE_STATUSES)
         cancelled_reservations = reservation_qs.filter(status=ReservationStatus.CANCELLED)
 
         cancelled_totals = cancelled_reservations.aggregate(
@@ -377,7 +398,10 @@ class DashboardService:
             cancelled_refunded_amount=Sum('refunded_amount'),
         )
 
-        recent_reservations = active_reservations.order_by('-created_at')[:15]
+        # نکته: فهرست «آخرین رزروها» یک نمای مدیریتی است و باید رزروهای
+        # لغوشده را هم نشان دهد (برای پیگیری)، در حالی که محاسبات مالی
+        # (درآمد/بیعانه/مانده) فقط بر پایهٔ رزروهای فعال است.
+        recent_reservations = reservation_qs.order_by('-created_at')[:15]
         additional_fee_total = AdditionalFee.objects.filter(
             is_deleted=False,
             reservation__in=reservation_qs,
@@ -388,6 +412,7 @@ class DashboardService:
         ).exists()
 
         if not uses_transaction_ledger:
+            # حالت سازگاری عقب‌رو: تمام پول در فیلدهای کش‌شدهٔ رزرو است.
             total_cash_inflow = active_reservations.aggregate(
                 total=Sum(
                     F('deposit_amount') + F('remaining_payment_amount') - F('refunded_amount'),
@@ -400,27 +425,51 @@ class DashboardService:
             total_deposit = active_reservations.aggregate(
                 total=Sum('deposit_amount')
             )['total'] or 0
+            # ایراد H-7: نباید از فیلد مشتق‌شدهٔ ``remaining_amount`` (که خودش
+            # کشی از کش است و ممکن است کهنه بماند) استفاده شود. مانده را از
+            # همان مؤلفه‌های اصلی می‌سازیم: مبلغ نهایی منهای دریافتی‌ها.
             total_remaining = active_reservations.aggregate(
-                total=Sum('remaining_amount')
+                total=Sum(
+                    remaining_amount_expression(),
+                    output_field=BigIntegerField()
+                )
             )['total'] or 0
         else:
-            total_cash_inflow = all_posted_transactions.filter(transaction_type__in=[
-                Transaction.TransactionType.DEPOSIT,
-                Transaction.TransactionType.FINAL_PAYMENT,
-                Transaction.TransactionType.PARTIAL_PAYMENT,
-                Transaction.TransactionType.DAMAGE_PAYMENT,
-                Transaction.TransactionType.PENALTY_INCOME,
-                Transaction.TransactionType.TRANSFER_IN,
-                Transaction.TransactionType.ADJUSTMENT_IN,
-            ]).aggregate(total=Sum('amount'))['total'] or 0
-            total_deposit = all_posted_transactions.filter(transaction_type=Transaction.TransactionType.DEPOSIT).aggregate(total=Sum('amount'))['total'] or 0
-            total_remaining = active_reservations.aggregate(total=Sum('remaining_amount'))['total'] or 0
+            # حالت دفتر تراکنش‌محور: مبالغ از تراکنش‌های معتبر محاسبه می‌شوند.
+            inflow_types = DashboardService._income_transaction_types()
+            total_cash_inflow = all_posted_transactions.filter(
+                transaction_type__in=inflow_types
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            total_deposit = all_posted_transactions.filter(
+                transaction_type=Transaction.TransactionType.DEPOSIT
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            # مانده فقط برای رزروهای فعال و بر پایه همان دفتر محاسبه می‌شود تا
+            # با «مبلغ کل - دریافتی + بازپرداخت» سازگار بماند (رفع H-7).
+            active_inflow = all_posted_transactions.filter(
+                reservation__in=active_reservations,
+                transaction_type__in=inflow_types,
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            active_refunded = all_posted_transactions.filter(
+                reservation__in=active_reservations,
+                transaction_type=Transaction.TransactionType.REFUND,
+            ).aggregate(total=Sum('amount'))['total'] or 0
+            active_total_due = active_reservations.aggregate(
+                total=Sum('final_price')
+            )['total'] or 0
+            total_remaining = active_total_due - active_inflow + active_refunded
 
+        # ایراد H-5: پیش‌تر هر خطایی در محاسبهٔ مسائل باز تطبیق بی‌صدا
+        # بلعیده می‌شد و همیشه صفر گزارش می‌شد. اکنون خطا لاگ می‌شود.
         open_reconciliation_issues = 0
         try:
             from financial.services.reconciliation_service import ReconciliationService
-            open_reconciliation_issues = len(ReconciliationService.get_open_problem_reservations(filters))
-        except Exception:
+            open_reconciliation_issues = len(
+                ReconciliationService.get_open_problem_reservations(filters)
+            )
+        except Exception as exc:  # noqa: BLE001 - نباید داشبورد را از کار بیندازد
+            logger.warning(
+                'محاسبهٔ مسائل باز تطبیق مالی ناموفق بود: %s', exc, exc_info=True
+            )
             open_reconciliation_issues = 0
 
         return {

@@ -1,0 +1,25 @@
+{% comment %}
+Toast — یک اعلان شناور (توسط partials/alerts.html استفاده می‌شود)
+--------------------------------------------------------------------------
+پارامترها:
+  text  : متن پیام (اجباری)
+  tone  : 'success' | 'danger' | 'warning' | 'info'
+  icon  : نام آیکون فلیتیکن
+  title : عنوان اختیاری بالای متن
+{% endcomment %}
+
+<div class="app-toast bg-body border" data-tone="{{ tone|default:'info' }}" data-toast-delay="6000">
+  <span class="app-toast__accent bg-{{ tone|default:'info' }}"></span>
+  <div class="app-toast__content">
+    <span class="app-toast__icon bg-{{ tone|default:'info' }}-subtle text-{{ tone|default:'info' }}">
+      <i class="fi {{ icon|default:'fi-rr-info' }}"></i>
+    </span>
+    <div class="app-toast__body">
+      {% if title %}<div class="app-toast__title text-body">{{ title }}</div>{% endif %}
+      <div class="app-toast__message text-body">{{ text }}</div>
+    </div>
+    <button type="button" class="app-toast__close" aria-label="بستن">
+      <i class="fi fi-rr-cross"></i>
+    </button>
+  </div>
+</div>

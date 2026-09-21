@@ -25,7 +25,7 @@ class ReportsIndexViewTests(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'خلاصه عملکرد و گزارش‌های مدیریتی')
         self.assertContains(response, 'فیلتر گزارش')
-        self.assertContains(response, 'روند درآمد و رزرو')
+        self.assertContains(response, 'روند درآمد و تعداد رزرو')
 
     def test_reports_filters_accept_dress_filter_without_error(self):
         self.client.force_login(self.user)
@@ -40,6 +40,75 @@ class ReportsIndexViewTests(TestCase):
         self.assertContains(response, 'id="dateFromInput"')
         self.assertContains(response, 'id="dateToInput"')
         self.assertContains(response, 'class="form-control form-control-sm p-date-only"')
+
+    def test_total_income_includes_additional_fees_and_damage(self):
+        """کارت «درآمد کل بازهٔ انتخابی» باید جانبی‌ها و خسارت‌ها را هم شامل شود.
+
+        - ``month_revenue`` فقط جمع ``final_price`` رزروهاست و هزینه‌های
+          جانبی (``AdditionalFee``) داخل آن نیستند؛ پس درآمد کل باید
+          رزرو + جانبی + خسارت/جریمه باشد (بدون دوبار‌حسابی).
+        """
+        from customers.models import Customer
+        from products.models import Dress
+        from reservations.models import Reservation, AdditionalFee
+
+        customer = Customer.objects.create(
+            bride_first_name='مریم',
+            bride_last_name='کریمی',
+            bride_phone='09120000000',
+            ceremony_date=jdatetime.date(1405, 4, 12),
+            how_to_know='test',
+            allow_contact=True,
+        )
+        dress = Dress.objects.create(code='REPORT3', daily_rent_price=100000)
+        reservation = Reservation.objects.create(
+            customer=customer,
+            dress=dress,
+            created_by=self.user,
+            start_date=jdatetime.date(1405, 4, 10),
+            rental_days=4,
+            rent_price=100000,
+            deposit_amount=50000,
+            discount_type='NONE',
+            discount_value=0,
+            discount_amount=0,
+            final_price=100000,
+            remaining_payment_amount=50000,
+            remaining_amount=50000,
+            refunded_amount=0,
+            payment_status=Reservation.PAYMENT_PARTIAL,
+            payment_method='CASH',
+            payment_tracking_code='TK-5',
+            status=ReservationStatus.CONFIRMED,
+            guarantee1_type='CASH',
+            guarantee1_tracking_code='G5',
+        )
+        # هزینهٔ جانبی: خارج از final_price است و باید به درآمد کل اضافه شود
+        AdditionalFee.objects.create(
+            reservation=reservation, title='اتوکشی', amount=15000, created_by=self.user,
+        )
+        AdditionalFee.objects.create(
+            reservation=reservation, title='ارسال', amount=5000, created_by=self.user,
+        )
+
+        self.client.force_login(self.user)
+        # ۱۴۰۵/۰۴/۱۰ = 2026-07-01؛ بازهٔ پیش‌فرض «ماه جاری» است، پس صریح می‌دهیم
+        response = self.client.get(
+            reverse('reports:index'),
+            {'date_from': '2026-07-01', 'date_to': '2026-07-01'},
+        )
+
+        self.assertEqual(response.status_code, 200)
+        summary = response.context['summary']
+        self.assertEqual(summary['month_revenue'], 100000)
+        self.assertEqual(summary['additional_fee_total'], 20000)
+        self.assertEqual(summary['side_income_total'], 20000)
+        self.assertEqual(summary['total_income'], 120000)
+        # کارت‌های صفحه
+        self.assertContains(response, 'درآمد کل بازهٔ انتخابی')
+        self.assertContains(response, 'درآمدهای جانبی')
+        # خروجی اکسل هم باید اجزای جدید را داشته باشد
+        self.assertIn('total_income', summary)
 
     def test_reports_summary_uses_jalali_labels_for_date_range(self):
         self.client.force_login(self.user)

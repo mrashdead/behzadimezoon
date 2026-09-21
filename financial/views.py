@@ -20,7 +20,9 @@ from financial.services.export_service import FinancialExportService
 from financial.models import FinancialAccount, TransactionCategory
 from financial.forms import TransactionForm
 from reservations.models import AdditionalFee, Reservation
+from reservations.utils import normalize_digits
 from accounts.models import User
+from core.ajax_forms import json_error, json_success
 from core.search import build_token_search_query
 
 
@@ -150,18 +152,34 @@ def record_payment_view(request):
     external_reference = request.POST.get('external_reference')
     note = request.POST.get('note', '')
 
-    if not reservation_id or not amount:
-        return JsonResponse({'error': 'reservation_id و amount الزامی است.'}, status=400)
+    # ------------------------------------------------------------------
+    # اعتبارسنجی ورودی‌ها
+    # ------------------------------------------------------------------
+    # پیش‌تر همهٔ خطاها فقط با کلید ``error`` برگردانده می‌شد و قالب
+    # ``payment_entry.html`` یک فرم HTML ساده بود که پاسخ JSON را خام
+    # نمایش می‌داد. اکنون قرارداد ``success`` / ``errors`` استفاده می‌شود
+    # تا ``modal_ajax_form_js.html`` بتواند خطاها را کنار همان فیلد نشان دهد.
+    field_errors = {}
+    if not reservation_id:
+        field_errors['reservation_id'] = ['شناسهٔ رزرو الزامی است.']
+    if not amount:
+        field_errors['amount'] = ['مبلغ الزامی است.']
+    if field_errors:
+        return json_error(field_errors)
 
-    try:
-        amount = int(amount)
-    except ValueError:
-        return JsonResponse({'error': 'مبلغ باید عددی صحیح باشد.'}, status=400)
+    # مبلغ ممکن است با جداکنندهٔ هزارگان یا ارقام فارسی برسد.
+    cleaned_amount = normalize_digits(str(amount))
+    cleaned_amount = cleaned_amount.replace(',', '').replace('،', '').replace(' ', '').strip()
+    if not cleaned_amount.isdigit():
+        return json_error({'amount': ['مبلغ باید فقط شامل رقم باشد.']})
+    amount = int(cleaned_amount)
+    if amount <= 0:
+        return json_error({'amount': ['مبلغ باید بزرگ‌تر از صفر باشد.']})
 
     try:
         reservation = Reservation.objects.get(pk=reservation_id, is_deleted=False)
-    except Reservation.DoesNotExist:
-        return JsonResponse({'error': 'رزرو یافت نشد.'}, status=404)
+    except (Reservation.DoesNotExist, ValueError, TypeError):
+        return json_error({'reservation_id': ['رزروی با این شناسه یافت نشد.']}, status=404)
 
     try:
         if transaction_type == 'DEPOSIT':
@@ -201,9 +219,9 @@ def record_payment_view(request):
                 payment_reference=external_reference,
                 description=note,
             )
-        return JsonResponse({'result': 'ok', 'transaction_id': tx.pk, 'message': 'پرداخت ثبت شد.'})
+        return json_success('پرداخت ثبت شد.', transaction_id=tx.pk)
     except Exception as exc:
-        return JsonResponse({'error': str(exc)}, status=400)
+        return json_error({'__all__': [str(exc)]})
 
 
 @login_required
@@ -216,24 +234,37 @@ def record_expense_view(request):
     external_reference = request.POST.get('external_reference')
     note = request.POST.get('note', '')
 
-    if not reservation_id or not amount:
-        return JsonResponse({'error': 'reservation_id و amount الزامی است.'}, status=400)
+    # همان قرارداد ``record_payment_view`` — خطاها فیلدبه‌فیلد برمی‌گردند تا
+    # قالب بتواند آن‌ها را کنار همان ورودی نشان دهد.
+    field_errors = {}
+    if not reservation_id:
+        field_errors['reservation_id'] = ['شناسهٔ رزرو الزامی است.']
+    if not amount:
+        field_errors['amount'] = ['مبلغ الزامی است.']
+    if field_errors:
+        return json_error(field_errors)
 
-    try:
-        amount = int(amount)
-    except ValueError:
-        return JsonResponse({'error': 'مبلغ باید عددی صحیح باشد.'}, status=400)
+    cleaned_amount = normalize_digits(str(amount))
+    cleaned_amount = cleaned_amount.replace(',', '').replace('،', '').replace(' ', '').strip()
+    if not cleaned_amount.isdigit():
+        return json_error({'amount': ['مبلغ باید فقط شامل رقم باشد.']})
+    amount = int(cleaned_amount)
+    if amount <= 0:
+        return json_error({'amount': ['مبلغ باید بزرگ‌تر از صفر باشد.']})
 
     try:
         reservation = Reservation.objects.get(pk=reservation_id, is_deleted=False)
-    except Reservation.DoesNotExist:
-        return JsonResponse({'error': 'رزرو یافت نشد.'}, status=404)
+    except (Reservation.DoesNotExist, ValueError, TypeError):
+        return json_error({'reservation_id': ['رزروی با این شناسه یافت نشد.']}, status=404)
 
     account = FinancialAccount.objects.filter(account_type=FinancialAccount.AccountType.EXPENSE).first()
     category = TransactionCategory.objects.filter(category_type=TransactionCategory.CategoryType.EXPENSE).first()
 
     if not account:
-        return JsonResponse({'error': 'حساب هزینه‌ای یافت نشد.'}, status=500)
+        return json_error(
+            {'__all__': ['حساب هزینه‌ای یافت نشد. برای ثبت هزینه ابتدا یک حساب هزینه‌ای بسازید.']},
+            status=500,
+        )
 
     try:
         tx = TransactionService.create(
@@ -247,9 +278,9 @@ def record_expense_view(request):
             payment_reference=external_reference,
             description=note or 'ثبت هزینه دستی',
         )
-        return JsonResponse({'result': 'ok', 'transaction_id': tx.pk, 'message': 'هزینه ثبت شد.'})
+        return json_success('هزینه ثبت شد.', transaction_id=tx.pk)
     except Exception as exc:
-        return JsonResponse({'error': str(exc)}, status=400)
+        return json_error({'__all__': [str(exc)]})
 
 
 @method_decorator(login_required, name='dispatch')
@@ -286,6 +317,12 @@ class ReportsView(TemplateView):
         context['expense_data'] = financial_ctx.get('expense_data', [])
         context['recent_transactions'] = financial_ctx.get('recent_transactions', [])
         context['upcoming_payments'] = financial_ctx.get('upcoming_payments', [])
+        context['cancelled_totals'] = financial_ctx.get('cancelled_totals', {})
+        context['reporting'] = financial_ctx.get('reporting', {})
+        context['open_reconciliation_issues'] = financial_ctx.get(
+            'open_reconciliation_issues', 0
+        )
+        context['sellers'] = User.objects.filter(role='SELLER')
         return context
 
 

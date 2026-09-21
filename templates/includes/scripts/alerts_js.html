@@ -1,12 +1,51 @@
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-  const toasts = document.querySelectorAll('.toast');
-  toasts.forEach(function (toastEl) {
-    const delay = 5000;
-    setTimeout(function () {
-      toastEl.classList.remove('show');
-      toastEl.classList.add('hide');
-    }, delay);
-  });
-});
+/*
+ * اعلان‌های شناور (app-toast)
+ * ---------------------------------
+ * استایل‌ها در custom.css (.app-toast / .app-toast-stack) تعریف شده‌اند.
+ * این اسکریپت فقط رفتار را اضافه می‌کند: ورود پله‌ای، بستن دستی و
+ * حذف خودکار پس از چند ثانیه.
+ */
+(function () {
+  function dismissToast(el) {
+    if (!el || el.dataset.dismissing === '1') return;
+    el.dataset.dismissing = '1';
+    el.classList.remove('is-visible');
+    el.classList.add('is-hiding');
+    window.setTimeout(function () { el.remove(); }, 340);
+  }
+
+  function activateToast(el, index) {
+    window.setTimeout(function () { el.classList.add('is-visible'); }, 60 + index * 90);
+
+    var closeBtn = el.querySelector('.app-toast__close');
+    if (closeBtn) {
+      closeBtn.addEventListener('click', function () { dismissToast(el); });
+    }
+
+    var delay = parseInt(el.dataset.toastDelay || '6000', 10);
+    if (delay > 0) {
+      window.setTimeout(function () { dismissToast(el); }, delay + index * 90);
+    }
+  }
+
+  function init() {
+    var stack = document.getElementById('appToastStack');
+    if (!stack) return;
+
+    Array.prototype.forEach.call(
+      stack.querySelectorAll('.app-toast'),
+      activateToast
+    );
+  }
+
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', init);
+  } else {
+    init();
+  }
+
+  // در دسترس بودن برای showNotification در ui-helpers.js
+  window.AppToast = { dismiss: dismissToast };
+})();
 </script>

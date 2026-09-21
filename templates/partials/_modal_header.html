@@ -1,8 +1,28 @@
-{# Modal Header Component #}
-{# Usage: {% include 'partials/_modal_header.html' with title='ایجاد رزرو' %} #}
+{% comment %}
+Modal Header
+--------------------------------------------------------------------------
+استفاده:
+  {% include 'partials/_modal_header.html' with title='ایجاد رزرو' %}
 
-<div class="modal-header border-bottom">
-  <h5 class="modal-title fw-bold">{{ title }}</h5>
+پارامترهای اختیاری:
+  subtitle : توضیح کوچک زیر عنوان
+  icon     : نام آیکون فلیتیکن، مثلاً 'fi-rr-plus'
+  tone     : 'primary' | 'success' | 'danger' | 'warning' | 'info'
+{% endcomment %}
+
+<div class="modal-header border-bottom align-items-center">
+  <div class="d-flex align-items-center gap-2 min-w-0">
+    {% if icon %}
+      <span class="avatar avatar-xs rounded-3 flex-shrink-0 bg-{{ tone|default:'primary' }}-subtle text-{{ tone|default:'primary' }}">
+        <i class="fi {{ icon }}"></i>
+      </span>
+    {% endif %}
+    <div class="min-w-0">
+      <h5 class="modal-title fw-bold mb-0">{{ title }}</h5>
+      {% if subtitle %}
+        <p class="mb-0 text-muted text-2xs mt-1">{{ subtitle }}</p>
+      {% endif %}
+    </div>
+  </div>
   <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
 </div>
-

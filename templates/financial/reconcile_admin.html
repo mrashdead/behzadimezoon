@@ -1,5 +1,8 @@
 {% extends 'base.html' %}
 {% load humanize %}
+{% load jformat %}
+
+{% block title %}تسویه مالی{% endblock %}
 
 {% block breadcrumb %}
 <li class="breadcrumb-item"><a href="{% url 'financial:list' %}">مالی</a></li>
@@ -7,95 +10,371 @@
 {% endblock %}
 
 {% block content %}
-<div class="d-flex flex-column flex-md-row align-items-start justify-content-between gap-3 mb-4">
-  <div>
-    <h1 class="h4 mb-2">مدیریت تسویه مالی</h1>
-    <p class="text-muted mb-0">این صفحه فقط گزارش اختلاف‌های تسویه را نمایش می‌دهد؛ عملیات اصلاحات از اینجا حذف شده است.</p>
-  </div>
-  <div class="text-end">
-    <span class="badge bg-primary-subtle text-primary">{{ problems|length }} اختلاف باز</span>
-  </div>
-</div>
+{% comment %}
+صفحهٔ هماهنگی مالی — بازنویسی‌شده:
+  • ساختار HTML پیش‌تر خراب بود (تگ‌های ``row`` / ``col`` / ``card`` بسته
+    نشده بودند و کارت اصلی داخل کارت خلاصه تودرتو می‌شد). اکنون ساختار درست است.
+  • ستون‌های جدول به کلیدهای واقعی خروجی سرویس متصل شده‌اند
+    (``expected_cash`` / ``recorded_cash`` / ``cash_difference`` /
+    ``action_label``) که پیش‌تر همیشه خالی و صفر نمایش داده می‌شدند.
+  • از سیستم طراحی جدید (page-head-card / _stat_card / section-card /
+    empty-state) استفاده شده است.
+{% endcomment %}
 
-<div class="row g-3 mb-4">
-  <div class="col-md-6 col-xl-4">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body">
-        <div class="d-flex align-items-center gap-3 mb-3">
-          <div class="avatar bg-danger-subtle rounded-circle text-danger" style="width: 48px; height: 48px; display:flex; align-items:center; justify-content:center; font-size:22px;">
-            <i class="fi fi-rr-warning"></i>
-          </div>
-          <div>
-            <span class="fw-semibold text-muted d-block">اختلاف‌های باز</span>
-            <h4 class="fw-bold mb-0">{{ problems|length }}</h4>
-          </div>
-        </div>
-        <p class="text-muted small mb-0">این موارد صرفاً برای مشاهده و بررسی در گزارش‌های مالی نمایش داده شده‌اند.</p>
+{# ---------- سربرگ صفحه ---------- #}
+<div class="card border-0 shadow-sm mb-4 page-head-card">
+  <div class="card-body d-flex flex-column flex-lg-row align-items-lg-center justify-content-between gap-3">
+    <div class="d-flex align-items-center gap-3 min-w-0">
+      <span class="avatar avatar-lg rounded-3 flex-shrink-0 {% if open_issues_count %}bg-warning-subtle text-warning{% else %}bg-success-subtle text-success{% endif %}">
+        <i class="fi {% if open_issues_count %}fi-rr-triangle-warning{% else %}fi-rr-check-circle{% endif %}"></i>
+      </span>
+      <div class="min-w-0">
+        <h1 class="h4 mb-1">مدیریت تسویه مالی</h1>
+        <p class="text-muted text-2xs mb-0">
+          این صفحه فقط گزارش اختلاف‌های تسویه (هماهنگی مالی) را نمایش می‌دهد؛ عملیات اصلاحی از این رابط حذف شده است.
+        </p>
       </div>
     </div>
+    <div class="d-flex flex-wrap align-items-center gap-2 flex-shrink-0">
+      <span class="badge badge-sm {% if open_issues_count %}bg-warning-subtle text-warning{% else %}bg-success-subtle text-success{% endif %}">
+        {{ open_issues_count }} مورد باز
+      </span>
+      <a href="{% url 'financial:reports' %}" class="btn btn-outline-primary btn-sm">
+        <i class="fi fi-rr-chart-pie-alt me-1"></i>گزارشات مالی
+      </a>
+      <a href="{% url 'financial:list' %}" class="btn btn-outline-secondary btn-sm">
+        <i class="fi fi-rr-chart-histogram me-1"></i>داشبورد مالی
+      </a>
+    </div>
   </div>
-  <div class="col-md-6 col-xl-4">
-    <div class="card border-0 shadow-sm h-100">
-      <div class="card-body">
-        <div class="d-flex align-items-center gap-3 mb-3">
-          <div class="avatar bg-info-subtle rounded-circle text-info" style="width: 48px; height: 48px; display:flex; align-items:center; justify-content:center; font-size:22px;">
-            <i class="fi fi-rr-refresh"></i>
-          </div>
-          <div>
-            <span class="fw-semibold text-muted d-block">مرور گزارش</span>
-            <h4 class="fw-bold mb-0">بدون عملیات</h4>
-          </div>
-        </div>
-        <p class="text-muted small mb-0">در این نسخه رابط، فقط گزارش اختلاف‌ها و پیشنهادهای اصلاحی نمایش داده می‌شود.</p>
 </div>
 
-<div class="card border-0 shadow-sm">
-  <div class="card-body px-1 pt-2 pb-2">
-    <div class="alert alert-info text-center py-3 mb-4" role="alert">
-      این صفحه گزارش اختلاف‌های تسویه را نمایش می‌دهد. در این نسخه، هیچ عملیات اصلاحی در UI ارائه نشده است.
+{# ---------- کارت‌های خلاصه ---------- #}
+<div class="row g-2 mb-4">
+  {% include 'partials/_stat_card.html' with icon='fi-rr-triangle-warning' label='موارد باز' value=open_issues_count badge_type='warning' badge_text='مورد' col_class='col-xxl-3 col-sm-6' footer_text='مجموع ردیف‌های نیازمند بررسی' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-clock' label='پرداخت معوق' value=overdue_count badge_type='info' badge_text='مورد' col_class='col-xxl-3 col-sm-6' footer_text='رزروهایی که سررسید پرداختشان گذشته است' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-scale' label='اختلاف مالی' value=discrepancy_count badge_type='danger' badge_text='مورد' col_class='col-xxl-3 col-sm-6' footer_text='تفاوت بین اسناد و ماندهٔ ثبت‌شده' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-coins' label='جمع قدرمطلق اختلاف' value=total_absolute_difference badge_type='secondary' badge_text='تومان' col_class='col-xxl-3 col-sm-6' footer_text='صرف‌نظر از جهت مثبت یا منفی' %}
+</div>
+
+<div class="row g-2 mb-4">
+  {% include 'partials/_stat_card.html' with icon='fi-rr-list-check' label='رزروهای درگیر' value=distinct_reservations_count badge_type='primary' badge_text='رزرو' col_class='col-xl-4 col-sm-6' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-swap' label='تراکنش‌های هماهنگ‌نشده' value=unreconciled_count badge_type='warning' badge_text='تراکنش' col_class='col-xl-4 col-sm-6' href='#unreconciledSection' footer_text='اسناد ثبت‌شده‌ای که هنوز هماهنگ نشده‌اند' %}
+  {% include 'partials/_stat_card.html' with icon='fi-rr-bank' label='مبلغ هماهنگ‌نشده' value=unreconciled_total badge_type='info' badge_text='تومان' col_class='col-xl-4 col-sm-12' footer_text='مجموع مبلغ این تراکنش‌ها' %}
+</div>
+
+{# ---------- فیلترها ---------- #}
+<div class="card border-0 shadow-sm mb-4">
+  <div class="card-header bg-transparent border-bottom py-3 d-flex flex-wrap gap-2 align-items-center justify-content-between">
+    <div class="d-flex align-items-center gap-2 min-w-0">
+      <span class="avatar avatar-xs rounded-3 bg-secondary-subtle text-secondary">
+        <i class="fi fi-rr-filter"></i>
+      </span>
+      <h6 class="card-title mb-0">فیلترهای گزارش اختلاف</h6>
     </div>
+    {% if has_active_filters %}
+      <span class="badge badge-sm bg-warning-subtle text-warning">فیلتر فعال</span>
+    {% endif %}
+  </div>
+  <div class="card-body py-3">
+    <form method="get" class="row g-3 align-items-end">
+      <div class="col-12 col-sm-6 col-lg-3">
+        <label class="form-label small mb-1" for="reconcileDateFrom">از تاریخ</label>
+        <div class="position-relative">
+          <input type="text" id="reconcileDateFrom" name="date_from"
+                 class="form-control form-control-sm p-date-only"
+                 value="{{ filter_date_from }}" autocomplete="off" placeholder="انتخاب تاریخ">
+          <i class="fi fi-rr-calendar position-absolute top-50 end-0 translate-middle-y me-3 text-muted"></i>
+        </div>
+      </div>
+      <div class="col-12 col-sm-6 col-lg-3">
+        <label class="form-label small mb-1" for="reconcileDateTo">تا تاریخ</label>
+        <div class="position-relative">
+          <input type="text" id="reconcileDateTo" name="date_to"
+                 class="form-control form-control-sm p-date-only"
+                 value="{{ filter_date_to }}" autocomplete="off" placeholder="انتخاب تاریخ">
+          <i class="fi fi-rr-calendar position-absolute top-50 end-0 translate-middle-y me-3 text-muted"></i>
+        </div>
+      </div>
+      <div class="col-12 col-sm-6 col-lg-3">
+        <label class="form-label small mb-1" for="reconcileReservationId">شناسهٔ رزرو</label>
+        <input type="number" min="1" id="reconcileReservationId" name="reservation_id"
+               class="form-control form-control-sm" value="{{ filter_reservation_id }}"
+               placeholder="مثلاً 1024" inputmode="numeric">
+      </div>
+      <div class="col-12 col-sm-6 col-lg-3 d-flex justify-content-end gap-2">
+        {% if has_active_filters %}
+          <a href="{% url 'financial:reconcile_admin' %}" class="btn btn-outline-secondary btn-sm px-3">
+            <i class="fi fi-rr-refresh me-1"></i>حذف فیلتر
+          </a>
+        {% endif %}
+        <button type="submit" class="btn btn-primary btn-sm px-3">
+          <i class="fi fi-rr-search me-1"></i>اعمال
+        </button>
+      </div>
+    </form>
+    <p class="text-muted text-2xs mb-0 mt-2">
+      <i class="fi fi-rr-info me-1"></i>
+      بازهٔ تاریخ بر اساس <strong>تاریخ شروع رزرو</strong> اعمال می‌شود، نه تاریخ تراکنش.
+    </p>
+  </div>
+</div>
+
+{# ---------- توضیح ماهیت صفحه ---------- #}
+<div class="alert alert-info d-flex align-items-start gap-3 mb-4" role="alert">
+  <span class="avatar avatar-xs rounded-3 bg-info text-white flex-shrink-0">
+    <i class="fi fi-rr-info"></i>
+  </span>
+  <div class="min-w-0">
+    <h6 class="alert-heading mb-1">این صفحه فقط گزارش می‌دهد</h6>
+    <p class="mb-0 text-2xs">
+      در این نسخه از رابط کاربری، هیچ عملیات اصلاحی (بازپرداخت، تعدیل یا هماهنگ‌سازی خودکار) ارائه نشده است.
+      برای اصلاح، از صفحهٔ امور مالی رزرو یا دستور مدیریتی
+      <code dir="ltr">reconcile_finance</code> استفاده کنید.
+    </p>
+  </div>
+</div>
+
+{# ---------- جدول اختلاف‌ها ---------- #}
+<div class="card border-0 shadow-sm section-card mb-4">
+  <div class="card-header bg-transparent border-bottom py-3">
+    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+      <div class="d-flex align-items-center gap-2 min-w-0">
+        <span class="avatar avatar-xs rounded-3 bg-danger-subtle text-danger section-card__icon">
+          <i class="fi fi-rr-scale"></i>
+        </span>
+        <div class="min-w-0">
+          <h6 class="mb-0 d-flex align-items-center gap-2">
+            اختلاف‌های تسویه
+            <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ open_issues_count }}</span>
+          </h6>
+          <p class="mb-0 text-muted text-2xs mt-1">
+            مقایسهٔ مجموع اسناد تراکنش با ماندهٔ ثبت‌شده روی رزرو
+          </p>
+        </div>
+      </div>
+      {% if problems %}
+        <span class="badge badge-sm bg-danger-subtle text-danger">
+          {{ discrepancy_count }} اختلاف عددی · {{ overdue_count }} معوق
+        </span>
+      {% endif %}
+    </div>
+  </div>
+
+  <div class="card-body p-0">
     {% if problems %}
       <div class="table-responsive">
-        <table class="table table-sm table-row-rounded align-middle mb-0">
-          <thead class="table-light">
+        <table class="table table-row-rounded align-middle mb-0">
+          <thead>
             <tr>
               <th class="minw-130px">رزرو</th>
-              <th class="text-end minw-140px">انتظار</th>
-              <th class="text-end minw-140px">ثبت شده</th>
+              <th class="minw-160px">مشتری</th>
+              <th class="minw-100px">لباس</th>
+              <th class="minw-130px">نوع مشکل</th>
+              <th class="text-end minw-140px">انتظار (اسناد)</th>
+              <th class="text-end minw-140px">ثبت‌شده (رزرو)</th>
               <th class="text-end minw-140px">اختلاف</th>
-              <th class="minw-160px">پیشنهاد</th>
+              <th class="minw-140px">پیشنهاد</th>
+              <th class="minw-190px">جزئیات</th>
             </tr>
           </thead>
           <tbody>
             {% for item in problems %}
               <tr>
-                <td>#{{ item.reservation_id }}</td>
-                <td class="text-end">{{ item.expected_cash_from_tx|ir_currency }} تومان</td>
-                <td class="text-end">{{ item.reservation_cash_recorded|ir_currency }} تومان</td>
-                <td class="text-end">
-                  {% if item.cash_difference > 0 %}
-                    <span class="text-danger">+{{ item.cash_difference|ir_currency }} تومان</span>
-                  {% elif item.cash_difference < 0 %}
-                    <span class="text-success">{{ item.cash_difference|ir_currency }} تومان</span>
+                <td>
+                  <a href="{% url 'financial:reservation_financial' item.reservation_id %}">
+                    #{{ item.reservation_id }}
+                  </a>
+                </td>
+                <td class="text-1xs">{{ item.customer_name|default:'—' }}</td>
+                <td class="text-2xs text-muted" dir="ltr">{{ item.dress_code|default:'—' }}</td>
+                <td>
+                  {% if item.kind == 'overdue' %}
+                    <span class="badge badge-sm bg-warning-subtle text-warning">
+                      <i class="fi fi-rr-clock me-1"></i>{{ item.issue }}
+                    </span>
                   {% else %}
-                    <span class="text-muted">۰</span>
+                    <span class="badge badge-sm bg-danger-subtle text-danger">
+                      <i class="fi fi-rr-scale me-1"></i>{{ item.issue }}
+                    </span>
                   {% endif %}
                 </td>
-                <td>
-                  <span class="badge {% if item.suggested_action == 'refund' %}bg-danger-subtle text-danger{% else %}bg-secondary-subtle text-secondary{% endif %}">{{ item.action_label }}</span>
+
+                {% if item.kind == 'discrepancy' %}
+                  <td class="text-end text-1xs">{{ item.expected_cash|ir_currency }} تومان</td>
+                  <td class="text-end text-1xs">{{ item.recorded_cash|ir_currency }} تومان</td>
+                  <td class="text-end fw-semibold text-1xs">
+                    {% if item.cash_difference > 0 %}
+                      <span class="text-danger">+{{ item.cash_difference|ir_currency }} تومان</span>
+                    {% elif item.cash_difference < 0 %}
+                      <span class="text-success">{{ item.cash_difference|ir_currency }} تومان</span>
+                    {% else %}
+                      <span class="text-muted">۰</span>
+                    {% endif %}
+                  </td>
+                  <td>
+                    {% if item.suggested_action == 'refund' %}
+                      <span class="badge badge-sm bg-danger-subtle text-danger">{{ item.action_label }}</span>
+                    {% elif item.suggested_action == 'adjustment' %}
+                      <span class="badge badge-sm bg-warning-subtle text-warning">{{ item.action_label }}</span>
+                    {% else %}
+                      <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ item.action_label|default:'—' }}</span>
+                    {% endif %}
+                  </td>
+                {% else %}
+                  <td class="text-end text-muted">—</td>
+                  <td class="text-end text-muted">—</td>
+                  <td class="text-end text-muted">—</td>
+                  <td><span class="badge badge-sm bg-secondary-subtle text-secondary">نیازمند بررسی</span></td>
+                {% endif %}
+
+                <td class="text-2xs text-muted">{{ item.details|default:'—' }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="px-3 py-3 border-top">
+        <div class="row g-2 align-items-center">
+          <div class="col-12 col-md-6">
+            <p class="text-muted text-2xs mb-0">
+              <i class="fi fi-rr-info me-1"></i>
+              «انتظار (اسناد)» مجموع بیعانه/پرداخت‌های نهایی/جزئی/خسارت منهای بازپرداخت است؛
+              «ثبت‌شده (رزرو)» ماندهٔ نگه‌داشته‌شده روی خود رزرو است.
+            </p>
+          </div>
+          <div class="col-12 col-md-6">
+            <div class="d-flex flex-wrap justify-content-md-end gap-3 text-2xs">
+              <span>
+                <span class="text-muted">جمع قدرمطلق اختلاف:</span>
+                <strong>{{ total_absolute_difference|ir_currency }} تومان</strong>
+              </span>
+              <span>
+                <span class="text-muted">بازپرداخت پیشنهادی:</span>
+                <strong class="text-danger">{{ refund_suggested_total|ir_currency }} تومان</strong>
+              </span>
+              <span>
+                <span class="text-muted">مطالبات باز:</span>
+                <strong class="text-warning">{{ open_receivable_total|ir_currency }} تومان</strong>
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="card-body">
+        <div class="empty-state py-5">
+          <span class="avatar avatar-lg rounded-circle bg-success-subtle text-success empty-state__icon mb-2">
+            <i class="fi fi-rr-check-circle"></i>
+          </span>
+          <h6 class="mb-1">
+            {% if has_active_filters %}با این فیلترها اختلافی یافت نشد{% else %}هیچ اختلاف مالی‌ای یافت نشد{% endif %}
+          </h6>
+          <p class="mb-2">
+            {% if has_active_filters %}
+              فیلترها را تغییر دهید یا حذف کنید تا همهٔ موارد بررسی شوند.
+            {% else %}
+              دفتر حساب شما پاک و همگام است.
+            {% endif %}
+          </p>
+          {% if has_active_filters %}
+            <a href="{% url 'financial:reconcile_admin' %}" class="btn btn-outline-secondary btn-sm">
+              <i class="fi fi-rr-refresh me-1"></i>حذف فیلترها
+            </a>
+          {% endif %}
+        </div>
+      </div>
+    {% endif %}
+  </div>
+</div>
+
+{# ---------- تراکنش‌های هماهنگ‌نشده ---------- #}
+<div class="card border-0 shadow-sm section-card mb-4" id="unreconciledSection">
+  <div class="card-header bg-transparent border-bottom py-3">
+    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+      <div class="d-flex align-items-center gap-2 min-w-0">
+        <span class="avatar avatar-xs rounded-3 bg-warning-subtle text-warning section-card__icon">
+          <i class="fi fi-rr-swap"></i>
+        </span>
+        <div class="min-w-0">
+          <h6 class="mb-0 d-flex align-items-center gap-2">
+            تراکنش‌های هماهنگ‌نشده
+            <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ unreconciled_count }}</span>
+          </h6>
+          <p class="mb-0 text-muted text-2xs mt-1">
+            اسناد ثبت‌شده‌ای که هنوز به صورت بانکی/نقدی تطبیق نشده‌اند (۲۰ مورد نخست)
+          </p>
+        </div>
+      </div>
+      <a href="{% url 'financial:transactions' %}" class="btn btn-sm btn-outline-primary">
+        <i class="fi fi-rr-swap me-1"></i>همهٔ تراکنش‌ها
+      </a>
+    </div>
+  </div>
+
+  <div class="card-body p-0">
+    {% if unreconciled_transactions %}
+      <div class="table-responsive">
+        <table class="table table-row-rounded align-middle mb-0">
+          <thead>
+            <tr>
+              <th class="minw-140px">شماره</th>
+              <th class="minw-140px">نوع</th>
+              <th class="text-end minw-140px">مبلغ</th>
+              <th class="minw-130px">روش پرداخت</th>
+              <th class="minw-140px">تاریخ</th>
+              <th class="minw-130px">رزرو</th>
+              <th class="text-center minw-90px">جزئیات</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for tx in unreconciled_transactions %}
+              <tr>
+                <td class="text-2xs" dir="ltr">{{ tx.transaction_number|default:tx.pk }}</td>
+                <td class="text-1xs">{{ tx.get_transaction_type_display }}</td>
+                <td class="text-end text-1xs">{{ tx.amount|ir_currency }} تومان</td>
+                <td class="text-2xs">{{ tx.get_payment_method_display|default:tx.payment_method|default:'—' }}</td>
+                <td class="text-2xs">{{ tx.transaction_date|jformat:"%Y/%m/%d %H:%M" }}</td>
+                <td class="text-2xs">
+                  {% if tx.reservation %}
+                    <a href="{% url 'financial:reservation_financial' tx.reservation.pk %}">#{{ tx.reservation.pk }}</a>
+                  {% else %}
+                    <span class="text-muted">—</span>
+                  {% endif %}
+                </td>
+                <td class="text-center">
+                  <a href="{% url 'financial:transaction_detail' tx.pk %}"
+                     class="btn btn-sm btn-outline-secondary btn-icon"
+                     title="مشاهدهٔ جزئیات تراکنش">
+                    <i class="fi fi-rr-eye"></i>
+                  </a>
                 </td>
               </tr>
             {% endfor %}
           </tbody>
         </table>
       </div>
+      {% if unreconciled_count > unreconciled_transactions|length %}
+        <div class="px-3 py-2 border-top">
+          <p class="text-muted text-2xs mb-0">
+            <i class="fi fi-rr-info me-1"></i>
+            {{ unreconciled_count }} تراکنش هماهنگ‌نشده وجود دارد؛ فقط ۲۰ مورد نخست نمایش داده می‌شود.
+          </p>
+        </div>
+      {% endif %}
     {% else %}
-      <div class="alert alert-success text-center py-4" role="alert">
-        هیچ اختلاف مالی‌ای یافت نشد. دفتر حساب شما پاک و همگام است.
+      <div class="card-body">
+        <div class="empty-state py-4">
+          <span class="avatar avatar-lg rounded-circle bg-success-subtle text-success empty-state__icon mb-2">
+            <i class="fi fi-rr-check-circle"></i>
+          </span>
+          <h6 class="mb-1">همهٔ تراکنش‌ها هماهنگ شده‌اند</h6>
+          <p class="mb-0">هیچ سند ثبت‌شده‌ای بدون تطبیق باقی نمانده است.</p>
+        </div>
       </div>
     {% endif %}
   </div>
 </div>
 
 {% endblock %}
-

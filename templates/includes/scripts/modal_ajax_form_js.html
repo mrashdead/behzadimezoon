@@ -1,0 +1,331 @@
+{% comment %}
+مدیریت ارسال AJAX برای فرم‌های داخل مودال
+--------------------------------------------------------------------------
+هر فرمی که ``data-ajax-form`` داشته باشد به‌صورت خودکار مدیریت می‌شود:
+
+- اعتبارسنجی سمت کلاینت با ``checkValidity()`` و کلاس ``was-validated``
+  (بدون ارسال درخواست بی‌مورد).
+- ارسال با ``fetch`` و هدر ``X-Requested-With: XMLHttpRequest``.
+- در صورت خطا، **مودال بسته نمی‌شود** و مقادیر کاربر حفظ می‌شود؛
+  خطاها هم کنار هر فیلد و هم در خلاصهٔ خطا نشان داده می‌شوند.
+- در صورت موفقیت، toast موفقیت نمایش داده می‌شود و صفحه تازه می‌شود.
+
+قرارداد پاسخ سرور (``core.ajax_forms.AjaxFormMixin``)::
+
+    {"success": true,  "message": "..."}
+    {"success": false, "errors": {"field": ["msg"], "__all__": ["msg"]}}
+
+انتخابی روی فرم:
+  data-ajax-form            : فعال‌سازی (اجباری)
+  data-reload-on-success="0": صفحه را تازه نکن (پیش‌فرض: تازه کن)
+  data-success-delay="700"  : تأخیر (ms) پیش از تازه‌سازی صفحه
+{% endcomment %}
+<script>
+(function () {
+  'use strict';
+
+  var CSRF_COOKIE = 'csrftoken';
+
+  function getCookie(name) {
+    var match = document.cookie.match('(^|;)\\s*' + name + '\\s*=\\s*([^;]+)');
+    return match ? decodeURIComponent(match.pop()) : '';
+  }
+
+  function clearErrors(form) {
+    form.classList.remove('was-validated');
+    form.querySelectorAll('.is-invalid').forEach(function (el) {
+      el.classList.remove('is-invalid');
+    });
+    form.querySelectorAll('.invalid-feedback.js-server-error').forEach(function (el) {
+      el.remove();
+    });
+    var summary = form.querySelector('.js-form-error-summary');
+    if (summary) {
+      summary.classList.add('d-none');
+      summary.innerHTML = '';
+    }
+  }
+
+  function showSummary(form, messages) {
+    var summary = form.querySelector('.js-form-error-summary');
+    if (!summary || !messages.length) return;
+    summary.innerHTML = '';
+    var title = document.createElement('div');
+    title.className = 'fw-semibold mb-1';
+    title.textContent = 'لطفاً خطاهای زیر را برطرف کنید:';
+    summary.appendChild(title);
+    var list = document.createElement('ul');
+    list.className = 'mb-0 ps-3';
+    messages.forEach(function (msg) {
+      var li = document.createElement('li');
+      li.textContent = msg;
+      list.appendChild(li);
+    });
+    summary.appendChild(list);
+    summary.classList.remove('d-none');
+  }
+
+  function fieldContainer(form, fieldName) {
+    return form.querySelector('[name="' + fieldName + '"]');
+  }
+
+  /*
+   * ورودی مخفی چیزی برای قرمز شدن ندارد.
+   *
+   * در صفحهٔ «ثبت پرداخت» شناسهٔ رزرو در یک ``input[type=hidden]`` نگه داشته
+   * می‌شود و متن قابل‌مشاهده در یک ورودی جستجو است. اگر خطا را روی ورودی
+   * مخفی بزنیم، کاربر هیچ بازخورد بصری نمی‌بیند. پس برای ورودی‌های مخفی،
+   * نزدیک‌ترین عنصر قابل‌مشاهدهٔ همان مجموعه را پیدا می‌کنیم.
+   */
+  function visibleTarget(input) {
+    if (!input || input.type !== 'hidden') return input;
+    var scope = input.closest('.combobox-wrapper, .input-group, [data-error-scope]');
+    if (!scope) return input;
+    return scope.querySelector(
+      'input:not([type="hidden"]), select, textarea'
+    ) || input;
+  }
+
+  function markField(form, fieldName, messages) {
+    var input = fieldContainer(form, fieldName);
+    if (!input) return false;
+
+    var target = visibleTarget(input);
+    target.classList.add('is-invalid');
+    target.setAttribute('aria-invalid', 'true');
+
+    // محل نمایش خطا: اگر از قبل invalid-feedback داریم از همان استفاده کن،
+    // وگرنه یکی بساز و بعد از فیلد (یا input-group) درج کن.
+    var wrapper = target.closest('.input-group') || target;
+    var feedback = wrapper.parentElement
+      ? wrapper.parentElement.querySelector('.invalid-feedback')
+      : null;
+
+    if (!feedback) {
+      feedback = document.createElement('div');
+      feedback.className = 'invalid-feedback js-server-error d-block';
+      wrapper.insertAdjacentElement('afterend', feedback);
+    } else {
+      feedback.classList.add('js-server-error', 'd-block');
+      feedback.classList.remove('d-none');
+      feedback.innerHTML = '';
+    }
+
+    messages.forEach(function (msg) {
+      var div = document.createElement('div');
+      div.textContent = msg;
+      feedback.appendChild(div);
+    });
+    return true;
+  }
+
+  function applyErrors(form, errors) {
+    var general = [];
+    var firstInvalid = null;
+
+    Object.keys(errors || {}).forEach(function (field) {
+      var raw = errors[field];
+      var messages = Array.isArray(raw) ? raw : [String(raw)];
+      // خطاهای غیرفیلدی در خلاصه نمایش داده می‌شوند
+      if (field === '__all__' || field === 'non_field_errors') {
+        general = general.concat(messages);
+        return;
+      }
+      var marked = markField(form, field, messages);
+      if (!marked) {
+        general = general.concat(messages.map(function (m) {
+          return field + ': ' + m;
+        }));
+      } else if (!firstInvalid) {
+        firstInvalid = visibleTarget(fieldContainer(form, field));
+      }
+    });
+
+    showSummary(form, general);
+
+    var anchor = firstInvalid || form.querySelector('.js-form-error-summary');
+    if (anchor && anchor.scrollIntoView) {
+      anchor.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }
+    if (firstInvalid && firstInvalid.focus) {
+      try { firstInvalid.focus({ preventScroll: true }); } catch (err) { /* noop */ }
+    }
+  }
+
+  function setBusy(form, busy) {
+    var submit = form.querySelector('[type="submit"]');
+    if (!submit) return;
+    submit.disabled = busy;
+    submit.classList.toggle('disabled', busy);
+    if (busy) {
+      if (!submit.dataset.originalHtml) {
+        submit.dataset.originalHtml = submit.innerHTML;
+      }
+      submit.innerHTML =
+        '<span class="spinner-border spinner-border-sm me-1" role="status" aria-hidden="true"></span>' +
+        'در حال ذخیره…';
+    } else if (submit.dataset.originalHtml) {
+      submit.innerHTML = submit.dataset.originalHtml;
+    }
+  }
+
+  /*
+   * آماده‌سازی مقادیر پول پیش از ارسال.
+   *
+   * ⚠️ نکتهٔ مهم: ``ui-helpers.js`` یک هندلر روی رویداد ``submit`` نصب می‌کند
+   * که جداکنندهٔ هزارگان را از ``.money-input`` پاک می‌کند. اما اینجا ما
+   * ``fetch`` می‌کنیم و ``preventDefault`` زده‌ایم، پس آن هندلر **اجرا
+   * نمی‌شود**. اگر خودمان پاک‌سازی نکنیم، مقداری مثل «۴۵۰,۰۰۰» به سرور
+   * می‌رود و اعتبارسنجی رد می‌شود.
+   */
+  function normalizeMoneyInputs(form) {
+    form.querySelectorAll('.money-input').forEach(function (input) {
+      if (input.readOnly || input.disabled) return;
+      var raw = String(input.value || '');
+      if (window.UIHelpers && typeof window.UIHelpers.normalizeDigits === 'function') {
+        raw = window.UIHelpers.normalizeDigits(raw);
+      }
+      raw = raw.replace(/[,\u066C\u066B\u200c\s]/g, '');
+      input.value = raw;
+    });
+  }
+
+  function closeModal(form) {
+    var modalEl = form.closest('.modal');
+    if (!modalEl || typeof bootstrap === 'undefined') return;
+    var instance = bootstrap.Modal.getInstance(modalEl);
+    if (instance) instance.hide();
+  }
+
+  function notify(message, type) {
+    if (typeof window.showNotification === 'function') {
+      window.showNotification(message, type || 'success');
+    }
+  }
+
+  function handleSubmit(event) {
+    var form = event.target;
+    if (!form.matches || !form.matches('form[data-ajax-form]')) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+
+    try {
+      submitAjaxForm(form);
+    } catch (error) {
+      // هرگز نباید کاربر را با فرمی که هیچ واکنشی نشان نمی‌دهد رها کنیم.
+      console.error('خطای غیرمنتظره در ارسال فرم مودال:', error);
+      notify('خطای غیرمنتظره در ارسال فرم. لطفاً صفحه را دوباره بارگذاری کنید.', 'error');
+    }
+  }
+
+  function submitAjaxForm(form) {
+    clearErrors(form);
+
+    // اعتبارسنجی سمت کلاینت (Bootstrap)
+    form.classList.add('was-validated');
+    if (!form.checkValidity()) {
+      var invalid = form.querySelector(':invalid');
+      if (invalid && invalid.scrollIntoView) {
+        invalid.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+      if (invalid && invalid.focus) {
+        try { invalid.focus({ preventScroll: true }); } catch (err) { /* noop */ }
+      }
+      return;
+    }
+
+    if (form.dataset.submitting === '1') return;
+    form.dataset.submitting = '1';
+    setBusy(form, true);
+
+    // پاک‌سازی مقادیر پول قبل از ساخت FormData (رویداد submit دور زده می‌شود)
+    normalizeMoneyInputs(form);
+
+    fetch(form.action, {
+      method: (form.method || 'POST').toUpperCase(),
+      body: new FormData(form),
+      credentials: 'same-origin',
+      headers: {
+        'X-Requested-With': 'XMLHttpRequest',
+        'X-CSRFToken': getCookie(CSRF_COOKIE),
+        'Accept': 'application/json'
+      }
+    })
+      .then(function (response) {
+        return response.text().then(function (text) {
+          var data = {};
+          if (text) {
+            try { data = JSON.parse(text); } catch (err) { data = {}; }
+          }
+          return { ok: response.ok, status: response.status, data: data };
+        });
+      })
+      .then(function (result) {
+        form.dataset.submitting = '0';
+        setBusy(form, false);
+
+        if (result.data && result.data.success) {
+          notify(result.data.message || 'اطلاعات با موفقیت ذخیره شد.', 'success');
+          closeModal(form);
+          if (form.dataset.reloadOnSuccess !== '0') {
+            var delay = parseInt(form.dataset.successDelay || '600', 10);
+            window.setTimeout(function () { window.location.reload(); }, delay);
+          }
+          return;
+        }
+
+        if (result.data && result.data.errors) {
+          applyErrors(form, result.data.errors);
+          return;
+        }
+
+        notify(
+          (result.data && result.data.message) ||
+            'ذخیره‌سازی ناموفق بود. لطفاً دوباره تلاش کنید.',
+          'error'
+        );
+      })
+      .catch(function (error) {
+        console.error('خطای شبکه در ارسال فرم:', error);
+        form.dataset.submitting = '0';
+        setBusy(form, false);
+        notify('ارتباط با سرور برقرار نشد. اتصال اینترنت را بررسی کنید.', 'error');
+      });
+  }
+
+  document.addEventListener('submit', handleSubmit, true);
+
+  // پاک‌کردن وضعیت خطا هنگام تایپ مجدد در فیلد
+  document.addEventListener('input', function (event) {
+    var el = event.target;
+    if (!el || !el.classList) return;
+    var form = el.closest('form[data-ajax-form]');
+    if (!form) return;
+
+    // خطای سرور ممکن است روی عنصر دیگری از همان مجموعه نشان داده شده باشد
+    // (مثلاً ورودی مخفی ``reservation_id`` و ورودی جستجوی قابل‌مشاهده).
+    var scope = el.closest('.combobox-wrapper, .input-group, [data-error-scope]') || el;
+    var marked = scope.querySelectorAll('.is-invalid');
+    var cleared = false;
+    marked.forEach(function (node) {
+      if (node.checkValidity && node.checkValidity()) {
+        node.classList.remove('is-invalid');
+        node.removeAttribute('aria-invalid');
+        cleared = true;
+      }
+    });
+
+    if (!cleared && !el.classList.contains('is-invalid')) return;
+
+    var feedback = scope.querySelector('.invalid-feedback.js-server-error');
+    if (feedback) feedback.remove();
+  }, true);
+
+  window.ModalAjaxForm = {
+    clearErrors: clearErrors,
+    applyErrors: applyErrors,
+    submitAjaxForm: submitAjaxForm
+  };
+})();
+</script>

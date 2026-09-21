@@ -1,6 +1,7 @@
 # financial/services/kpi_service.py
 
-from django.db.models import Sum, Count, Q, Case, When, Value, BigIntegerField
+from django.db.models import Sum, Count, Q, Case, When, Value, BigIntegerField, F
+from django.db.models.functions import Coalesce
 from django.utils import timezone
 import datetime
 
@@ -57,11 +58,22 @@ class KPIService:
         )
         net_profit = total_revenue - total_expenses
 
+        # ایراد H-7: پیش‌تر از فیلد مشتق‌شدهٔ ``remaining_amount`` (کشی از کش)
+        # استفاده می‌شد که ممکن است کهنه بماند. اکنون از مؤلفه‌های اصلی
+        # محاسبه می‌شود تا با منبع واحد محاسبات هم‌راستا باشد.
         receivables = Reservation.objects.filter(
             is_deleted=False,
             payment_status__in=[Reservation.PAYMENT_PARTIAL, Reservation.PAYMENT_UNPAID],
             status__in=[ReservationStatus.CONFIRMED, ReservationStatus.DELIVERED],
-        ).aggregate(total_receivables=Sum('remaining_amount'))['total_receivables'] or 0
+        ).aggregate(
+            total_receivables=Sum(
+                Coalesce(F('final_price'), Value(0))
+                - Coalesce(F('deposit_amount'), Value(0))
+                - Coalesce(F('remaining_payment_amount'), Value(0))
+                + Coalesce(F('refunded_amount'), Value(0)),
+                output_field=BigIntegerField(),
+            )
+        )['total_receivables'] or 0
 
         today = timezone.localdate()
         start_of_day = timezone.make_aware(

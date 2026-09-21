@@ -20,19 +20,18 @@ class PaymentGuardService:
     @staticmethod
     def verify_payment_for_delivery(reservation):
         """
-        Verify that remaining balance is settled before delivery.
-        Balance is considered settled if:
-        1. remaining amount is already 0 (payments covered the full cost), OR
-        2. remaining_payment_amount is set (payment being registered now)
+        بررسی می‌کند که پیش از تحویل، مانده حساب رزرو تسویه شده باشد.
+
+        تنها معیار مجازبودن تحویل این است که **مانده واقعی** (بر پایه مجموع
+        پرداخت‌های معتبر منهای بازپرداخت‌ها) صفر یا کمتر باشد. پیش‌تر وجود
+        مقدار در ``remaining_payment_amount`` به‌تنهایی تحویل را مجاز می‌کرد
+        که یک حفره امنیتی مالی بود (تحویل با پرداخت جزئی یا حتی بدون پرداخت).
         """
         from reservations.services.payment_stage_service import ReservationPaymentService
 
         remaining = ReservationPaymentService.core_remaining_amount(reservation)
 
         if remaining <= 0:
-            return True
-
-        if reservation.remaining_payment_amount and reservation.remaining_payment_amount > 0:
             return True
 
         raise ValueError(

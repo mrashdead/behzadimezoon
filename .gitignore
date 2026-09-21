@@ -85,8 +85,22 @@ nexlink/
 
 # Prevent accidental commits of ad-hoc debug scripts
 tmp_*.py
+tmp_*.js
 test_*debug.py
+debug_*.py
 debug_archive_delete.py
+analyze_*.py
+*_balance_analyzer.py
+check_script_*.py
+check_template_scripts.py
+create_test_reservations.py
+debug_session.py
+scripts/tmp_*.js
+scripts/analyze_*.py
+scripts/check_*.py
+scripts/js_*analyzer.py
+scripts/create_test_*.py
+scripts/debug_*.py
 
 # Virtualenvs/packages in-repo (should not be committed)
 env/**
@@ -97,3 +111,7 @@ venv/**
 /media/
 staticfiles/
 /staticfiles/
+
+cb8c21_26nexlink/
+docs/
+.workbuddy-ai/

@@ -1,3 +1,10 @@
+> ⚠️ **سند تاریخی (Historical Snapshot) — منقضی‌شده**
+>
+> این فایل گزارش پایان یک فاز توسعه است و **مستندات جاری سیستم نیست**.
+> ممکن است نام فایل‌ها، شماره خطوط و رفتار بخش‌ها با کد فعلی تفاوت داشته باشد.
+> برای وضعیت فعلی به `README.md`، `docs/staged_payments.md` و
+> `docs/audit_mezoon_v1.md` مراجعه کنید.
+
 # Phase 2 Completion Summary: Two-Step Finalize Delivery Modal
 
 ## Overview

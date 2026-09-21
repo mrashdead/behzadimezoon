@@ -1,7 +1,7 @@
 {% load humanize %}
 {% load jformat %}
 <div class="modal fade" id="editReservationModal{{ reservation.id }}" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable modal-fullscreen-sm-down">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable modal-fullscreen-sm-down">
     <div class="modal-content">
       <form method="post" action="{% url 'reservations:edit' reservation.pk %}" class="h-100 d-flex flex-column needs-validation" novalidate id="reservationEditForm{{ reservation.id }}" data-reservation-id="{{ reservation.id }}">
         {% csrf_token %}
@@ -68,11 +68,51 @@
                     </div>
                     <div class="col-12 col-md-6">
                       <label class="form-label">تاریخ پایان</label>
-                      <input type="text" class="form-control" value="{{ reservation.end_date|jformat:'%Y/%m/%d' }}" readonly>
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="id_end_date_{{ reservation.id }}"
+                        value="{{ reservation.end_date|jformat:'%Y/%m/%d' }}"
+                        readonly
+                      />
+                      <div class="form-text">پس از تغییر تاریخ شروع یا مدت اجاره، به‌صورت خودکار به‌روز می‌شود.</div>
+                    </div>
+                    <div class="col-12 col-md-6">
+                      <label class="form-label">تاریخ تحویل لباس</label>
+                      <input
+                        type="text"
+                        class="form-control"
+                        id="id_delivery_date_{{ reservation.id }}"
+                        value="{{ reservation.delivery_date|jformat:'%Y/%m/%d'|default:'-' }}"
+                        readonly
+                      />
+                      <div class="form-text">یک روز قبل از شروع اجاره؛ روزی که باید لباس تحویل گرفته شود.</div>
                     </div>
                     <div class="col-12 col-md-6">
                       <label class="form-label">هزینه اجاره</label>
                       <input type="text" class="form-control money-input" value="{{ reservation.rent_price|ir_currency }}" readonly>
+                    </div>
+                    {# بررسی در‌لحظه‌ای موجودی لباس در بازهٔ انتخاب‌شده #}
+                    <div class="col-12">
+                      <div class="d-flex flex-wrap align-items-start gap-2">
+                        <button
+                          type="button"
+                          class="btn btn-outline-primary btn-sm flex-shrink-0 js-check-availability-btn"
+                          title="بررسی تداخل این بازه با رزروهای دیگر"
+                        >
+                          <i class="fi fi-rr-refresh me-1"></i>
+                          بررسی تداخل
+                        </button>
+                        <div class="flex-grow-1">
+                          <div
+                            id="editAvailabilityStatus{{ reservation.id }}"
+                            class="alert d-none py-2 mb-0 js-availability-status"
+                            role="status"
+                            aria-live="polite"
+                            data-customer-id="{{ reservation.customer_id }}"
+                          ></div>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -89,7 +129,7 @@
                     <div class="col-12 col-md-6 col-xl-3">
                       <label for="id_discount_type_{{ reservation.id }}" class="form-label">نوع تخفیف</label>
                       <select id="id_discount_type_{{ reservation.id }}" name="discount_type" class="form-select">
-                        <option value="" {% if reservation.discount_type == 'NONE' %}selected{% endif %}>بدون تخفیف</option>
+                        <option value="NONE" {% if reservation.discount_type == 'NONE' or not reservation.discount_type %}selected{% endif %}>بدون تخفیف</option>
                         <option value="AMOUNT" {% if reservation.discount_type == 'AMOUNT' %}selected{% endif %}>مبلغ ثابت</option>
                         <option value="PERCENT" {% if reservation.discount_type == 'PERCENT' %}selected{% endif %}>درصد</option>
                       </select>

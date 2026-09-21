@@ -150,6 +150,13 @@ class ReservationFinancialService:
         # update_financial_status should be called before this to ensure fields are current
         # save_reservation_financials will then ensure the snapshot is captured if needed
         ReservationFinancialService.capture_financial_snapshot(reservation, 'update') # Capture state on save
+        # نرمال‌سازی فیلدهای اختیاری (ضمانت اول / نوع تخفیف) باید *قبل* از
+        # ``full_clean()`` انجام شود. در غیر این صورت مقداری مثل رشتهٔ خالی
+        # از فرم ویرایش، اعتبارسنجی ستون‌های ``blank=False`` را رد می‌کند و
+        # ذخیره‌سازی «ویرایش رزرو» با خطای «این فیلد نمی‌تواند خالی باشد»
+        # شکست می‌خورد (``Reservation.save()`` دیرتر اجرا می‌شود).
+        if hasattr(reservation, 'normalize_optional_fields'):
+            reservation.normalize_optional_fields()
         reservation.full_clean() # Perform model validations
         reservation.save()
 

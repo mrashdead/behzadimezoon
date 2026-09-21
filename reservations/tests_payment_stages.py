@@ -1127,3 +1127,256 @@ class StagedPaymentTemplateTests(StagedPaymentTestBase):
         content = response.content.decode('utf-8')
         self.assertIn('هیچ پرداختی برای این رزرو ثبت نشده است.', content)
         self.assertEqual(response.context['summary']['total_paid'], 0)
+
+
+# ======================================================================
+# محافظ تحویل (رفع ایرادات بحرانی C-2 و C-3)
+# ======================================================================
+class DeliveryPaymentGuardTests(StagedPaymentTestBase):
+    """
+    محافظ تحویل نباید به‌صرفِ وجود مقدار در ``remaining_payment_amount``
+    (فیلد کش) تحویل را مجاز کند. تنها معیار، ماندهٔ واقعی بر پایه
+    پرداخت‌های معتبر است.
+
+    این تست‌ها دو حفرهٔ اثبات‌شدهٔ بحرانی را قفل می‌کنند:
+        * C-2: تحویل با پرداخت جزئی
+        * C-3: تحویل بدون هیچ پرداخت واقعی
+    """
+
+    def setUp(self):
+        super().setUp()
+        from reservations.services.payment_guards import PaymentGuardService
+        self.guard = PaymentGuardService
+
+    def test_delivery_rejected_when_cache_value_is_trusted_without_real_payment(self):
+        """
+        C-3 (بازتولید دقیق گزارش): رزروی با ``remaining_payment_amount = 1``
+        و صفر تراکنش نباید تحویل شود؛ چون کش هرگز نباید منبع حقیقت باشد.
+        """
+        reservation = self.make_reservation(
+            final_price=100000,
+            deposit_amount=0,
+            remaining_payment_amount=1,  # کش بی‌پشتوانه
+        )
+
+        self.assertEqual(ReservationPaymentService.core_remaining_amount(reservation), 99999)
+
+        with self.assertRaises(ValueError) as ctx:
+            self.guard.verify_payment_for_delivery(reservation)
+
+        self.assertIn('باقی‌مانده', str(ctx.exception))
+
+    def test_delivery_rejected_with_partial_cache_value(self):
+        """
+        C-2 (بازتولید دقیق گزارش): ۱۰۰٬۰۰۰ تومان قیمت، صفر بیعانه و فقط
+        ۳۰٬۰۰۰ کش پرداخت تکمیلی → مانده ۷۰٬۰۰۰ است و تحویل باید رد شود.
+        """
+        reservation = self.make_reservation(
+            final_price=100000,
+            deposit_amount=0,
+            remaining_payment_amount=30000,
+        )
+
+        self.assertEqual(ReservationPaymentService.core_remaining_amount(reservation), 70000)
+
+        with self.assertRaises(ValueError):
+            self.guard.verify_payment_for_delivery(reservation)
+
+    def test_delivery_rejected_when_only_partial_payment_registered(self):
+        """C-2: پرداخت جزئی نباید تحویل را مجاز کند."""
+        reservation = self.make_reservation(
+            final_price=100000,
+            deposit_amount=0,
+            remaining_payment_amount=0,
+        )
+        response = self.post_edit(reservation, rows=[{
+            'id': '',
+            'amount': '40000',
+            'payment_type': 'DEPOSIT',
+            'payment_date': today_jalali(),
+            'due_date': '',
+            'payment_method': 'CASH',
+            'payment_reference': '',
+            'description': 'بیعانه جزئی',
+        }])
+        self.assertEqual(response.status_code, 200, response.content)
+        reservation.refresh_from_db()
+
+        # مانده واقعی = 60000 → تحویل باید رد شود
+        self.assertEqual(ReservationPaymentService.core_remaining_amount(reservation), 60000)
+        with self.assertRaises(ValueError):
+            self.guard.verify_payment_for_delivery(reservation)
+
+    def test_delivery_allowed_when_fully_settled_by_staged_payments(self):
+        """تسویه کامل مرحله‌ای باید تحویل را مجاز کند."""
+        reservation = self.make_reservation(
+            final_price=100000,
+            deposit_amount=0,
+            remaining_payment_amount=0,
+        )
+        response = self.post_edit(reservation, rows=[
+            {
+                'id': '',
+                'amount': '40000',
+                'payment_type': 'DEPOSIT',
+                'payment_date': today_jalali(),
+                'due_date': '',
+                'payment_method': 'CASH',
+                'payment_reference': '',
+                'description': 'بیعانه',
+            },
+            {
+                'id': '',
+                'amount': '60000',
+                'payment_type': 'FINAL_PAYMENT',
+                'payment_date': today_jalali(),
+                'due_date': '',
+                'payment_method': 'CASH',
+                'payment_reference': '',
+                'description': 'تسویه',
+            },
+        ])
+        self.assertEqual(response.status_code, 200, response.content)
+        reservation.refresh_from_db()
+
+        self.assertEqual(ReservationPaymentService.core_remaining_amount(reservation), 0)
+        self.assertTrue(self.guard.verify_payment_for_delivery(reservation))
+
+    def test_delivery_allowed_for_fully_paid_legacy_reservation(self):
+        """سازگاری عقب‌رو: رزرو قدیمی با بیعانهٔ کامل باید مجاز بماند."""
+        reservation = self.make_reservation(
+            final_price=100000,
+            deposit_amount=100000,
+            remaining_payment_amount=0,
+        )
+
+        self.assertEqual(ReservationPaymentService.core_remaining_amount(reservation), 0)
+        self.assertTrue(self.guard.verify_payment_for_delivery(reservation))
+
+    def test_change_status_to_delivered_is_blocked_when_balance_remains(self):
+        """مسیر واقعی تغییر وضعیت هم باید تحویل با مانده را رد کند."""
+        from reservations.services.change_status import ReservationStatusService
+
+        reservation = self.make_reservation(
+            status=ReservationStatus.CONFIRMED,
+            final_price=100000,
+            deposit_amount=0,
+            remaining_payment_amount=30000,  # مانده ۷۰٬۰۰۰
+        )
+
+        with self.assertRaises(ValueError):
+            ReservationStatusService.change_status(
+                reservation, ReservationStatus.DELIVERED, self.manager
+            )
+
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.status, ReservationStatus.CONFIRMED)
+
+
+# ======================================================================
+# رگرسیون: ویرایش همزمان فیلدهای فرم و پرداخت‌های مرحله‌ای
+# ======================================================================
+class EditPreservesFormFieldsWithPaymentsTests(StagedPaymentTestBase):
+    """
+    وقتی فرم ویرایش رزرو همراه با «پرداخت‌های مرحله‌ای» ارسال می‌شود،
+    تغییر فیلدهای غیرمالی (شماره قرارداد، تاریخ شروع، لباس) نباید از
+    دست برود. این تست جلوی رگرسیون ناشی از ``refresh_from_db()``
+    مخرب را می‌گیرد.
+    """
+
+    def test_contract_number_and_start_date_are_persisted_alongside_payments(self):
+        reservation = self.make_reservation(
+            contract_number='OLD-CONTRACT',
+            start_date=jdatetime.date(1402, 1, 1),
+        )
+
+        payload = self.edit_payload(reservation, rows=[{
+            'id': '',
+            'amount': '25000',
+            'payment_type': 'DEPOSIT',
+            'payment_date': today_jalali(),
+            'due_date': '',
+            'payment_method': 'CASH',
+            'payment_reference': '',
+            'description': 'بیعانه',
+        }])
+        payload['contract_number'] = 'NEW-CONTRACT'
+        payload['start_date'] = '1405/06/01'
+
+        response = self.client.post(
+            reverse('reservations:edit', args=[reservation.pk]),
+            payload,
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+        self.assertTrue(response.json()['success'])
+
+        reservation.refresh_from_db()
+        # تغییرات فرم باید حفظ شده باشند
+        self.assertEqual(reservation.contract_number, 'NEW-CONTRACT')
+        self.assertEqual(str(reservation.start_date), '1405-06-01')
+        # و پرداخت مرحله‌ای هم باید ثبت شده باشد
+        self.assertEqual(reservation.deposit_amount, 25000)
+
+    def test_form_edit_without_payment_payload_still_persists(self):
+        """مسیر بدون formset (سازگاری عقب‌رو) هم باید فیلدها را ذخیره کند."""
+        reservation = self.make_reservation(contract_number='OLD-2')
+
+        response = self.client.post(
+            reverse('reservations:edit', args=[reservation.pk]),
+            {
+                'dress': str(self.dress.pk),
+                'start_date': '1405/06/01',
+                'rental_days': '3',
+                'discount_type': '',
+                'discount_value': '0',
+                'payment_method': 'CASH',
+                'payment_tracking_code': 'PAY-X',
+                'guarantee1_type': 'CASH',
+                'guarantee1_tracking_code': 'G1',
+                'guarantee2_type': '',
+                'guarantee2_tracking_code': '',
+                'deposit_amount': '0',
+                'contract_number': 'NEW-2',
+            },
+            HTTP_X_REQUESTED_WITH='XMLHttpRequest',
+        )
+        self.assertEqual(response.status_code, 200, response.content)
+
+        reservation.refresh_from_db()
+        self.assertEqual(reservation.contract_number, 'NEW-2')
+        self.assertEqual(str(reservation.start_date), '1405-06-01')
+
+
+class ReservationListNoDuplicateDomIdsTests(StagedPaymentTestBase):
+    """
+    صفحهٔ فهرست رزروها هر سه مودال (ایجاد/ویرایش/تحویل) را رندر می‌کند؛
+    شناسه‌های DOM نباید تکراری باشند (رفع L-1).
+    """
+
+    def test_reservation_list_has_no_duplicate_element_ids(self):
+        import re
+        from collections import Counter
+
+        for index in range(2):
+            self.make_reservation(
+                start_date=jdatetime.date(1402, 1, 1 + index),
+                guarantee1_type='CHECK',
+                guarantee1_tracking_code=f'G{index}',
+                guarantee1_payee='گیرنده',
+            )
+
+        response = self.client.get(reverse('reservations:list'))
+        self.assertEqual(response.status_code, 200)
+
+        html = response.content.decode('utf-8')
+        ids = re.findall(r'\sid="([^"]+)"', html)
+        duplicates = {key: count for key, count in Counter(ids).items() if count > 1}
+
+        # رشته‌های قالب جاوااسکریپت (مثل ' + toastId + ') شناسهٔ واقعی نیستند
+        duplicates = {k: v for k, v in duplicates.items() if '+' not in k}
+
+        self.assertEqual(
+            duplicates, {},
+            f'شناسه‌های تکراری در صفحه: {duplicates}',
+        )

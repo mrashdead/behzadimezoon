@@ -1,12 +1,16 @@
 # reservations/services/change_status.py
 
+import logging
+
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.utils import timezone
 from django.db import transaction
 from reservations.services.payment_guards import PaymentGuardService
 from reservations.services.availability_service import ReservationAvailabilityService
-from reservations.services.state_machin import ReservationStateMachine
+from reservations.services.state_machine import ReservationStateMachine
 from reservations.constants import ReservationStatus
+
+logger = logging.getLogger(__name__)
 
 
 class ReservationStatusService:
@@ -71,6 +75,8 @@ class ReservationStatusService:
             reservation.save()
 
         # Create a status log entry for auditability.
+        # ایراد M-9: پیش‌تر خطای ثبت لاگ بی‌صدا بلعیده می‌شد و ردیابی از بین
+        # می‌رفت. اکنون خطا لاگ می‌شود (اما تغییر وضعیت را متوقف نمی‌کند).
         try:
             from reservations.models import ReservationStatusLog
 
@@ -80,8 +86,11 @@ class ReservationStatusService:
                 new_status=new_status,
                 changed_by=user
             )
-        except Exception:
-            pass
+        except Exception as exc:  # noqa: BLE001 - نباید تغییر وضعیت را بشکند
+            logger.warning(
+                'ثبت لاگ تغییر وضعیت برای رزرو %s ناموفق بود: %s',
+                reservation.pk, exc, exc_info=True,
+            )
 
         return reservation
 
@@ -154,7 +163,10 @@ class ReservationStatusService:
                     new_status=reservation.status,
                     changed_by=user
                 )
-            except Exception:
-                pass
+            except Exception as exc:  # noqa: BLE001 - نباید بازیابی را بشکند
+                logger.warning(
+                    'ثبت لاگ بازیابی وضعیت برای رزرو %s ناموفق بود: %s',
+                    reservation.pk, exc, exc_info=True,
+                )
 
         return reservation

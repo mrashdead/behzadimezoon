@@ -1,8 +1,27 @@
+{% comment %}
+Detail Card — یک خانهٔ «برچسب / مقدار» برای مودال‌های جزئیات
+--------------------------------------------------------------------------
+استفاده:
+  {% include 'partials/_detail_card.html' with label='مشتری' value=reservation.customer %}
+  {% include 'partials/_detail_card.html' with label='مبلغ نهایی' value='۱۲۳ تومان' amount_style=True %}
+
+پارامترهای اختیاری:
+  amount_style : مقدار با تأکید بیشتر و جداکنندهٔ بالایی نشان داده می‌شود
+  icon         : نام آیکون فلیتیکن (مثلاً 'fi-rr-coins')
+  tone         : 'default' | 'primary' | 'success' | 'danger' | 'warning' | 'info'
+{% endcomment %}
+
+{% with tone=tone|default:'default' %}
 <div class="col-12 col-sm-6 col-lg-4">
-  <div class="card shadow-sm border h-100">
-    <div class="card-body">
-      <div class="small text-muted mb-1">{{ label }}</div>
-      <div class="fw-semibold text-body{% if amount_style %} mt-2 pt-2 border-top border-dashed{% endif %}">{{ value|default:'-' }}</div>
+  <div class="card h-100 border-0 shadow-none detail-card detail-card--{{ tone }}">
+    <div class="card-body py-3 px-3">
+      <div class="detail-card__label">
+        {% if icon %}<i class="fi {{ icon }} me-1"></i>{% endif %}{{ label }}
+      </div>
+      <div class="detail-card__value{% if amount_style %} detail-card__value--amount{% endif %}">
+        {{ value|default:'-' }}
+      </div>
     </div>
   </div>
 </div>
+{% endwith %}

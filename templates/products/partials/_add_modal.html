@@ -1,28 +1,41 @@
 <div class="modal fade" id="createDressModal" tabindex="-1" aria-hidden="true">
-  <div class="modal-dialog modal-lg modal-dialog-scrollable">
+  <div class="modal-dialog modal-lg modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content border-0 shadow">
-      <form method="post" action="{% url 'products:add' %}" class="no-ajax">
+      <form method="post" action="{% url 'products:add' %}" data-ajax-form novalidate>
         {% csrf_token %}
 
-        {% include 'partials/_modal_header.html' with title='افزودن محصول جدید' %}
+        {% include 'partials/_modal_header.html' with title='افزودن محصول جدید' subtitle='کد لباس و قیمت اجارهٔ روزانه' icon='fi-rr-square-plus' %}
 
         <div class="modal-body">
+          <div class="alert alert-danger d-none js-form-error-summary" role="alert" aria-live="assertive"></div>
+
           <div class="row g-3">
             <div class="col-md-6">
-              <label for="id_code" class="form-label">کد لباس</label>
-              <input type="text" name="code" id="id_code" class="form-control" placeholder="مثلاً M1405-01" required />
+              <label for="id_code" class="form-label">
+                کد لباس <span class="text-danger">*</span>
+              </label>
+              <input type="text" name="code" id="id_code" class="form-control"
+                     placeholder="مثلاً M1405-01" autocomplete="off" required />
+              <div class="invalid-feedback">کد لباس الزامی است و باید یکتا باشد.</div>
             </div>
 
             <div class="col-md-6">
-              <label for="id_daily_rent_price" class="form-label">قیمت اجاره روزانه (تومان)</label>
-              <input type="text" name="daily_rent_price" id="id_daily_rent_price" class="form-control money-input" placeholder="0 تومان" required />
+              <label for="id_daily_rent_price" class="form-label">
+                قیمت اجارهٔ روزانه <span class="text-danger">*</span>
+              </label>
+              <div class="input-group">
+                <input type="text" name="daily_rent_price" id="id_daily_rent_price"
+                       class="form-control money-input" inputmode="numeric"
+                       placeholder="0" autocomplete="off" required />
+                <span class="input-group-text">تومان</span>
+              </div>
+              <div class="invalid-feedback">قیمت اجارهٔ روزانه باید عددی بزرگ‌تر از صفر باشد.</div>
             </div>
           </div>
         </div>
 
-        {% include 'partials/_modal_footer.html' with cancel_text='انصراف' submit_text='ثبت محصول' %}
+        {% include 'partials/_modal_footer.html' with cancel_text='انصراف' submit_text='ثبت محصول' submit_icon='fi-rr-square-plus' %}
       </form>
     </div>
   </div>
 </div>
-

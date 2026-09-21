@@ -84,14 +84,18 @@ class CancellationForm(forms.Form):
 
 
 class TransactionForm(forms.Form):
-    type = forms.ChoiceField(label='نوع تراکنش', choices=[
-        ('DEPOSIT', 'بیعانه'),
-        ('FINAL_PAYMENT', 'پرداخت نهایی'),
-        ('REFUND', 'بازپرداخت'),
-        ('DAMAGE_PAYMENT', 'پرداخت خسارت'),
-        ('CANCELLATION_FEE', 'جریمه لغو'),
-        ('ADJUSTMENT', 'تعدیل دستی'),
-    ])
+    type = forms.ChoiceField(
+        label='نوع تراکنش',
+        choices=[
+            ('DEPOSIT', 'بیعانه'),
+            ('FINAL_PAYMENT', 'پرداخت نهایی'),
+            ('REFUND', 'بازپرداخت'),
+            ('DAMAGE_PAYMENT', 'پرداخت خسارت'),
+            ('CANCELLATION_FEE', 'جریمه لغو'),
+            ('ADJUSTMENT', 'تعدیل دستی'),
+        ],
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
     amount = forms.CharField(
         label='مبلغ (تومان)',
         widget=forms.TextInput(attrs={
@@ -99,9 +103,23 @@ class TransactionForm(forms.Form):
             'placeholder': '0'
         })
     )
-    payment_method = forms.ChoiceField(label='روش پرداخت', choices=PaymentMethod.CHOICES, required=False)
-    external_reference = forms.CharField(max_length=200, label='کد پیگیری', required=False)
-    note = forms.CharField(widget=forms.Textarea, label='یادداشت', required=False)
+    payment_method = forms.ChoiceField(
+        label='روش پرداخت',
+        choices=PaymentMethod.CHOICES,
+        required=False,
+        widget=forms.Select(attrs={'class': 'form-select'}),
+    )
+    external_reference = forms.CharField(
+        max_length=200,
+        label='کد پیگیری',
+        required=False,
+        widget=forms.TextInput(attrs={'class': 'form-control'}),
+    )
+    note = forms.CharField(
+        label='یادداشت',
+        required=False,
+        widget=forms.Textarea(attrs={'class': 'form-control', 'rows': 4}),
+    )
 
     def clean_amount(self):
         amount = parse_amount_value(self.cleaned_data.get('amount'))

@@ -2,14 +2,15 @@
 {% load jformat %}
 
 <div class="modal fade" id="createCustomerModal" tabindex="-1" aria-labelledby="createCustomerModalLabel" aria-hidden="true">
-  <div class="modal-dialog modal-xl modal-dialog-scrollable">
+  <div class="modal-dialog modal-xl modal-dialog-centered modal-dialog-scrollable">
     <div class="modal-content">
-      <form method="post" action="{% url 'customers:create' %}" class="h-100 d-flex flex-column no-ajax">
+      <form method="post" action="{% url 'customers:create' %}" class="h-100 d-flex flex-column" data-ajax-form novalidate>
         {% csrf_token %}
 
-        {% include 'partials/_modal_header.html' with title='افزودن مشتری جدید' %}
+        {% include 'partials/_modal_header.html' with title='افزودن مشتری جدید' subtitle='اطلاعات عروس، داماد و خدمات مورد نظر' icon='fi-rr-user-add' %}
 
         <div class="modal-body">
+          <div class="alert alert-danger d-none js-form-error-summary" role="alert" aria-live="assertive"></div>
           <div class="row g-3">
             <!-- بخش اطلاعات عروس -->
             <div class="col-12">
@@ -25,10 +26,12 @@
                     <div class="col-md-6">
                       <label for="id_bride_first_name" class="form-label">نام عروس</label>
                       <input type="text" name="bride_first_name" id="id_bride_first_name" class="form-control" required />
+                      <div class="invalid-feedback">لطفاً نام عروس را وارد کنید.</div>
                     </div>
                     <div class="col-md-6">
                       <label for="id_bride_last_name" class="form-label">نام خانوادگی عروس</label>
                       <input type="text" name="bride_last_name" id="id_bride_last_name" class="form-control" required />
+                      <div class="invalid-feedback">لطفاً نام خانوادگی عروس را وارد کنید.</div>
                     </div>
                     <div class="col-md-6">
                       <label for="id_bride_phone" class="form-label">شماره تماس عروس</label>
@@ -43,10 +46,12 @@
                         pattern="\d{11}"
                         placeholder="مثال: 09121234567"
                       />
+                      <div class="invalid-feedback">شماره تماس عروس باید ۱۱ رقم باشد (مثال: 09121234567).</div>
                     </div>
                     <div class="col-md-6">
                       <label for="id_ceremony_date" class="form-label">تاریخ مراسم</label>
                       <input type="text" id="id_ceremony_date" name="ceremony_date" class="form-control p-date-only" required />
+                      <div class="invalid-feedback">لطفاً تاریخ مراسم را انتخاب کنید.</div>
                     </div>
                     <div class="col-md-6">
                       <label for="id_how_to_know" class="form-label">نحوه آشنایی</label>
@@ -62,6 +67,7 @@
                         <option value="سایر">سایر</option>
                         <option value="ندارد">ندارد</option>
                       </select>
+                      <div class="invalid-feedback">لطفاً نحوهٔ آشنایی را انتخاب کنید.</div>
                     </div>
                     <div class="col-md-6" id="how_to_know_detail_group">
                       <label for="id_how_to_know_detail" class="form-label">توضیحات تکمیلی</label>

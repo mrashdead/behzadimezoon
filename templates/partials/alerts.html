@@ -1,15 +1,26 @@
+{% comment %}
+Alerts / Toasts — پیام‌های Django messages
+--------------------------------------------------------------------------
+نکتهٔ مهم: برچسب پیش‌فرض خطای Django «error» است، ولی Bootstrap کلاس
+text-bg-error ندارد. بنابراین برچسب‌ها به رنگ‌های معتبر Bootstrap نگاشت
+می‌شوند (error → danger). پیش‌تر پیام‌های خطا بدون پس‌زمینه رندر می‌شدند.
+{% endcomment %}
+
 {% if messages %}
-<div class="toast-container position-fixed bottom-0 end-0 p-3">
-    {% for message in messages %}
-    <div class="toast align-items-center text-bg-{{ message.tags|default:'primary' }} border-0 show" role="alert" aria-live="assertive" aria-atomic="true" data-delay="5000">
-        <div class="d-flex">
-            <div class="toast-body">
-                {{ message }}
-            </div>
-            <button type="button" class="btn-close btn-close-white me-2 m-auto" data-bs-dismiss="toast" aria-label="Close"></button>
-        </div>
-    </div>
-    {% endfor %}
+<div class="app-toast-stack" id="appToastStack" role="region" aria-label="اعلان‌ها">
+  {% for message in messages %}
+    {% if message.tags == 'success' %}
+      {% include 'partials/_toast.html' with tone='success' icon='fi-rr-check-circle' text=message %}
+    {% elif message.tags == 'error' or message.tags == 'danger' %}
+      {% include 'partials/_toast.html' with tone='danger' icon='fi-rr-exclamation' text=message %}
+    {% elif message.tags == 'warning' %}
+      {% include 'partials/_toast.html' with tone='warning' icon='fi-rr-triangle-warning' text=message %}
+    {% elif message.tags == 'debug' %}
+      {% include 'partials/_toast.html' with tone='secondary' icon='fi-rr-settings' text=message %}
+    {% else %}
+      {% include 'partials/_toast.html' with tone='info' icon='fi-rr-info' text=message %}
+    {% endif %}
+  {% endfor %}
 </div>
 
 {% include 'includes/scripts/alerts_js.html' %}

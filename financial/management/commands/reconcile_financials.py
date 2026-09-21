@@ -31,9 +31,13 @@ class Command(BaseCommand):
         mismatches = []
         for res in qs:
             # Sum posted transaction signed amounts for reservation
-            tx_sum = Transaction.objects.filter(reservation=res, posting_status=Transaction.PostingStatus.POSTED).aggregate(
-                total=Sum('amount')
-            )['total'] or 0
+            # نکته: ``posting_status`` صرفاً یک property (alias) روی مدل است و
+            # فیلد دیتابیس نیست؛ در کوئری‌ها باید از ``transaction_status``
+            # استفاده شود، وگرنه Django خطای FieldError می‌دهد.
+            tx_sum = Transaction.objects.filter(
+                reservation=res,
+                transaction_status=Transaction.TransactionStatus.POSTED,
+            ).aggregate(total=Sum('amount'))['total'] or 0
 
             snapshot_total = getattr(res, 'total_cash_collected_snapshot', None) or res.total_received_amount()
 

@@ -1,18 +1,47 @@
-<div class="card border-0 shadow-sm mb-4">
-  <div class="card-header bg-body-tertiary border-bottom py-3">
-    <div class="d-flex align-items-center justify-content-between gap-2">
-      <div>
-        <h6 class="mb-0">{{ title }}</h6>
-        {% if subtitle %}
-          <p class="mb-0 text-muted small">{{ subtitle }}</p>
+{% comment %}
+Section Card — کارت بخش‌بندی‌شده با هدر و اکشن
+--------------------------------------------------------------------------
+استفاده (محتوای ساده):
+  {% include 'partials/_section_card.html' with title='آخرین تراکنش‌ها' subtitle='۱۰ مورد اخیر' content=some_text %}
+
+پارامترهای اختیاری:
+  icon       : نام آیکون فلیتیکن، مثلاً 'fi-rr-list'
+  action     : HTML دکمهٔ سمت چپ هدر (به‌صورت |safe رندر می‌شود)
+  count      : عددی که کنار عنوان به‌شکل badge نمایش داده می‌شود
+  body_class : کلاس اضافی برای card-body (مثلاً 'p-0')
+
+توجه: ``content`` از ``|safe`` عبور نمی‌کند؛ برای محتوای HTML پیچیده
+(جدول، فرم، ...) این الگو را مستقیم در قالب مقصد بنویسید و فقط کلاس‌های
+card / card-header / card-body را مثل همین فایل به‌کار ببرید.
+{% endcomment %}
+
+<div class="card border-0 shadow-sm section-card mb-4">
+  <div class="card-header bg-transparent border-bottom py-3">
+    <div class="d-flex align-items-center justify-content-between gap-2 flex-wrap">
+      <div class="d-flex align-items-center gap-2 min-w-0">
+        {% if icon %}
+          <span class="avatar avatar-xs rounded-3 bg-primary-subtle text-primary section-card__icon">
+            <i class="fi {{ icon }}"></i>
+          </span>
         {% endif %}
+        <div class="min-w-0">
+          <h6 class="mb-0 d-flex align-items-center gap-2">
+            {{ title }}
+            {% if count %}
+              <span class="badge badge-sm bg-secondary-subtle text-secondary">{{ count }}</span>
+            {% endif %}
+          </h6>
+          {% if subtitle %}
+            <p class="mb-0 text-muted text-2xs mt-1">{{ subtitle }}</p>
+          {% endif %}
+        </div>
       </div>
       {% if action %}
-        <div>{{ action }}</div>
+        <div class="section-card__action">{{ action|safe }}</div>
       {% endif %}
     </div>
   </div>
-  <div class="card-body">
+  <div class="card-body{% if body_class %} {{ body_class }}{% endif %}">
     {{ content }}
   </div>
 </div>

@@ -1,16 +1,70 @@
-{# Stat Card Component #}
-{# Usage: {% include 'partials/_stat_card.html' with icon='fi-rr-coins' label='کل درآمد' value=totals.total_revenue badge_type='success' badge_text='تومان' %} #}
+{% comment %}
+Stat / KPI Card
+--------------------------------------------------------------------------
+استفادهٔ ساده:
+  {% include 'partials/_stat_card.html' with icon='fi-rr-coins' label='کل درآمد' value=totals.total_revenue badge_type='success' badge_text='تومان' %}
 
-<div class="col-xxl-3 col-sm-6 financial-stat-card">
-  <div class="card h-100 border-0 shadow-sm">
-    <div class="card-body d-flex gap-3 align-items-center">
-      <div class="avatar bg-{{ badge_type }}-subtle rounded-circle text-{{ badge_type }}" style="min-width: 48px; width: 48px; height: 48px; display: flex; align-items: center; justify-content: center; font-size: 20px;">
+پارامترهای اختیاری:
+  href        : اگر مقدار داشته باشد، کل کارت قابل کلیک می‌شود
+  query_suffix: به انتهای ``href`` چسبانده می‌شود (مثلاً ``&search=...``)
+                تا فیلترهای جاری هنگام کلیک روی کارت از دست نروند
+  footer_text : متن کوچک در پایین کارت (مثلاً «در مقایسه با ماه گذشته»)
+  col_class   : کلاس ستون (پیش‌فرض: col-xxl-3 col-sm-6)
+  icon_size   : '' (پیش‌فرض، ۵۰px) | 'lg' (۶۰px) | 'sm' (۴۰px)
+  delta_text  : متن نشانگر تغییر (مثلاً «۲.۵٪+»)
+  delta_type  : 'success' | 'danger' | 'warning' | 'info'
+
+نکته: کلاس ``financial-stat-card`` حفظ شده تا استایل‌های موجود نشکند،
+و ``number-display`` + ``data-value`` برای تابع formatNumberDisplays لازم است.
+{% endcomment %}
+
+{% with icon_size=icon_size|default:'' delta_type=delta_type|default:'success' %}
+{% comment %}
+توجه: از فیلتر ``|default:`` برای ``col_class`` استفاده نمی‌کنیم، چون مقدار
+خالی (``col_class=''``) را هم با پیش‌فرض جایگزین می‌کند و باعث می‌شود کارت
+داخل یک ستون دیگر قرار بگیرد و شبکه (grid) تودرتو بشکند.
+{% endcomment %}
+<div class="{% if col_class %}{{ col_class }}{% else %}col-xxl-3 col-sm-6{% endif %} financial-stat-card">
+  <div class="card h-100 border-0 shadow-sm kpi-card{% if href %} kpi-card--link{% endif %}"
+       {% if data_attr %}data-filter-value="{{ data_attr }}"{% endif %}>
+    <div class="card-body d-flex align-items-start justify-content-between gap-3">
+
+      <div class="kpi-card__content flex-grow-1">
+        <p class="kpi-card__label text-muted mb-2">{{ label }}</p>
+
+        <div class="d-flex align-items-center flex-wrap gap-2">
+          <h2 class="kpi-card__value fw-bold mb-0 number-display"
+              data-value="{{ value|default:0 }}">{{ value|default:0 }}</h2>
+
+          {% if badge_text %}
+            <span class="badge badge-sm bg-{{ badge_type|default:'primary' }}-subtle text-{{ badge_type|default:'primary' }}">
+              {{ badge_text }}
+            </span>
+          {% endif %}
+
+          {% if delta_text %}
+            <span class="badge badge-sm bg-{{ delta_type }}-subtle text-{{ delta_type }}">
+              <i class="fi fi-rr-arrow-{% if delta_type == 'danger' %}down{% else %}up{% endif %} me-1"></i>{{ delta_text }}
+            </span>
+          {% endif %}
+        </div>
+      </div>
+
+      <span class="avatar{% if icon_size %} avatar-{{ icon_size }}{% endif %} rounded-3 flex-shrink-0 kpi-card__icon bg-{{ badge_type|default:'primary' }}-subtle text-{{ badge_type|default:'primary' }}">
         <i class="fi {{ icon }}"></i>
-      </div>
-      <div class="clearfix flex-grow-1">
-        <span class="fw-semibold text-muted d-block small">{{ label }}</span>
-        <h2 class="fw-bold mb-0 mt-1 number-display" data-value="{{ value|default:0 }}">{{ value|default:0 }}</h2>
-      </div>
+      </span>
+
     </div>
+
+    {% if footer_text %}
+      <div class="card-footer bg-transparent border-0 pt-0">
+        <span class="text-muted text-2xs">{{ footer_text }}</span>
+      </div>
+    {% endif %}
+
+    {% if href %}
+      <a href="{{ href }}{{ query_suffix }}" class="stretched-link" aria-label="{{ label }}"></a>
+    {% endif %}
   </div>
 </div>
+{% endwith %}
