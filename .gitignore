@@ -115,3 +115,4 @@ staticfiles/
 cb8c21_26nexlink/
 docs/
 .workbuddy-ai/
+*.dump

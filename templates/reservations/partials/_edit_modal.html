@@ -122,11 +122,11 @@
             <div class="col-12">
               <div class="card shadow-none border mb-3">
                 <div class="card-header bg-body-tertiary border-bottom py-3">
-                  <h6 class="mb-0 fw-semibold">اطلاعات مالی</h6>
+                  <h6 class="mb-0 fw-semibold">تخفیف</h6>
                 </div>
                 <div class="card-body">
                   <div class="row g-3">
-                    <div class="col-12 col-md-6 col-xl-3">
+                    <div class="col-12 col-md-6">
                       <label for="id_discount_type_{{ reservation.id }}" class="form-label">نوع تخفیف</label>
                       <select id="id_discount_type_{{ reservation.id }}" name="discount_type" class="form-select">
                         <option value="NONE" {% if reservation.discount_type == 'NONE' or not reservation.discount_type %}selected{% endif %}>بدون تخفیف</option>
@@ -134,7 +134,7 @@
                         <option value="PERCENT" {% if reservation.discount_type == 'PERCENT' %}selected{% endif %}>درصد</option>
                       </select>
                     </div>
-                    <div class="col-12 col-md-6 col-xl-3">
+                    <div class="col-12 col-md-6">
                       <label for="id_discount_value_{{ reservation.id }}" class="form-label">مقدار تخفیف</label>
                       <input
                         type="number"
@@ -146,8 +146,20 @@
                       />
                       <div class="invalid-feedback">مقدار تخفیف باید عددی برابر یا بزرگتر از صفر باشد.</div>
                     </div>
-                    <div class="col-12 col-md-6 col-xl-3">
-                      <label for="id_payment_method_{{ reservation.id }}" class="form-label">روش پرداخت پیش‌فرض</label>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            <div class="col-12">
+              <div class="card shadow-none border mb-3">
+                <div class="card-header bg-body-tertiary border-bottom py-3">
+                  <h6 class="mb-0 fw-semibold">روش پرداخت‌شده</h6>
+                </div>
+                <div class="card-body">
+                  <div class="row g-3">
+                    <div class="col-12 col-md-6">
+                      <label for="id_payment_method_{{ reservation.id }}" class="form-label">روش پرداخت</label>
                       <select id="id_payment_method_{{ reservation.id }}" name="payment_method" class="form-select" required>
                         <option value="">انتخاب کنید</option>
                         {% for value, label in payment_methods %}
@@ -156,7 +168,7 @@
                       </select>
                       <div class="invalid-feedback">لطفا روش پرداخت را انتخاب کنید.</div>
                     </div>
-                    <div class="col-12 col-md-6 col-xl-3">
+                    <div class="col-12 col-md-6">
                       <label for="id_payment_tracking_code_{{ reservation.id }}" class="form-label">کد رهگیری پرداخت</label>
                       <input
                         type="text"
