@@ -48,6 +48,8 @@ def parse_amount_value(value):
 
 class ReservationStepOneForm(forms.Form):
 
+    notes = forms.CharField(required=False, label="یادداشت", widget=forms.Textarea(attrs={"rows": 3}))
+
     customer = forms.ModelChoiceField(
         queryset=Customer.objects.all(),
         required=True,
@@ -1113,5 +1115,4 @@ def payment_rows_from_formset(formset):
             'deleted': bool(data.get('DELETE')),
         })
     return rows
-
 

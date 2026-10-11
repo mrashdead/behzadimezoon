@@ -476,6 +476,7 @@ def reservation_step_one(request):
         "rental_days": rental_days,
         "rent_price": rent_price,
         "contract_number": form.cleaned_data.get("contract_number"),
+        "notes": form.cleaned_data.get("notes", ""),
     }
 
     return JsonResponse({
@@ -518,6 +519,7 @@ def reservation_create(request):
             "start_date": request.POST.get("start_date"),
             "rental_days": request.POST.get("rental_days"),
             "contract_number": request.POST.get("contract_number"),
+            "notes": request.POST.get("notes", ""),
         }
         if any(payload.values()):
             step1_form = ReservationStepOneForm(payload)
@@ -532,6 +534,7 @@ def reservation_create(request):
                     "event_date": date_to_iso(getattr(cleaned["customer"], "ceremony_date", None)),
                     "rent_price": cleaned["dress"].daily_rent_price,
                     "contract_number": cleaned.get("contract_number"),
+                    "notes": cleaned.get("notes", ""),
                 }
                 try:
                     request.session["reservation_step1"] = step1_data
@@ -571,6 +574,7 @@ def reservation_create(request):
                 "start_date": request.POST.get("start_date"),
                 "rental_days": request.POST.get("rental_days"),
                 "contract_number": request.POST.get("contract_number"),
+                "notes": request.POST.get("notes", ""),
             }
             if any(step1_payload.values()):
                 try:
@@ -597,6 +601,7 @@ def reservation_create(request):
                         "event_date": date_to_iso(getattr(cleaned["customer"], "ceremony_date", None)),
                         "rent_price": rent_price,
                         "contract_number": cleaned.get("contract_number"),
+                        "notes": cleaned.get("notes", ""),
                     }
                     try:
                         request.session["reservation_step1"] = step1_data
@@ -693,6 +698,7 @@ def reservation_create(request):
             reservation.customer = customer
             reservation.dress = dress
             reservation.contract_number = form.cleaned_data.get('contract_number') or step1_data.get('contract_number')
+            reservation.notes = step1_data.get('notes', '')
             reservation.start_date = start_date
             reservation.rental_days = rental_days
             reservation.end_date = end_date
@@ -1582,4 +1588,3 @@ def reservation_record_penalty_payment(request, pk):
         import traceback, sys
         traceback.print_exc(file=sys.stderr)
         return JsonResponse({"success": False, "message": f'خطا در ثبت پرداخت جریمه: {str(e)}'}, status=500)
-

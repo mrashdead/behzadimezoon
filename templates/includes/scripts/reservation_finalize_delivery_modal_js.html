@@ -285,8 +285,10 @@
       });
     }
 
-    if (submitFeeBtn && formContainer) {
+    if (submitFeeBtn && formContainer && !submitFeeBtn._clickListenerAttached) {
+      submitFeeBtn._clickListenerAttached = true;
       submitFeeBtn.addEventListener('click', function () {
+        if (submitFeeBtn.disabled) return;
         const titleInput = formContainer.querySelector('.fee-title-input');
         const amountInput = formContainer.querySelector('.fee-amount-input');
         const notesInput = formContainer.querySelector('.fee-notes-input');
@@ -310,6 +312,7 @@
         formData.append('amount', normalizedAmount);
         formData.append('notes', notesInput.value.trim());
 
+        submitFeeBtn.disabled = true;
         fetch(finalizationUrl, {
           method: 'POST',
           headers: { 'X-Requested-With': 'XMLHttpRequest', 'X-CSRFToken': csrfTokenInput ? csrfTokenInput.value : '' },
@@ -345,6 +348,12 @@
           } else {
             showToast('error', data.message || 'خطایی در ثبت هزینه رخ داد');
           }
+        })
+        .catch(function () {
+          showToast('error', 'خطا در ثبت هزینه جانبی');
+        })
+        .finally(function () {
+          submitFeeBtn.disabled = false;
         });
       });
     }

@@ -338,12 +338,15 @@ document.addEventListener('DOMContentLoaded', function () {
       const hiddenRentalDays = document.getElementById("step2RentalDaysHidden")
       const hiddenContractNumber = document.getElementById("step2ContractNumberHidden")
       const contractNumberInput = step1Form.querySelector("input[name='contract_number']")
+      const notesInput = step1Form.querySelector("[name='notes']")
+      const hiddenNotes = document.getElementById("step2NotesHidden")
 
       if (hiddenCustomer) hiddenCustomer.value = customerSelect.value || ""
       if (hiddenDress) hiddenDress.value = dressSelect.value || ""
       if (hiddenStartDate) hiddenStartDate.value = startDateInput.value || ""
       if (hiddenRentalDays) hiddenRentalDays.value = rentalDaysInput.value || ""
       if (hiddenContractNumber) hiddenContractNumber.value = contractNumberInput ? contractNumberInput.value : ""
+      if (hiddenNotes) hiddenNotes.value = notesInput ? notesInput.value : ""
     }
 
     function saveReservationStepOne() {
@@ -353,7 +356,8 @@ document.addEventListener('DOMContentLoaded', function () {
         dress: dressSelect.value,
         start_date: startDateInput.value,
         rental_days: rentalDaysInput.value,
-        contract_number: contractNumberInput ? contractNumberInput.value : ''
+        contract_number: contractNumberInput ? contractNumberInput.value : '',
+        notes: step1Form.querySelector("[name='notes']")?.value || ''
       })
 
       return fetch("/reservations/step-one/", {
